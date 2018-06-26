@@ -13,6 +13,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "axios": "^0.18.0",
     "http-proxy": "^1.17.0",
     "minimist": "^1.2.0",
     "winston": "^2.2.0"

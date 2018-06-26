@@ -4,7 +4,7 @@ let config = require('../config');
 let winston = require('winston');
 let fs = require('fs');
 let path = require('path');
-const package = require('../package_info');
+const package_info = require('../package_info');
 
 // Set up logging
 // Configure custom File transport to write plain text messages
@@ -20,7 +20,7 @@ try {
 	throw e;
 }
 logPath += path.sep;
-logPath += package.name + ".log";
+logPath += package_info.name + ".log";
 
 let logger = new (winston.Logger)({
   transports: [
