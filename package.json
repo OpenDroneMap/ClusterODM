@@ -1,0 +1,20 @@
+{
+  "name": "nodeodm-proxy",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "ssh://root@git.masseranolabs.com:/root/repos/nodeodm-proxy.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "http-proxy": "^1.17.0",
+    "minimist": "^1.2.0",
+    "winston": "^2.2.0"
+  }
+}
