@@ -66,6 +66,7 @@ module.exports = {
                         socket.write("NODES DEL <node number> - Remove a node\r\n");
                         socket.write("NODES INFO <node number> - View JSON info of node\r\n");
                         socket.write("NODES LIST - List nodes\r\n");
+                        socket.write("NODES UPDATE - Update all nodes info\r\n");
                     }else if (command === "NODES" && args.length > 0){
                         const subcommand = args[0].toLocaleUpperCase();
                         args = args.slice(1, args.length);
@@ -73,18 +74,23 @@ module.exports = {
                         if (subcommand === "ADD" && args.length >= 2){
                             const [ hostname, port, token ] = args;
                             const node = nodes.add(hostname, port, token);
-                            node.updateInfo();
+                            if (node) node.updateInfo();
                             reply(!!node);
                         }else if (subcommand === "DEL" && args.length >= 1){
                             const [ number ] = args;
-                            // nodes.add(hostname, port, token);
-                            // TODO
-                            ok();
+                            reply(nodes.remove(nodes.nth(number)));
                         }else if (subcommand === "LIST"){
                             nodes.all().forEach((n, i) => {
-                                socket.write(`${(i + 1)}) ${n.toString()} ${n.isOnline() ? '[online]' : '[offline]'}\r\n`);
+                                socket.write(`${(i + 1)}) ${n.toString()} ${n.isOnline() ? '[online]' : '[offline]'} <version ${n.getVersion()}>\r\n`);
                             });
                             socket.write("\r\n");
+                        }else if (subcommand === "UPDATE"){
+                            nodes.updateInfo().then(() => {
+                                ok(); printCaret();
+                            }).catch(() => {
+                                fail(); printCaret();
+                            });
+                            return;
                         }else if (subcommand === "INFO" && args.length >= 1){
                             const [ number ] = args;
                             const node = nodes.nth(number);

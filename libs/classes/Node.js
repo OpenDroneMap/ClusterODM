@@ -33,12 +33,28 @@ module.exports = class Node{
         return this.nodeData.info;
     }
 
+    getVersion(){
+        const info = this.getInfo();
+        if (info){
+            return info.version || "?";
+        }else{
+            return "?";
+        }
+    }
+
     isOnline(){
         return this.getLastRefreshed() >= (new Date()).getTime() - (1000 * 60 * 5);
     }
 
     getLastRefreshed(){
         return this.nodeData.last_refreshed || 0;
+    }
+
+    toJSON(){
+        let clone = JSON.parse(JSON.stringify(this.nodeData));
+        delete(clone.info);
+        delete(clone.last_refreshed);
+        return clone;
     }
 
     toString(){
