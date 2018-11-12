@@ -17,7 +17,6 @@
     "busboy": "^0.2.14",
     "http-proxy": "^1.17.0",
     "minimist": "^1.2.0",
-    "stream-array": "^1.1.2",
     "winston": "^2.2.0"
   }
 }

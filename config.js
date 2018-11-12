@@ -2,14 +2,16 @@
 
 let fs = require('fs');
 let argv = require('minimist')(process.argv.slice(2), {
-    string: ['port', 'admin-cli-port', 'admin-cli-pass'],
+    string: ['port', 'admin-cli-port', 'admin-cli-pass', 'cloud-provider'],
     alias: {
-        p: 'port'
+        p: 'port',
+        c: 'cloud-provider'
     },
     default: {
         port: 3000,
         'admin-cli-port': 8080,
-        'admin-cli-pass': ''
+        'admin-cli-pass': '',
+        'cloud-provider': 'local'
     }
 });
 
@@ -21,7 +23,8 @@ Options:
     -p, --port <number> 	Port to bind the server to (default: 3000)
     --admin-cli-port <number> 	Port to bind the admin CLI to (default: 8080)
     --admin-cli-pass <string> 	Password to log-in to the admin CLI (default: none)
-	--log-level <logLevel>	Set log level verbosity (default: info)
+    --log-level <logLevel>	Set log level verbosity (default: info)
+    -c, --cloud-provider	Cloud provider to use (default: local)
 Log Levels: 
 error | debug | info | verbose | debug | silly 
 `);
@@ -39,5 +42,6 @@ config.logger.logDirectory = '' // Set this to a full path to a directory - if n
 config.port = parseInt(argv.port);
 config.admin_cli_port = parseInt(argv['admin-cli-port']);
 config.admin_cli_pass = argv['admin-cli-pass'];
+config.cloud_provider = argv['cloud-provider'];
 
 module.exports = config;
