@@ -1,3 +1,5 @@
+const config = require('../../config');
+
 module.exports = class ValueCache{
     constructor(options = {}){
         if (!options.expires) options.expires = -1;
@@ -7,6 +9,7 @@ module.exports = class ValueCache{
         this.cache = {};
         this.enabled = true;
 
+        if (config.debug) this.disable();
         if (options.expires > 0) setInterval(this.cleanup, this.options.cleanupInterval);
     }
 

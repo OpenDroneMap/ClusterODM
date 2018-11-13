@@ -10,6 +10,7 @@ module.exports = class LightningCloudProvider extends AbstractCloudProvider{
         this.validateCache = new ValueCache({expires: 5 * 60 * 1000});
 
         this.urlBase = "http://localhost:5000/r";
+        this.timeout = 10000;
     }
 
     urlFor(url){
@@ -22,7 +23,7 @@ module.exports = class LightningCloudProvider extends AbstractCloudProvider{
         if (cached !== undefined) return cached;
 
         try{
-            let response = await axios.post(this.urlFor('/tokens/validate'), { token });
+            let response = await axios.post(this.urlFor('/tokens/validate'), { token }, { timeout: this.timeout });
             if (response.status === 200){
                 let result = this.validateCache.set(token, response.data);
                 return result;

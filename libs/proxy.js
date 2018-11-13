@@ -7,6 +7,8 @@ const fs = require('fs');
 const package_info = require('../package_info');
 const nodes = require('./nodes');
 const odmOptions = require('./odmOptions');
+const ValueCache = require('./classes/ValueCache');
+const config = require('../config');
 
 module.exports = {
 	initialize: function(cloudProvider){
@@ -21,12 +23,15 @@ module.exports = {
             return false;
         };
 
+        // JSON helper for responses
         const json = (res, json) => {
             res.writeHead(200, {"Content-Type": "application/json"});
             res.end(JSON.stringify(json));
         };
 
         const proxy = new HttpProxy();
+
+        const optionsCache = new ValueCache({expires: 60 * 60 * 1000});
 
         const pathHandlers = {
             '/info': function(req, res, user){
@@ -42,18 +47,23 @@ module.exports = {
                     maxImages: limits.maxImages || -1,
                     maxParallelTasks: 99999999999,
                     odmVersion: node !== undefined ? node.getInfo().odmVersion : '?' 
-                }); 
+                });
             },
 
-            '/options': function(req, res, user){
+            '/options': async function(req, res, user){
                 const { token, limits } = user;
-                json(res, []);
-                return;
+                const cacheValue = optionsCache.get(token);
+                if (cacheValue){
+                    json(res, cacheValue);
+                    return;
+                }
 
                 const node = nodes.referenceNode();
                 if (!node) json(res, {'error': 'Cannot compute /options, no nodes are online.'});
                 else{
-                    return odmOptions.applyLimits(nodes.getOptions())
+                    const options = await node.getOptions();
+                    const limitedOptions = odmOptions.optionsWithLimits(options, limits.options);
+                    json(res, optionsCache.set(token, limitedOptions));
                 }
             }
         }
@@ -61,6 +71,12 @@ module.exports = {
         // TODO: https support
     
         return http.createServer(async function (req, res) {
+            // TODO: select node based on:
+            // - Images target
+            // - Availability
+            // - Other?
+            // what if no nodes are available? Queue here or push to node's queue?
+
             const target = "http://localhost:3002";
 
             const urlParts = url.parse(req.url, true);
@@ -81,7 +97,7 @@ module.exports = {
             if (pathHandlers[pathname]){
                 (pathHandlers[pathname])(req, res, { token: query.token, limits });
                 return;
-            } 
+            }
 
             // TODO: Swap token if necessary
             // if (query.token){

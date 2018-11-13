@@ -2,12 +2,21 @@ const Node = require('./classes/Node');
 const fs = require('fs');
 const logger = require('./logger');
 let nodes = [];
+let initialized = false;
 
 module.exports = {
     initialize: async function(){
+        if (initialized) throw new Error("Already initialized");
+
         await this.loadFromDisk();
         this.updateInfo();
         logger.info(`Loaded ${nodes.length} nodes`);
+
+        setInterval(() => {
+            this.updateInfo()
+        }, 60 * 1000);
+
+        initialized = true;
     },
 
     add: function(hostname, port, token){
@@ -47,13 +56,32 @@ module.exports = {
         }else return null;
     },
 
+    online: function(){
+        return nodes.filter(n => n.isOnline());
+    },
+
     updateInfo: async function(){
         return await Promise.all(nodes.map(n => n.updateInfo()));
     },
 
-    // Get first node thas has information updated
+    // Reference node is the one used to generate
+    // node information for the proxy (for example,
+    // when returning calls to /info or /options)
     referenceNode: function(){
-        return nodes.find(n => n.getInfo() !== null && n.isOnline());
+        return nodes.find(n => n.isOnline());
+    },
+
+    findBestAvailableNode: function(numImages){
+        const candidates = onlineNodes.filter(n => n.isOnline() && 
+                                                   (n.getInfo().maxImages < 0 || n.getInfo().maxImages >= numImages));
+        let scores = candidates.map(n => {
+            return {
+                node: n, 
+                score: (n.getInfo().maxParallelTasks - n.getInfo().taskQueueCount)
+            } 
+        });
+
+        // TODO: sort scores, choose best.
     },
 
     saveToDisk: async function(){

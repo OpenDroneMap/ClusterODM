@@ -5,19 +5,23 @@ const axios = require('axios');
 module.exports = class Node{
     constructor(nodeData){
         this.nodeData = nodeData;
+
+        this.timeout = 10000;
     }
 
     async updateInfo(){
         try{
-            let response = await axios.get(this.urlFor('/info'));
+            let response = await axios.get(this.urlFor('/info'), { timeout: this.timeout });
             if (response.status === 200){
                 this.nodeData.info = response.data;
                 this.nodeData.last_refreshed = new Date().getTime();
             }else{
                 throw new Error(`Cannot update info for ${this}, returned status ${response.status}`);
+                this.nodeData.last_refreshed = 0;
             }
         }catch(e){
             logger.warn(`Cannot update info for ${this}: ${e.message}`);
+            this.nodeData.last_refreshed = 0;
         }
     }
 
@@ -31,7 +35,7 @@ module.exports = class Node{
 
     async getOptions(){
         try{
-            let response = await axios.get(this.urlFor('/options'));
+            let response = await axios.get(this.urlFor('/options'),  { timeout: this.timeout });
             if (response.status === 200){
                 return response.data;
             }else{
@@ -56,7 +60,7 @@ module.exports = class Node{
     }
 
     isOnline(){
-        return this.getLastRefreshed() >= (new Date()).getTime() - (1000 * 60 * 5);
+        return this.getLastRefreshed() >= (new Date()).getTime() - (1000 * 60 * 2);
     }
 
     getLastRefreshed(){

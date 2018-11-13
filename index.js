@@ -6,6 +6,7 @@ const nodes = require('./libs/nodes');
 const proxy = require('./libs/proxy');
 
 (async function(){
+    if (config.debug) logger.warn("Running in debug mode");
     logger.info(package_info.name + " " + package_info.version);
     admincli.create({port: config.admin_cli_port, password: config.admin_cli_pass});
     const cloudProvider = (require('./libs/cloudProvider')).initialize(config.cloud_provider);
