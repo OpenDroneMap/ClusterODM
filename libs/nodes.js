@@ -51,6 +51,11 @@ module.exports = {
         return await Promise.all(nodes.map(n => n.updateInfo()));
     },
 
+    // Get first node thas has information updated
+    referenceNode: function(){
+        return nodes.find(n => n.getInfo() !== null && n.isOnline());
+    },
+
     saveToDisk: async function(){
         return new Promise((resolve, reject) => {
             fs.writeFile('data/nodes.json', JSON.stringify(nodes), (err) => {

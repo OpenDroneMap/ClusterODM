@@ -1,13 +1,13 @@
 const AbstractCloudProvider = require('../classes/AbstractCloudProvider');
 const logger = require('../logger');
 const axios = require('axios');
+const ValueCache = require('../classes/ValueCache');
 
 module.exports = class LightningCloudProvider extends AbstractCloudProvider{
     constructor(){
         super();
 
-        this.useCache = true;
-        this.cacheTime = 5 * 60 * 1000;
+        this.validateCache = new ValueCache({expires: 5 * 60 * 1000});
 
         this.urlBase = "http://localhost:5000/r";
     }
@@ -18,16 +18,13 @@ module.exports = class LightningCloudProvider extends AbstractCloudProvider{
 
     async validate(token){
         if (!token) return {valid: false};
-        if (!this.validateCache) this.validateCache = {};
-        if (this.useCache && this.validateCache[token] && 
-            (this.validateCache[token]._cachedtm + this.cacheTime) > (new Date()).getTime()) return this.validateCache[token];
-        
+        const cached = this.validateCache.get(token);
+        if (cached !== undefined) return cached;
+
         try{
             let response = await axios.post(this.urlFor('/tokens/validate'), { token });
             if (response.status === 200){
-                let result = response.data;
-                result._cachedtm = new Date().getTime();
-                this.validateCache[token] = result;
+                let result = this.validateCache.set(token, response.data);
                 return result;
             }else{
                 logger.warn(`Cannot validate token ${token}, returned status ${response.status}`);

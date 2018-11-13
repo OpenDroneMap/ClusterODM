@@ -29,8 +29,21 @@ module.exports = class Node{
         return url.format({protocol: 'http', hostname, port, pathname, query});
     }
 
+    async getOptions(){
+        try{
+            let response = await axios.get(this.urlFor('/options'));
+            if (response.status === 200){
+                return response.data;
+            }else{
+                throw new Error(`Cannot get options for ${this}, returned status ${response.status}`);
+            }
+        }catch(e){
+            throw new Error(`Cannot get options for ${this}: ${e.message}`);
+        }
+    }
+
     getInfo(){
-        return this.nodeData.info;
+        return (this.nodeData || {}).info;
     }
 
     getVersion(){

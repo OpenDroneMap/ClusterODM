@@ -4,6 +4,9 @@ const http = require('http');
 const url = require('url');
 const Busboy = require('busboy');
 const fs = require('fs');
+const package_info = require('../package_info');
+const nodes = require('./nodes');
+const odmOptions = require('./odmOptions');
 
 module.exports = {
 	initialize: function(cloudProvider){
@@ -25,6 +28,36 @@ module.exports = {
 
         const proxy = new HttpProxy();
 
+        const pathHandlers = {
+            '/info': function(req, res, user){
+                const { limits } = user;
+                const node = nodes.referenceNode();
+
+                json(res, {
+                    version: package_info.version,
+                    taskQueueCount: 0,
+                    totalMemory: 99999999999, 
+                    availableMemory: 99999999999,
+                    cpuCores: 99999999999,
+                    maxImages: limits.maxImages || -1,
+                    maxParallelTasks: 99999999999,
+                    odmVersion: node !== undefined ? node.getInfo().odmVersion : '?' 
+                }); 
+            },
+
+            '/options': function(req, res, user){
+                const { token, limits } = user;
+                json(res, []);
+                return;
+
+                const node = nodes.referenceNode();
+                if (!node) json(res, {'error': 'Cannot compute /options, no nodes are online.'});
+                else{
+                    return odmOptions.applyLimits(nodes.getOptions())
+                }
+            }
+        }
+
         // TODO: https support
     
         return http.createServer(async function (req, res) {
@@ -32,9 +65,6 @@ module.exports = {
 
             const urlParts = url.parse(req.url, true);
             const { query, pathname } = urlParts;
-
-
-            // TODO: implement /info and /options
 
             if (publicPath(pathname)){
                 proxy.web(req, res, { target });
@@ -47,6 +77,11 @@ module.exports = {
                 json(res, {error: "Invalid authentication token"});
                 return;
             }
+
+            if (pathHandlers[pathname]){
+                (pathHandlers[pathname])(req, res, { token: query.token, limits });
+                return;
+            } 
 
             // TODO: Swap token if necessary
             // if (query.token){
