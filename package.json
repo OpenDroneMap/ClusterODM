@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "ssh://root@git.masseranolabs.com:/root/repos/nodeodm-proxy.git"
+    "url": "https://github.com/MasseranoLabs/nodeodm-proxy"
   },
   "author": "",
   "license": "ISC",
