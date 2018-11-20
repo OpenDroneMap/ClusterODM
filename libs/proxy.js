@@ -9,12 +9,20 @@ const nodes = require('./nodes');
 const odmOptions = require('./odmOptions');
 const ValueCache = require('./classes/ValueCache');
 const config = require('../config');
+const utils = require('./utils');
+const routetable = require('./routetable');
+const logger = require('./logger');
 
 module.exports = {
-	initialize: function(cloudProvider){
-        // Allow .css and .js files to be retrieved from nodes
+	initialize: async function(cloudProvider){
+        utils.cleanupTemporaryDirectory(true);
+        await routetable.initialize();
+
+        // Allow index, .css and .js files to be retrieved from nodes
         // without authentication
         const publicPath = (path) => {
+            if (path === '/') return true;
+
             for (let ext of [".css", ".js", ".woff", ".ttf"]){
                 if (path.substr(-ext.length) === ext){
                     return true;
@@ -29,8 +37,20 @@ module.exports = {
             res.end(JSON.stringify(json));
         };
 
-        const proxy = new HttpProxy();
+        // Replace token 
+        const overrideRequest = (req, node, query, pathname) => {
+            if (query.token && node.getToken()){
+                // Override token. When requests come in through
+                // the proxy, the token is the user's token
+                // but when we redirect them to a node
+                // the token is specific to the node.
+                query.token = node.getToken(); 
+            }
 
+            req.url = url.format({ query, pathname });
+        };
+
+        const proxy = new HttpProxy();
         const optionsCache = new ValueCache({expires: 60 * 60 * 1000});
 
         const pathHandlers = {
@@ -68,22 +88,52 @@ module.exports = {
             }
         }
 
+        // Intercept response and add routing table entry
+        proxy.on('proxyRes', (proxyRes, req, res) => {
+            const { pathname } = url.parse(req.url, true);
+
+            if (pathname === '/task/new'){
+                let body = new Buffer('');
+                proxyRes.on('data', function (data) {
+                    body = Buffer.concat([body, data]);
+                });
+                proxyRes.on('end', function () {
+                    try{
+                        body = JSON.parse(body.toString());
+                    }catch(e){
+                        json(res, {error: `Cannot parse response: ${body.toString()}`});
+                        return;
+                    }
+                    
+                    if (body.uuid){
+                        routetable.add(body.uuid, req.node);
+                    }
+                    
+                    // return original response
+                    res.end(JSON.stringify(body));
+                });
+            }
+        });
+
+        // Listen for the `error` event on `proxy`.
+        proxy.on('error', function (err, req, res) {
+            json(res, {error: `Proxy redirect error: ${err.message}`});
+        });
+
         // TODO: https support
     
         return http.createServer(async function (req, res) {
-            // TODO: select node based on:
-            // - Images target
-            // - Availability
-            // - Other?
-            // what if no nodes are available? Queue here or push to node's queue?
-
-            const target = "http://localhost:3002";
-
             const urlParts = url.parse(req.url, true);
             const { query, pathname } = urlParts;
 
             if (publicPath(pathname)){
-                proxy.web(req, res, { target });
+                const referenceNode = nodes.referenceNode();
+                if (referenceNode){
+                    proxy.web(req, res, { target: referenceNode.proxyTargetUrl() });
+                }else{
+                    json(res, {error: "No nodes available"});
+                }
+
                 return;
             }
 
@@ -98,41 +148,65 @@ module.exports = {
                 (pathHandlers[pathname])(req, res, { token: query.token, limits });
                 return;
             }
-
-            // TODO: Swap token if necessary
-            // if (query.token){
-            //     query.token = "test"; // Example override of token string
-            // }
-
-            req.url = url.format({ query, pathname });
             
-            // if (req.url.indexOf("new") !== -1){
-            //     console.log(req.url, req.body);
-            // }
-
-            if (req.method === 'POST') {
-                const bodyWfs = fs.createWriteStream('myBinaryFile');
+            if (req.method === 'POST' && pathname === '/task/new') {
+                const tmpFile = utils.temporaryFilePath();
+                const bodyWfs = fs.createWriteStream(tmpFile);
 
                 req.pipe(bodyWfs).on('finish', () => {
-                    const bodyRfs = fs.createReadStream('myBinaryFile');
+                    const bodyRfs = fs.createReadStream(tmpFile);
+                    let imagesCount = 0;
 
                     const busboy = new Busboy({ headers: req.headers });
                     busboy.on('file', function(fieldname, file, filename, encoding, mimetype) {
-                        console.log('File [' + fieldname + ']: filename: ' + filename);
+                        imagesCount++;
                         file.resume();
                     });
-                    busboy.on('field', function(fieldname, val, fieldnameTruncated, valTruncated) {
-                        console.log('Field [' + fieldname + ']: value: ' + val);
-                    });
-                    busboy.on('finish', function() {
-                        console.log('Done parsing form!');
-                        proxy.web(req, res, { target, buffer: fs.createReadStream('myBinaryFile') });
+                    // busboy.on('field', function(fieldname, val, fieldnameTruncated, valTruncated) {
+                    //     console.log('Field [' + fieldname + ']: value: ' + val);
+                    // });
+                    busboy.on('finish', async function() {
+                        const node = await nodes.findBestAvailableNode(imagesCount, true);
+                        if (node){
+                            overrideRequest(req, node, query, pathname);
+                            const stream = fs.createReadStream(tmpFile);
+                            stream.on('end', () => {
+                                // Cleanup
+                                fs.unlink(tmpFile, err => {
+                                    if (err) logger.warn(`Cannot delete ${tmpFile}: ${err}`);
+                                });
+                            });
+
+                            // TODO: add error handler for all proxy.web requests
+                            req.node = node;
+                            proxy.web(req, res, {
+                                target: node.proxyTargetUrl(),
+                                buffer: stream,
+                                selfHandleResponse: true
+                            });
+                            // }, errHandler);
+                        }else{
+                            json(res, { error: "No nodes available"});
+                        }
                     });
 
                     bodyRfs.pipe(busboy);
                 });
             }else{
-                proxy.web(req, res, { target });
+                // Lookup task id
+                const matches = pathname.match(/^\/task\/([\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+)\/.+$/);
+                if (matches && matches[1]){
+                    const taskId = matches[1];
+                    let node = await routetable.lookup(taskId);
+                    if (node){
+                        overrideRequest(req, node, query, pathname);
+                        proxy.web(req, res, { target: node.proxyTargetUrl() });
+                    }else{
+                        json(res, { error: `Invalid route for taskId ${taskId}, no nodes in routing table.`});
+                    }
+                }else{
+                    json(res, { error: `Cannot handle ${pathname}`});
+                }
             }
         });
     }

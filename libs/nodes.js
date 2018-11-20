@@ -71,17 +71,27 @@ module.exports = {
         return nodes.find(n => n.isOnline());
     },
 
-    findBestAvailableNode: function(numImages){
-        const candidates = onlineNodes.filter(n => n.isOnline() && 
+    findBestAvailableNode: async function(numImages, update = false){
+        if (update) await this.updateInfo();
+        
+        const candidates = nodes.filter(n => n.isOnline() && 
                                                    (n.getInfo().maxImages < 0 || n.getInfo().maxImages >= numImages));
+        if (!candidates.length) return null;
+
+        const maxMemory = candidates.reduce((acc, n) => {
+            if (n.getInfo().totalMemory > acc) return n.getInfo().totalMemory;
+            else return acc;
+        }, 0);
+
         let scores = candidates.map(n => {
             return {
                 node: n, 
-                score: (n.getInfo().maxParallelTasks - n.getInfo().taskQueueCount)
-            } 
+                score: 10 * (1000 + (n.getInfo().maxParallelTasks - n.getInfo().taskQueueCount)) +
+                        1 * (maxMemory / n.getInfo().availableMemory)
+            }
         });
 
-        // TODO: sort scores, choose best.
+        return (scores.sort((a, b) => b.score - a.score))[0].node;
     },
 
     saveToDisk: async function(){

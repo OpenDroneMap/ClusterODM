@@ -31,6 +31,9 @@ module.exports = {
                 if (flag) ok();
                 else fail();
             };
+            const printNode = (socket, i, node) => {
+                socket.write(`${(i + 1)}) ${node.toString()} ${node.isOnline() ? '[online]' : '[offline]'} <version ${node.getVersion()}>\r\n`);
+            };
 
 
             // Identify this client
@@ -49,7 +52,7 @@ module.exports = {
             printCaret();
 
             // Handle incoming messages from clients.
-            socket.on('data', function (data) {
+            socket.on('data', async function (data) {
                 const parts = data.toString().split(" ").map(p => p.trim());
                 const command = parts[0].toLocaleUpperCase();
                 let args = parts.slice(1, parts.length);
@@ -67,6 +70,7 @@ module.exports = {
                         socket.write("NODES INFO <node number> - View JSON info of node\r\n");
                         socket.write("NODES LIST - List nodes\r\n");
                         socket.write("NODES UPDATE - Update all nodes info\r\n");
+                        socket.write("NODES BEST <number of images> - Show best node for the number of images\r\n");
                     }else if (command === "NODES" && args.length > 0){
                         const subcommand = args[0].toLocaleUpperCase();
                         args = args.slice(1, args.length);
@@ -81,7 +85,7 @@ module.exports = {
                             reply(nodes.remove(nodes.nth(number)));
                         }else if (subcommand === "LIST"){
                             nodes.all().forEach((n, i) => {
-                                socket.write(`${(i + 1)}) ${n.toString()} ${n.isOnline() ? '[online]' : '[offline]'} <version ${n.getVersion()}>\r\n`);
+                                printNode(socket, i, n);
                             });
                             socket.write("\r\n");
                         }else if (subcommand === "UPDATE"){
@@ -97,6 +101,14 @@ module.exports = {
                             if (node){
                                 socket.write(JSON.stringify(node.getInfo()) + "\r\n");
                             }else invalid();
+                        }else if (subcommand === "BEST" && args.length >= 1){
+                            const [ numImages ] = args;
+                            const node = await nodes.findBestAvailableNode(numImages);
+                            if (node){
+                                printNode(socket, 0, node);
+                            }else{
+                                socket.write("No best node available\r\n");
+                            }
                         }else{
                             invalid();
                         }

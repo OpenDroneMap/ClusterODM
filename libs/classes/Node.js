@@ -30,7 +30,18 @@ module.exports = class Node{
         const query = {};
         if (token) query.token = token;
 
+        // TODO: add SSL support
         return url.format({protocol: 'http', hostname, port, pathname, query});
+    }
+
+    proxyTargetUrl(){
+        const { hostname, port } = this.nodeData;
+
+        return `http://${hostname}:${port}`; // TODO: add SSL support
+    }
+
+    getToken(){
+        return this.nodeData.token;
     }
 
     async getOptions(){

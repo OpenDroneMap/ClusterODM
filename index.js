@@ -11,7 +11,7 @@ const proxy = require('./libs/proxy');
     admincli.create({port: config.admin_cli_port, password: config.admin_cli_pass});
     const cloudProvider = (require('./libs/cloudProvider')).initialize(config.cloud_provider);
 
-    const proxyServer = proxy.initialize(cloudProvider);
+    const proxyServer = await proxy.initialize(cloudProvider);
 
     const gracefulShutdown = async() => {
         await nodes.cleanup();
