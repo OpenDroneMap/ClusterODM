@@ -20,20 +20,40 @@ let routes = null;
 // TODO: use redis to have a shared routing table
 // accessible from multiple proxies
 
-// TODO: cleanup routes based on last access
 module.exports = {
     initialize: async function(){
         routes = {};
+
+        const cleanup = () => {
+            const expires = 1000 * 60 * 60 * 24 * 5; // 5 days
+
+            Object.keys(routes).forEach(taskId => {
+                if ((routes[taskId].accessed + expires) < (new Date()).getTime()){
+                    delete(routes[taskId]);
+                }
+            });
+        };
+
+        setInterval(cleanup, 1000 * 60 * 60 * 4);
     },
 
     add: async function(taskId, node){
         if (!node) throw new Error("Node is not valid");
         if (!taskId) throw new Error("taskId is not valid");
 
-        routes[taskId] = node;
+        routes[taskId] = {
+            node,
+            accessed: new Date().getTime()
+        };
     },
 
     lookup: async function(taskId){
-        return routes[taskId]; 
+        const entry = routes[taskId];
+        if (entry){
+            entry.accessed = new Date().getTime();
+            return entry.node;
+        }
+
+        return null;
     }
 };

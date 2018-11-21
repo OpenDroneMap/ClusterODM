@@ -27,7 +27,7 @@ module.exports = class ValueCache{
         this.enabled = true;
 
         if (config.debug) this.disable();
-        if (options.expires > 0) setInterval(this.cleanup, this.options.cleanupInterval);
+        if (options.expires > 0) setInterval(() => { this.cleanup(); }, this.options.cleanupInterval);
     }
 
     disable(){

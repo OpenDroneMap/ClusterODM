@@ -56,7 +56,7 @@ module.exports = {
 	filterOptions: function(options, odmOptions){
         if (typeof options === "string") options = JSON.parse(options);
         if (!Array.isArray(options)) options = [];
-        
+
         let result = [];
         let errors = [];
         let addError = function(opt, descr){

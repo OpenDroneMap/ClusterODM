@@ -38,8 +38,6 @@ module.exports = {
         // Allow index, .css and .js files to be retrieved from nodes
         // without authentication
         const publicPath = (path) => {
-            if (path === '/') return true;
-
             for (let ext of [".css", ".js", ".woff", ".ttf"]){
                 if (path.substr(-ext.length) === ext){
                     return true;
@@ -48,10 +46,36 @@ module.exports = {
             return false;
         };
 
+        // Paths that are forwarded as-is, without additional logic
+        // (but require authentication)
+        const directPath = (path) => {
+            if (path === '/') return true;
+
+            return false;
+        };
+
         // JSON helper for responses
         const json = (res, json) => {
             res.writeHead(200, {"Content-Type": "application/json"});
             res.end(JSON.stringify(json));
+        };
+
+        const forwardToReferenceNode = (req, res) => {
+            const referenceNode = nodes.referenceNode();
+            if (referenceNode){
+                proxy.web(req, res, { target: referenceNode.proxyTargetUrl() });
+            }else{
+                json(res, {error: "No nodes available"});
+            }
+        };
+
+        const getLimitedOptions = async (token, limits, node) => {
+            const cacheValue = optionsCache.get(token);
+            if (cacheValue) return cacheValue;
+
+            const options = await node.getOptions();
+            const limitedOptions = odmOptions.optionsWithLimits(options, limits.options);
+            return optionsCache.set(token, limitedOptions);
         };
 
         // Replace token 
@@ -89,18 +113,11 @@ module.exports = {
 
             '/options': async function(req, res, user){
                 const { token, limits } = user;
-                const cacheValue = optionsCache.get(token);
-                if (cacheValue){
-                    json(res, cacheValue);
-                    return;
-                }
-
                 const node = nodes.referenceNode();
                 if (!node) json(res, {'error': 'Cannot compute /options, no nodes are online.'});
                 else{
-                    const options = await node.getOptions();
-                    const limitedOptions = odmOptions.optionsWithLimits(options, limits.options);
-                    json(res, optionsCache.set(token, limitedOptions));
+                    const options = await getLimitedOptions(token, limits, node);
+                    json(res, options);
                 }
             }
         }
@@ -138,19 +155,13 @@ module.exports = {
         });
 
         // TODO: https support
-    
+
         return http.createServer(async function (req, res) {
             const urlParts = url.parse(req.url, true);
             const { query, pathname } = urlParts;
 
             if (publicPath(pathname)){
-                const referenceNode = nodes.referenceNode();
-                if (referenceNode){
-                    proxy.web(req, res, { target: referenceNode.proxyTargetUrl() });
-                }else{
-                    json(res, {error: "No nodes available"});
-                }
-
+                forwardToReferenceNode(req, res);
                 return;
             }
 
@@ -158,6 +169,11 @@ module.exports = {
             const { valid, limits } = await cloudProvider.validate(query.token);
             if (!valid){
                 json(res, {error: "Invalid authentication token"});
+                return;
+            }
+
+            if (directPath(pathname)){
+                forwardToReferenceNode(req, res);
                 return;
             }
 
@@ -173,35 +189,61 @@ module.exports = {
                 req.pipe(bodyWfs).on('finish', () => {
                     const bodyRfs = fs.createReadStream(tmpFile);
                     let imagesCount = 0;
+                    let options = null;
+                    let uploadError = null;
 
                     const busboy = new Busboy({ headers: req.headers });
                     busboy.on('file', function(fieldname, file, filename, encoding, mimetype) {
                         imagesCount++;
                         file.resume();
                     });
-                    // busboy.on('field', function(fieldname, val, fieldnameTruncated, valTruncated) {
-                    //     console.log('Field [' + fieldname + ']: value: ' + val);
-                    // });
+                    busboy.on('field', function(fieldname, val, fieldnameTruncated, valTruncated) {
+                        // Save options
+                        if (fieldname === 'options'){
+                            options = val;
+                        }
+
+                        else if (fieldname === 'zipurl'){
+                            uploadError = "File upload via URL is not available. Sorry :(";
+                        }
+                    });
                     busboy.on('finish', async function() {
+                        const die = (err) => {
+                            cleanup();
+                            json(res, {error: err});
+                        };
+
+                        const cleanup = () => {
+                            fs.unlink(tmpFile, err => {
+                                if (err) logger.warn(`Cannot delete ${tmpFile}: ${err}`);
+                            });
+                        };
+
+                        if (uploadError){
+                            die(uploadError);
+                            return;
+                        }
+
                         const node = await nodes.findBestAvailableNode(imagesCount, true);
                         if (node){
+                            // Validate options
+                            try{
+                                odmOptions.filterOptions(options, await getLimitedOptions(query.token, limits, node));
+                            }catch(e){
+                                die(e.message);
+                                return;
+                            }
+
                             overrideRequest(req, node, query, pathname);
                             const stream = fs.createReadStream(tmpFile);
-                            stream.on('end', () => {
-                                // Cleanup
-                                fs.unlink(tmpFile, err => {
-                                    if (err) logger.warn(`Cannot delete ${tmpFile}: ${err}`);
-                                });
-                            });
+                            stream.on('end', cleanup);
 
-                            // TODO: add error handler for all proxy.web requests
                             req.node = node;
                             proxy.web(req, res, {
                                 target: node.proxyTargetUrl(),
                                 buffer: stream,
                                 selfHandleResponse: true
                             });
-                            // }, errHandler);
                         }else{
                             json(res, { error: "No nodes available"});
                         }
