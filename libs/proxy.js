@@ -105,7 +105,7 @@ module.exports = {
                     totalMemory: 99999999999, 
                     availableMemory: 99999999999,
                     cpuCores: 99999999999,
-                    maxImages: limits.maxImages || -1,
+                    maxImages: limits.maxImages || null,
                     maxParallelTasks: 99999999999,
                     odmVersion: node !== undefined ? node.getInfo().odmVersion : '?' 
                 });
@@ -165,6 +165,26 @@ module.exports = {
                 return;
             }
 
+            if (req.method === 'POST' && pathname === '/commit'){
+                let body = [];
+                req.on('data', (chunk) => {
+                    body.push(chunk);
+                }).on('end', () => {
+                    body = Buffer.concat(body).toString();
+                    try{
+                        const taskInfo = JSON.parse(body);
+                        console.log(taskInfo);
+                        // TODO: handle transaction charges, user lookup based on taskId
+                        json(res, {ok: true});
+                    }catch(e){
+                        logger.warn(`Malformed /commit request: ${body}`);
+                        json(res, {error: "Malformed /commit request"});
+                    }
+                });
+
+                return;
+            }
+
             // Validate user token
             const { valid, limits } = await cloudProvider.validate(query.token);
             if (!valid){
@@ -203,7 +223,7 @@ module.exports = {
                             options = val;
                         }
 
-                        else if (fieldname === 'zipurl'){
+                        else if (fieldname === 'zipurl' && val){
                             uploadError = "File upload via URL is not available. Sorry :(";
                         }
                     });
@@ -264,6 +284,8 @@ module.exports = {
                         json(res, { error: `Invalid route for taskId ${taskId}, no nodes in routing table.`});
                     }
                 }else{
+                    // TODO: handle task remove/cancel/restart
+
                     json(res, { error: `Cannot handle ${pathname}`});
                 }
             }

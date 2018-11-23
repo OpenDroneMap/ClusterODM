@@ -92,7 +92,7 @@ module.exports = {
         if (update) await this.updateInfo();
 
         const candidates = nodes.filter(n => n.isOnline() && 
-                                                   (n.getInfo().maxImages < 0 || n.getInfo().maxImages >= numImages));
+                                                   (!n.getInfo().maxImages || n.getInfo().maxImages >= numImages));
         if (!candidates.length) return null;
 
         const maxMemory = candidates.reduce((acc, n) => {
