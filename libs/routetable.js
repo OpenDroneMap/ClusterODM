@@ -37,12 +37,14 @@ module.exports = {
         setInterval(cleanup, 1000 * 60 * 60 * 4);
     },
 
-    add: async function(taskId, node){
+    add: async function(taskId, node, token){
         if (!node) throw new Error("Node is not valid");
         if (!taskId) throw new Error("taskId is not valid");
+        if (!token) throw new Error("token is not valid");
 
         routes[taskId] = {
             node,
+            token,
             accessed: new Date().getTime()
         };
     },
@@ -51,9 +53,23 @@ module.exports = {
         const entry = routes[taskId];
         if (entry){
             entry.accessed = new Date().getTime();
-            return entry.node;
+            return entry;
         }
 
         return null;
-    }
+    },
+
+    lookupNode: async function(taskId){
+        const entry = await this.lookup(taskId);
+        if (entry) return entry.node;
+
+        return null;
+    },
+
+    lookupToken: async function(taskId){
+        const entry = await this.lookup(taskId);
+        if (entry) return entry.token;
+
+        return null;
+    },
 };

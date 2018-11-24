@@ -151,7 +151,7 @@ module.exports = {
                     }
                     
                     if (body.uuid){
-                        routetable.add(body.uuid, req.node);
+                        routetable.add(body.uuid, req.node, req.token);
                     }
                     
                     // return original response
@@ -181,8 +181,14 @@ module.exports = {
                     const body = await getReqBody(req);
                     try{
                         const taskInfo = JSON.parse(body);
-                        console.log(taskInfo);
-                        // TODO: handle transaction charges, user lookup based on taskId
+                        const taskId = taskInfo.uuid;
+                        const token = await  routetable.lookupToken(taskId);
+                        if (token){
+                            // Record transaction
+                        }else{
+                            
+                        }
+
                         json(res, {ok: true});
                     }catch(e){
                         logger.warn(`Malformed /commit request: ${body}`);
@@ -266,6 +272,7 @@ module.exports = {
                                 stream.on('end', cleanup);
 
                                 req.node = node;
+                                req.token = query.token;
                                 proxy.web(req, res, {
                                     target: node.proxyTargetUrl(),
                                     buffer: stream,
@@ -291,7 +298,7 @@ module.exports = {
                     });
                     busboy.on('finish', async function() {
                         if (taskId){
-                            let node = await routetable.lookup(taskId);
+                            let node = await routetable.lookupNode(taskId);
                             if (node){
                                 overrideRequest(req, node, query, pathname);
                                 proxy.web(req, res, { 
@@ -312,7 +319,7 @@ module.exports = {
                     const matches = pathname.match(/^\/task\/([\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+)\/.+$/);
                     if (matches && matches[1]){
                         const taskId = matches[1];
-                        let node = await routetable.lookup(taskId);
+                        let node = await routetable.lookupNode(taskId);
                         if (node){
                             overrideRequest(req, node, query, pathname);
                             proxy.web(req, res, { target: node.proxyTargetUrl() });
