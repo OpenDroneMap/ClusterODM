@@ -21,6 +21,7 @@ const uuidv4 = require('uuid/v4');
 const fs = require('fs');
 const async = require('async');
 const  logger = require('./logger');
+const Readable = require('stream').Readable;
 
 module.exports = {
 	get: function(scope, prop, defaultValue){
@@ -72,5 +73,13 @@ module.exports = {
                 }
             });
         })
+    },
+
+    stringToStream: function(str){
+        const s = new Readable();
+        s._read = () => {}; // redundant? see update below
+        s.push(str);
+        s.push(null);
+        return s;
     }
 };

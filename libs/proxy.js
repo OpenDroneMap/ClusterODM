@@ -78,6 +78,17 @@ module.exports = {
             return optionsCache.set(token, limitedOptions);
         };
 
+        const getReqBody = async (req) => {
+            return new Promise((resolve, reject) => {
+                let body = [];
+                req.on('data', (chunk) => {
+                    body.push(chunk);
+                }).on('end', () => {
+                    resolve(Buffer.concat(body).toString());
+                });
+            });
+        };
+
         // Replace token 
         const overrideRequest = (req, node, query, pathname) => {
             if (query.token && node.getToken()){
@@ -85,7 +96,7 @@ module.exports = {
                 // the proxy, the token is the user's token
                 // but when we redirect them to a node
                 // the token is specific to the node.
-                query.token = node.getToken(); 
+                query.token = node.getToken();
             }
 
             req.url = url.format({ query, pathname });
@@ -157,20 +168,17 @@ module.exports = {
         // TODO: https support
 
         return http.createServer(async function (req, res) {
-            const urlParts = url.parse(req.url, true);
-            const { query, pathname } = urlParts;
+            try{
+                const urlParts = url.parse(req.url, true);
+                const { query, pathname } = urlParts;
 
-            if (publicPath(pathname)){
-                forwardToReferenceNode(req, res);
-                return;
-            }
+                if (publicPath(pathname)){
+                    forwardToReferenceNode(req, res);
+                    return;
+                }
 
-            if (req.method === 'POST' && pathname === '/commit'){
-                let body = [];
-                req.on('data', (chunk) => {
-                    body.push(chunk);
-                }).on('end', () => {
-                    body = Buffer.concat(body).toString();
+                if (req.method === 'POST' && pathname === '/commit'){
+                    const body = await getReqBody(req);
                     try{
                         const taskInfo = JSON.parse(body);
                         console.log(taskInfo);
@@ -180,114 +188,145 @@ module.exports = {
                         logger.warn(`Malformed /commit request: ${body}`);
                         json(res, {error: "Malformed /commit request"});
                     }
-                });
 
-                return;
-            }
+                    return;
+                }
 
-            // Validate user token
-            const { valid, limits } = await cloudProvider.validate(query.token);
-            if (!valid){
-                json(res, {error: "Invalid authentication token"});
-                return;
-            }
+                // Validate user token
+                const { valid, limits } = await cloudProvider.validate(query.token);
+                if (!valid){
+                    json(res, {error: "Invalid authentication token"});
+                    return;
+                }
 
-            if (directPath(pathname)){
-                forwardToReferenceNode(req, res);
-                return;
-            }
+                if (directPath(pathname)){
+                    forwardToReferenceNode(req, res);
+                    return;
+                }
 
-            if (pathHandlers[pathname]){
-                (pathHandlers[pathname])(req, res, { token: query.token, limits });
-                return;
-            }
-            
-            if (req.method === 'POST' && pathname === '/task/new') {
-                const tmpFile = utils.temporaryFilePath();
-                const bodyWfs = fs.createWriteStream(tmpFile);
+                if (pathHandlers[pathname]){
+                    (pathHandlers[pathname])(req, res, { token: query.token, limits });
+                    return;
+                }
+                
+                if (req.method === 'POST' && pathname === '/task/new') {
+                    const tmpFile = utils.temporaryFilePath();
+                    const bodyWfs = fs.createWriteStream(tmpFile);
 
-                req.pipe(bodyWfs).on('finish', () => {
-                    const bodyRfs = fs.createReadStream(tmpFile);
-                    let imagesCount = 0;
-                    let options = null;
-                    let uploadError = null;
+                    req.pipe(bodyWfs).on('finish', () => {
+                        const bodyRfs = fs.createReadStream(tmpFile);
+                        let imagesCount = 0;
+                        let options = null;
+                        let uploadError = null;
 
-                    const busboy = new Busboy({ headers: req.headers });
-                    busboy.on('file', function(fieldname, file, filename, encoding, mimetype) {
-                        imagesCount++;
-                        file.resume();
-                    });
-                    busboy.on('field', function(fieldname, val, fieldnameTruncated, valTruncated) {
-                        // Save options
-                        if (fieldname === 'options'){
-                            options = val;
-                        }
+                        const busboy = new Busboy({ headers: req.headers });
+                        busboy.on('file', function(fieldname, file, filename, encoding, mimetype) {
+                            imagesCount++;
+                            file.resume();
+                        });
+                        busboy.on('field', function(fieldname, val, fieldnameTruncated, valTruncated) {
+                            // Save options
+                            if (fieldname === 'options'){
+                                options = val;
+                            }
 
-                        else if (fieldname === 'zipurl' && val){
-                            uploadError = "File upload via URL is not available. Sorry :(";
-                        }
-                    });
-                    busboy.on('finish', async function() {
-                        const die = (err) => {
-                            cleanup();
-                            json(res, {error: err});
-                        };
+                            else if (fieldname === 'zipurl' && val){
+                                uploadError = "File upload via URL is not available. Sorry :(";
+                            }
+                        });
+                        busboy.on('finish', async function() {
+                            const die = (err) => {
+                                cleanup();
+                                json(res, {error: err});
+                            };
 
-                        const cleanup = () => {
-                            fs.unlink(tmpFile, err => {
-                                if (err) logger.warn(`Cannot delete ${tmpFile}: ${err}`);
-                            });
-                        };
+                            const cleanup = () => {
+                                fs.unlink(tmpFile, err => {
+                                    if (err) logger.warn(`Cannot delete ${tmpFile}: ${err}`);
+                                });
+                            };
 
-                        if (uploadError){
-                            die(uploadError);
-                            return;
-                        }
-
-                        const node = await nodes.findBestAvailableNode(imagesCount, true);
-                        if (node){
-                            // Validate options
-                            try{
-                                odmOptions.filterOptions(options, await getLimitedOptions(query.token, limits, node));
-                            }catch(e){
-                                die(e.message);
+                            if (uploadError){
+                                die(uploadError);
                                 return;
                             }
 
-                            overrideRequest(req, node, query, pathname);
-                            const stream = fs.createReadStream(tmpFile);
-                            stream.on('end', cleanup);
+                            const node = await nodes.findBestAvailableNode(imagesCount, true);
+                            if (node){
+                                // Validate options
+                                try{
+                                    odmOptions.filterOptions(options, await getLimitedOptions(query.token, limits, node));
+                                }catch(e){
+                                    die(e.message);
+                                    return;
+                                }
 
-                            req.node = node;
-                            proxy.web(req, res, {
-                                target: node.proxyTargetUrl(),
-                                buffer: stream,
-                                selfHandleResponse: true
-                            });
+                                overrideRequest(req, node, query, pathname);
+                                const stream = fs.createReadStream(tmpFile);
+                                stream.on('end', cleanup);
+
+                                req.node = node;
+                                proxy.web(req, res, {
+                                    target: node.proxyTargetUrl(),
+                                    buffer: stream,
+                                    selfHandleResponse: true
+                                });
+                            }else{
+                                json(res, { error: "No nodes available"});
+                            }
+                        });
+
+                        bodyRfs.pipe(busboy);
+                    });
+                }else if (req.method === 'POST' && ['/task/restart', '/task/cancel', '/task/remove'].indexOf(pathname) !== -1){
+                    // Lookup task id from body
+                    let taskId = null;
+                    let body = await getReqBody(req);
+
+                    const busboy = new Busboy({ headers: req.headers });
+                    busboy.on('field', function(fieldname, val, fieldnameTruncated, valTruncated) {
+                        if (fieldname === 'uuid'){
+                            taskId = val;
+                        }
+                    });
+                    busboy.on('finish', async function() {
+                        if (taskId){
+                            let node = await routetable.lookup(taskId);
+                            if (node){
+                                overrideRequest(req, node, query, pathname);
+                                proxy.web(req, res, { 
+                                        target: node.proxyTargetUrl(),
+                                        buffer: utils.stringToStream(body)
+                                    });
+                            }else{
+                                json(res, { error: `Invalid route for taskId ${taskId}, no nodes in routing table.`});
+                            }
                         }else{
-                            json(res, { error: "No nodes available"});
+                            json(res, { error: `No uuid found in ${pathname}`});
                         }
                     });
 
-                    bodyRfs.pipe(busboy);
-                });
-            }else{
-                // Lookup task id
-                const matches = pathname.match(/^\/task\/([\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+)\/.+$/);
-                if (matches && matches[1]){
-                    const taskId = matches[1];
-                    let node = await routetable.lookup(taskId);
-                    if (node){
-                        overrideRequest(req, node, query, pathname);
-                        proxy.web(req, res, { target: node.proxyTargetUrl() });
-                    }else{
-                        json(res, { error: `Invalid route for taskId ${taskId}, no nodes in routing table.`});
-                    }
+                    utils.stringToStream(body).pipe(busboy);
                 }else{
-                    // TODO: handle task remove/cancel/restart
-
-                    json(res, { error: `Cannot handle ${pathname}`});
+                    // Lookup task id
+                    const matches = pathname.match(/^\/task\/([\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+)\/.+$/);
+                    if (matches && matches[1]){
+                        const taskId = matches[1];
+                        let node = await routetable.lookup(taskId);
+                        if (node){
+                            overrideRequest(req, node, query, pathname);
+                            proxy.web(req, res, { target: node.proxyTargetUrl() });
+                        }else{
+                            json(res, { error: `Invalid route for taskId ${taskId}, no nodes in routing table.`});
+                        }
+                    }else{
+                        json(res, { error: `Cannot handle ${pathname}`});
+                    }
                 }
+            }catch(e){
+                logger.warn(`Uncaught exception: ${e}`);
+                json(res, { error: 'exception'});
+                if (config.debug) throw e;
             }
         });
     }
