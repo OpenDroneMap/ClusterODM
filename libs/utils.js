@@ -81,5 +81,10 @@ module.exports = {
         s.push(str);
         s.push(null);
         return s;
+    },
+
+     // min and max included
+    randomIntFromInterval: function(min,max){
+        return Math.floor(Math.random()*(max-min+1)+min);
     }
 };

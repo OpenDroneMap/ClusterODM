@@ -57,4 +57,27 @@ module.exports = class LightningCloudProvider extends AbstractCloudProvider{
             };
         }
     }
+
+    async approveNewTask(token, imagesCount, imageDimensions){
+        if (!token) return {error: "Invalid token"};
+        if (!imagesCount) return {error: "Invalid images count"};
+
+        try{
+            let response = await axios.post(this.urlFor('/tasks/approve'), { 
+                    token,
+                    imagesCount,
+                    imageDimensions: JSON.stringify(imageDimensions)
+                }, { timeout: this.timeout });
+
+            if (response.status === 200){
+                return response.data;
+            }else{
+                logger.warn(`Cannot approve task with ${token}:${imagesCount}:${resolution}, returned status ${response.status}`);
+                return {error: `Cannot approve task. Please contact support. Service responded with status ${response.status}`};
+            }
+        }catch(e){
+            logger.warn(`Cannot approve task with ${token}:${imagesCount}:${resolution}: ${e.message}`);
+            return {error: `Cannot approve task. Please contact support. ${e.message}`};
+        }
+    }
 };

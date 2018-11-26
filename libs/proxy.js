@@ -20,6 +20,7 @@ const HttpProxy = require('http-proxy');
 const http = require('http');
 const url = require('url');
 const Busboy = require('busboy');
+const sizeOf = require('buffer-image-size');
 const fs = require('fs');
 const package_info = require('../package_info');
 const nodes = require('./nodes');
@@ -182,11 +183,14 @@ module.exports = {
                     try{
                         const taskInfo = JSON.parse(body);
                         const taskId = taskInfo.uuid;
-                        const token = await  routetable.lookupToken(taskId);
+                        const token = await routetable.lookupToken(taskId);
                         if (token){
+                            console.log(taskInfo);
                             // Record transaction
+
                         }else{
-                            
+                            // Something is not right, notify an admin
+                            // as we cannot record this transaction
                         }
 
                         json(res, {ok: true});
@@ -224,11 +228,29 @@ module.exports = {
                         let imagesCount = 0;
                         let options = null;
                         let uploadError = null;
+                        let imageSizeSamples = [];
 
                         const busboy = new Busboy({ headers: req.headers });
                         busboy.on('file', function(fieldname, file, filename, encoding, mimetype) {
+                            // Sample somewhat randomly, always at least one sample, skip .txt files
+                            if ((imageSizeSamples.length === 0 || utils.randomIntFromInterval(0, imagesCount) === 0) && filename.toLowerCase().indexOf(".txt") === -1){
+                                let chunks = [];
+                                file.on('data', chunk => chunks.push(chunk));
+                                file.on('end', () => {
+                                    try{
+                                        const dims = sizeOf(Buffer.concat(chunks));
+                                        if (dims.width > 16 && dims.height > 16){
+                                            imageSizeSamples.push(dims);
+                                        }
+                                    }catch(e){
+                                        // Do nothing, invalid file
+                                    }
+                                });
+                            }else{
+                                file.resume();
+                            }
+                            
                             imagesCount++;
-                            file.resume();
                         });
                         busboy.on('field', function(fieldname, val, fieldnameTruncated, valTruncated) {
                             // Save options
@@ -254,6 +276,30 @@ module.exports = {
 
                             if (uploadError){
                                 die(uploadError);
+                                return;
+                            }
+
+                            if (imageSizeSamples.length === 0){
+                                die("Not enough images. Please upload at least 2 images.");
+                                return;
+                            }
+
+                            // Estimate image sizes
+                            const IMAGE_SAMPLES = 3;
+                            const imageSizeSamplesSubset = imageSizeSamples.slice(-IMAGE_SAMPLES);
+                            const imageSizesEstimate = imageSizeSamplesSubset.reduce((acc, dims) => {
+                                acc.width += dims.width;
+                                acc.height += dims.height;
+                                return acc;
+                            }, { width: 0, height: 0 });
+                            imageSizesEstimate.width /= imageSizeSamplesSubset.length;
+                            imageSizesEstimate.height /= imageSizeSamplesSubset.length;
+
+                            // Check with provider if we're allowed to process these many images
+                            // at this resolution
+                            const { approved, error } = await cloudProvider.approveNewTask(query.token, imagesCount, imageSizesEstimate);
+                            if (!approved){
+                                die(error);
                                 return;
                             }
 
