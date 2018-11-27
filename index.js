@@ -21,17 +21,20 @@ const logger = require('./libs/logger');
 const package_info = require('./package_info');
 const nodes = require('./libs/nodes');
 const proxy = require('./libs/proxy');
+const routetable = require('./libs/routetable');
 
 (async function(){
     if (config.debug) logger.warn("Running in debug mode");
     logger.info(package_info.name + " " + package_info.version);
     admincli.create({port: config.admin_cli_port, password: config.admin_cli_pass});
     const cloudProvider = (require('./libs/cloudProvider')).initialize(config.cloud_provider);
+    await nodes.initialize();
 
     const proxyServer = await proxy.initialize(cloudProvider);
 
     const gracefulShutdown = async() => {
         await nodes.cleanup();
+        await routetable.cleanup();
         logger.info("Bye!");
         process.exit(0);
     };
@@ -43,7 +46,6 @@ const proxy = require('./libs/proxy');
     process.on('SIGINT', gracefulShutdown);
 
     // Start
-    await nodes.initialize();
     logger.info(`Starting proxy on ${config.port}`);
     proxyServer.listen(config.port);
 })();

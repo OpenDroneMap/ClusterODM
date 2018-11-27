@@ -15,6 +15,10 @@
  *  You should have received a copy of the GNU Affero General Public License
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+const fs = require('fs');
+const logger = require('./logger');
+const nodes = require('./nodes');
+
 let routes = null;
 
 // TODO: use redis to have a shared routing table
@@ -22,7 +26,9 @@ let routes = null;
 
 module.exports = {
     initialize: async function(){
-        routes = {};
+        routes = await this.loadFromDisk();
+
+        logger.info(`Loaded ${Object.keys(routes).length} routes`);
 
         const cleanup = () => {
             const expires = 1000 * 60 * 60 * 24 * 5; // 5 days
@@ -32,9 +38,11 @@ module.exports = {
                     delete(routes[taskId]);
                 }
             });
+
+            this.saveToDisk();
         };
 
-        setInterval(cleanup, 1000 * 60 * 60 * 4);
+        setInterval(cleanup, 1000 * 60 * 60);
     },
 
     add: async function(taskId, node, token){
@@ -72,4 +80,64 @@ module.exports = {
 
         return null;
     },
+
+    saveToDisk: async function(){
+        return new Promise((resolve, reject) => {
+            fs.writeFile('data/routes.json', JSON.stringify(routes), (err) => {
+                if (err){
+                    logger.warn("Cannot save routes to disk: ${err.message}");
+                    reject(err);
+                }else{
+                    resolve();
+                }
+            });
+        });
+    },
+
+    loadFromDisk: async function(){
+        return new Promise((resolve, reject) => {
+            fs.exists("data/routes.json", (exists) => {
+                if (exists){
+                    fs.readFile("data/routes.json", (err, json) => {
+                        if (err){
+                            logger.warn("Cannot read routes from disk: ${err.message}");
+                            reject(err);
+                        }else{
+                            const content = JSON.parse(json);
+                            const deleteList = [];
+
+                            // Create Node class instances
+                            for (let key of Object.keys(content)){
+                                if (content[key].node){
+                                    let cn = content[key].node;
+                                    let n = nodes.find(n => n.hostname() === cn.hostname && n.port() === cn.port);
+                                    if (n){
+                                        content[key].node = n;
+                                    }else{
+                                        // Delete routes for which a node does not exist
+                                        deleteList.push(key);
+                                    }
+                                }
+                            }
+
+                            deleteList.forEach(d => delete(content[d]));
+
+                            resolve(content);
+                        }
+                    });
+                }else{
+                    resolve({});
+                }
+            });
+        });
+    },
+
+    cleanup: async function(){
+        try{
+            await this.saveToDisk();
+            logger.info("Saved routes to disk");
+        }catch(e){
+            logger.warn(e);
+        }
+    }
 };

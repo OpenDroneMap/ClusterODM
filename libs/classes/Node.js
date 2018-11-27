@@ -51,6 +51,14 @@ module.exports = class Node{
         return url.format({protocol: 'http', hostname, port, pathname, query});
     }
 
+    hostname(){
+        return (this.nodeData || {}).hostname;
+    }
+
+    port(){
+        return (this.nodeData || {}).port;
+    }
+
     proxyTargetUrl(){
         const { hostname, port } = this.nodeData;
 

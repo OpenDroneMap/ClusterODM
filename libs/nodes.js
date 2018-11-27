@@ -63,6 +63,10 @@ module.exports = {
         return nodes;
     },
 
+    find: function(match){
+        return nodes.find(match);
+    },
+
     nth: function(n){
         n = parseInt(n);
         if (isNaN(n)) return null;
