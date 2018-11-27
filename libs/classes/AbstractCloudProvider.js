@@ -41,4 +41,13 @@ module.exports = class AbstractCloudProvider{
     async approveNewTask(token, imagesCount, imageDimensions){
         throw new Error("Not Implemented");
     }
+
+    // Override this function to be notified when a task is finished
+    // (regardless of whether the task finished successfully or failed)
+
+    // @param token {String} a token passed to the proxy to authenticate a request
+    // @param taskInfo {Object} task info as returned by the processing node.
+    async taskFinished(token, taskInfo){
+        throw new Error("Not Implemented");
+    }
 };

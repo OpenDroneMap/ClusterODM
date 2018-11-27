@@ -18,6 +18,7 @@
 "use strict";
 const HttpProxy = require('http-proxy');
 const http = require('http');
+const path = require('path');
 const url = require('url');
 const Busboy = require('busboy');
 const sizeOf = require('buffer-image-size');
@@ -38,9 +39,9 @@ module.exports = {
 
         // Allow index, .css and .js files to be retrieved from nodes
         // without authentication
-        const publicPath = (path) => {
+        const publicPath = (p) => {
             for (let ext of [".css", ".js", ".woff", ".ttf"]){
-                if (path.substr(-ext.length) === ext){
+                if (p.substr(-ext.length) === ext){
                     return true;
                 }
             }
@@ -49,8 +50,8 @@ module.exports = {
 
         // Paths that are forwarded as-is, without additional logic
         // (but require authentication)
-        const directPath = (path) => {
-            if (path === '/') return true;
+        const directPath = (p) => {
+            if (p === '/') return true;
 
             return false;
         };
@@ -185,12 +186,15 @@ module.exports = {
                         const taskId = taskInfo.uuid;
                         const token = await routetable.lookupToken(taskId);
                         if (token){
-                            console.log(taskInfo);
-                            // Record transaction
-
+                            try{
+                                cloudProvider.taskFinished(token, taskInfo);
+                            }catch(e){
+                                logger.error(`cloudProvider.taskFinished: ${e.message}`);
+                            }
                         }else{
                             // Something is not right, notify an admin
                             // as we cannot record this transaction
+                            logger.error(`Cannot record transaction, token is missing: ${taskInfo}`);
                         }
 
                         json(res, {ok: true});
@@ -362,9 +366,27 @@ module.exports = {
                     utils.stringToStream(body).pipe(busboy);
                 }else{
                     // Lookup task id
-                    const matches = pathname.match(/^\/task\/([\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+)\/.+$/);
+                    const matches = pathname.match(/^\/task\/([\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+)\/(.+)$/);
                     if (matches && matches[1]){
                         const taskId = matches[1];
+                        const action = matches[2];
+
+                        // Special case for /task/<uuid>/download/<asset> if 
+                        // we need to redirect to S3. In that case, we rewrite
+                        // the URL to fetch from S3.
+                        if (config.downloads_from_s3 && action.indexOf('download') === 0){
+                            const assetsMatch = action.match(/^download\/(.+)$/);
+                            if (assetsMatch && assetsMatch[1]){
+                                const s3Url = url.parse(config.downloads_from_s3);
+                                s3Url.pathname = path.join(taskId, assetsMatch[1]);
+                                res.writeHead(301, {
+                                    'Location': url.format(s3Url)
+                                });
+                                res.end();
+                                return;
+                            }
+                        }
+
                         let node = await routetable.lookupNode(taskId);
                         if (node){
                             overrideRequest(req, node, query, pathname);

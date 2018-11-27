@@ -80,4 +80,27 @@ module.exports = class LightningCloudProvider extends AbstractCloudProvider{
             return {error: `Cannot approve task. Please contact support. ${e.message}`};
         }
     }
+
+    async taskFinished(token, taskInfo){
+        if (!token) throw new Error("Invalid token");
+        if (!taskInfo) throw new Error("Invalid taskInfo parameter");
+
+        try{
+            let response = await axios.post(this.urlFor('/tasks/finished'), { 
+                    token,
+                    taskInfo: JSON.stringify(taskInfo)
+                }, { timeout: this.timeout });
+
+            if (response.status === 200){
+                const { error, credits_used } = response.data;
+                if (error){
+                    logger.error(`/tasks/finished returned: ${error}`);
+                }
+            }else{
+                logger.error(`Cannot call /tasks/finished with ${JSON.stringify(taskInfo)}, ${token}, returned status ${response.status}`);
+            }
+        }catch(e){
+            logger.error(`Cannot call /tasks/finished with ${taskInfo}, ${token}: ${e.message}`);
+        }
+    }
 };

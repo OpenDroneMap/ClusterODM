@@ -34,4 +34,7 @@ module.exports = class LocalCloudProvider extends AbstractCloudProvider{
     async approveNewTask(token, imagesCount, imageDimensions){
         return {approved: true, error: ""};
     }
+
+    // Do nothing
+    async taskFinished(token, taskInfo){}
 };
