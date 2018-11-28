@@ -184,6 +184,12 @@ module.exports = {
                     try{
                         const taskInfo = JSON.parse(body);
                         const taskId = taskInfo.uuid;
+
+                        // Add reference to S3 path if necessary
+                        if (config.downloads_from_s3){
+                            taskInfo.s3Path = config.downloads_from_s3;
+                        }
+
                         const token = await routetable.lookupToken(taskId);
                         if (token){
                             try{
@@ -209,7 +215,9 @@ module.exports = {
                 // Validate user token
                 const { valid, limits } = await cloudProvider.validate(query.token);
                 if (!valid){
-                    json(res, {error: "Invalid authentication token"});
+                    // json(res, {error: "Invalid authentication token"});
+                    res.writeHead(401, "unauthorized")
+                    res.end();
                     return;
                 }
 

@@ -21,5 +21,6 @@ module.exports = class LightningDevCloudProvider extends LightningCloudProvider{
     constructor(){
         super();
         this.validateCache.disable();
+        this.urlBase = "http://localhost:5000/r";
     }
 };
