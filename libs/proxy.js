@@ -37,6 +37,10 @@ module.exports = {
         utils.cleanupTemporaryDirectory(true);
         await routetable.initialize();
 
+        setInterval(() => {
+            utils.cleanupTemporaryDirectory();
+        }, 1000 * 60 * 60 * 4);
+
         // Allow index, .css and .js files to be retrieved from nodes
         // without authentication
         const publicPath = (p) => {
@@ -385,8 +389,13 @@ module.exports = {
                         if (config.downloads_from_s3 && action.indexOf('download') === 0){
                             const assetsMatch = action.match(/^download\/(.+)$/);
                             if (assetsMatch && assetsMatch[1]){
+                                let assetPath = assetsMatch[1];
+
+                                // Special case for orthophoto.tif
+                                if (assetPath === 'orthophoto.tif') assetPath = 'odm_orthophoto/odm_orthophoto.tif';
+
                                 const s3Url = url.parse(config.downloads_from_s3);
-                                s3Url.pathname = path.join(taskId, assetsMatch[1]);
+                                s3Url.pathname = path.join(taskId, assetPath);
                                 res.writeHead(301, {
                                     'Location': url.format(s3Url)
                                 });
