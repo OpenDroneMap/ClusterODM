@@ -22,6 +22,7 @@ const package_info = require('./package_info');
 const nodes = require('./libs/nodes');
 const proxy = require('./libs/proxy');
 const routetable = require('./libs/routetable');
+const tasktable = require('./libs/tasktable');
 
 (async function(){
     if (config.debug) logger.warn("Running in debug mode");
@@ -35,6 +36,8 @@ const routetable = require('./libs/routetable');
     const gracefulShutdown = async() => {
         await nodes.cleanup();
         await routetable.cleanup();
+        await tasktable.cleanup();
+        
         logger.info("Bye!");
         process.exit(0);
     };

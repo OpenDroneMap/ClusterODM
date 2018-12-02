@@ -14,10 +14,12 @@
   "license": "ISC",
   "dependencies": {
     "axios": "^0.18.0",
-    "buffer-image-size": "^0.6.4",
     "busboy": "^0.2.14",
     "http-proxy": "^1.17.0",
+    "image-size": "^0.6.3",
     "minimist": "^1.2.0",
+    "request": "^2.88.0",
+    "rimraf": "^2.6.2",
     "uuid": "^3.3.2",
     "winston": "^2.2.0"
   }

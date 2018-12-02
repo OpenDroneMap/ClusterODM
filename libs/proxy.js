@@ -21,7 +21,7 @@ const http = require('http');
 const path = require('path');
 const url = require('url');
 const Busboy = require('busboy');
-const sizeOf = require('buffer-image-size');
+const sizeOf = require('image-size');
 const fs = require('fs');
 const package_info = require('../package_info');
 const nodes = require('./nodes');
@@ -30,12 +30,16 @@ const ValueCache = require('./classes/ValueCache');
 const config = require('../config');
 const utils = require('./utils');
 const routetable = require('./routetable');
+const tasktable = require('./tasktable');
 const logger = require('./logger');
+const rmdir = require('rimraf');
+const request = require('request');
 
 module.exports = {
 	initialize: async function(cloudProvider){
         utils.cleanupTemporaryDirectory(true);
         await routetable.initialize();
+        await tasktable.initialize();
 
         setInterval(() => {
             utils.cleanupTemporaryDirectory();
@@ -115,7 +119,7 @@ module.exports = {
             '/info': function(req, res, user){
                 const { limits } = user;
                 const node = nodes.referenceNode();
-
+                
                 json(res, {
                     version: package_info.version,
                     taskQueueCount: 0,
@@ -138,33 +142,6 @@ module.exports = {
                 }
             }
         }
-
-        // Intercept response and add routing table entry
-        proxy.on('proxyRes', (proxyRes, req, res) => {
-            const { pathname } = url.parse(req.url, true);
-
-            if (pathname === '/task/new'){
-                let body = new Buffer('');
-                proxyRes.on('data', function (data) {
-                    body = Buffer.concat([body, data]);
-                });
-                proxyRes.on('end', function () {
-                    try{
-                        body = JSON.parse(body.toString());
-                    }catch(e){
-                        json(res, {error: `Cannot parse response: ${body.toString()}`});
-                        return;
-                    }
-                    
-                    if (body.uuid){
-                        routetable.add(body.uuid, req.node, req.token);
-                    }
-                    
-                    // return original response
-                    res.end(JSON.stringify(body));
-                });
-            }
-        });
 
         // Listen for the `error` event on `proxy`.
         proxy.on('error', function (err, req, res) {
@@ -236,117 +213,163 @@ module.exports = {
                 }
                 
                 if (req.method === 'POST' && pathname === '/task/new') {
-                    const tmpFile = utils.temporaryFilePath();
-                    const bodyWfs = fs.createWriteStream(tmpFile);
+                    let imagesCount = 0;
+                    let options = null;
+                    let taskName = "";
+                    let uploadError = null;
+                    let uuid = utils.uuidv4();
+                    let tmpPath = path.join('tmp', uuid);
+                    let fileNames = [];
 
-                    req.pipe(bodyWfs).on('finish', () => {
-                        const bodyRfs = fs.createReadStream(tmpFile);
-                        let imagesCount = 0;
-                        let options = null;
-                        let uploadError = null;
-                        let imageSizeSamples = [];
+                    if (!fs.existsSync(tmpPath)) fs.mkdirSync(tmpPath);
 
-                        const busboy = new Busboy({ headers: req.headers });
-                        busboy.on('file', function(fieldname, file, filename, encoding, mimetype) {
-                            // Sample somewhat randomly, always at least one sample, skip .txt files
-                            if ((imageSizeSamples.length === 0 || utils.randomIntFromInterval(0, imagesCount) === 0) && filename.toLowerCase().indexOf(".txt") === -1){
-                                let chunks = [];
-                                file.on('data', chunk => chunks.push(chunk));
-                                file.on('end', () => {
-                                    try{
-                                        const dims = sizeOf(Buffer.concat(chunks));
-                                        if (dims.width > 16 && dims.height > 16){
-                                            imageSizeSamples.push(dims);
-                                        }
-                                    }catch(e){
-                                        // Do nothing, invalid file
-                                    }
-                                });
-                            }else{
-                                file.resume();
-                            }
-                            
-                            imagesCount++;
-                        });
-                        busboy.on('field', function(fieldname, val, fieldnameTruncated, valTruncated) {
-                            // Save options
-                            if (fieldname === 'options'){
-                                options = val;
-                            }
+                    const busboy = new Busboy({ headers: req.headers });
+                    busboy.on('file', function(fieldname, file, filename, encoding, mimetype) {
+                        const name = path.basename(filename);
+                        fileNames.push(name);
 
-                            else if (fieldname === 'zipurl' && val){
-                                uploadError = "File upload via URL is not available. Sorry :(";
-                            }
-                        });
-                        busboy.on('finish', async function() {
-                            const die = (err) => {
-                                cleanup();
-                                json(res, {error: err});
-                            };
-
-                            const cleanup = () => {
-                                fs.unlink(tmpFile, err => {
-                                    if (err) logger.warn(`Cannot delete ${tmpFile}: ${err}`);
-                                });
-                            };
-
-                            if (uploadError){
-                                die(uploadError);
-                                return;
-                            }
-
-                            if (imageSizeSamples.length === 0){
-                                die("Not enough images. Please upload at least 2 images.");
-                                return;
-                            }
-
-                            // Estimate image sizes
-                            const IMAGE_SAMPLES = 3;
-                            const imageSizeSamplesSubset = imageSizeSamples.slice(-IMAGE_SAMPLES);
-                            const imageSizesEstimate = imageSizeSamplesSubset.reduce((acc, dims) => {
-                                acc.width += dims.width;
-                                acc.height += dims.height;
-                                return acc;
-                            }, { width: 0, height: 0 });
-                            imageSizesEstimate.width /= imageSizeSamplesSubset.length;
-                            imageSizesEstimate.height /= imageSizeSamplesSubset.length;
-
-                            // Check with provider if we're allowed to process these many images
-                            // at this resolution
-                            const { approved, error } = await cloudProvider.approveNewTask(query.token, imagesCount, imageSizesEstimate);
-                            if (!approved){
-                                die(error);
-                                return;
-                            }
-
-                            const node = await nodes.findBestAvailableNode(imagesCount, true);
-                            if (node){
-                                // Validate options
-                                try{
-                                    odmOptions.filterOptions(options, await getLimitedOptions(query.token, limits, node));
-                                }catch(e){
-                                    die(e.message);
-                                    return;
-                                }
-
-                                overrideRequest(req, node, query, pathname);
-                                const stream = fs.createReadStream(tmpFile);
-                                stream.on('end', cleanup);
-
-                                req.node = node;
-                                req.token = query.token;
-                                proxy.web(req, res, {
-                                    target: node.proxyTargetUrl(),
-                                    buffer: stream,
-                                    selfHandleResponse: true
-                                });
-                            }else{
-                                json(res, { error: "No nodes available"});
-                            }
-                        });
-
-                        bodyRfs.pipe(busboy);
+                        const saveTo = path.join(tmpPath, name);
+                        file.pipe(fs.createWriteStream(saveTo));
+                        imagesCount++;
                     });
+                    busboy.on('field', function(fieldname, val, fieldnameTruncated, valTruncated) {
+                        // Save options
+                        if (fieldname === 'options'){
+                            options = val;
+                        }
+
+                        else if (fieldname === 'zipurl' && val){
+                            uploadError = "File upload via URL is not available. Sorry :(";
+                        }
+
+                        else if (fieldname === 'name' && val){
+                            taskName = val;
+                        }
+                    });
+                    busboy.on('finish', async function() {
+                        const die = (err) => {
+                            cleanup();
+                            json(res, {error: err});
+                        };
+
+                        const cleanup = () => {
+                            rmdir(tmpPath, err => {
+                                if (err) logger.warn(`Cannot delete ${tmpPath}: ${err}`);
+                            });
+                        };
+
+                        if (uploadError){
+                            die(uploadError);
+                            return;
+                        }
+
+                        // Estimate image sizes
+                        const IMAGE_TARGET_SAMPLES = 3;
+                        let imageDimensions = {width: 0, height: 0},
+                            imgSamplesCount = 0;
+                        
+                        if (fileNames.length < 2){
+                            die(`Not enough images (${fileNames.length} files uploaded)`);
+                            return;
+                        }
+
+                        utils.shuffleArray(fileNames);
+
+                        for (let i = 0; i < fileNames.length; i++){
+                            const fileName = fileNames[i];
+                            const filePath = path.join(tmpPath, fileName);
+
+                            // Skip .txt files
+                            if (/.txt$/i.test(filePath)) continue;
+
+                            const dims = sizeOf(filePath);
+                            if (dims.width > 16 && dims.height > 16){
+                                imageDimensions.width += dims.width;
+                                imageDimensions.height += dims.height;
+                                if (++imgSamplesCount === IMAGE_TARGET_SAMPLES) break;
+                            }
+                        }
+
+                        if (imgSamplesCount === 0){
+                            die(`Not enough images. You need at least 2 images.`);
+                            return;
+                        }
+
+                        imageDimensions.width /= imgSamplesCount;
+                        imageDimensions.height /= imgSamplesCount;
+
+                        // Check with provider if we're allowed to process these many images
+                        // at this resolution
+                        const { approved, error } = await cloudProvider.approveNewTask(query.token, imagesCount, imageDimensions);
+                        if (!approved){
+                            die(error);
+                            return;
+                        }
+
+                        const node = await nodes.findBestAvailableNode(imagesCount, true);
+                        if (node){
+                            // Validate options
+                            let taskOptions;
+                            try{
+                                taskOptions = odmOptions.filterOptions(options, await getLimitedOptions(query.token, limits, node));
+                            }catch(e){
+                                die(e.message);
+                                return;
+                            }
+
+                            const taskInfo = {
+                                uuid,
+                                name: taskName || "-----------",
+                                dateCreated: (new Date()).getTime(),
+                                processingTime: -1,
+                                status: 20,
+                                options: taskOptions,
+                                imagesCount: imagesCount
+                            };
+
+                            await tasktable.add(uuid, taskInfo);
+
+                            // Send back response to user
+                            json(res, { uuid });
+
+                            // Now forward the task to the node
+                            const formData = {
+                                images: fileNames.map(f => fs.createReadStream(path.join(tmpPath, f))),
+                                name: taskName,
+                                options: JSON.stringify(taskOptions)
+                            };
+
+                            request.post({
+                                url: `${node.proxyTargetUrl()}/task/new`,
+                                qs: {
+                                    token: node.token
+                                },
+                                headers: {
+                                    'set-uuid': uuid
+                                },
+                                formData: formData
+                            }, async (err, _, body) => { 
+                                if (!err){
+                                    body = JSON.parse(body);
+                                    if (body.uuid !== uuid) throw new Error(`set-uuid did not match, ${body.uuid} !== ${uuid}`);
+                                    
+                                    await routetable.add(uuid, node, query.token);
+                                    await tasktable.delete(uuid);
+                                }else{
+                                    const taskInfo = await tasktable.lookup(uuid);
+                                    if (taskInfo){
+                                        taskInfo.status = 30; // Canceled
+                                        await tasktable.add(uuid, taskInfo); // TODO: check for redis implm
+                                        logger.warn(`Cannot forward task ${uuid} to processing node ${node}: ${err.message}`);
+                                    }
+                                }
+                            });
+                        }else{
+                            json(res, { error: "No nodes available"});
+                        }
+                    });
+
+                    req.pipe(busboy);
                 }else if (req.method === 'POST' && ['/task/restart', '/task/cancel', '/task/remove'].indexOf(pathname) !== -1){
                     // Lookup task id from body
                     let taskId = null;
@@ -403,6 +426,9 @@ module.exports = {
                                 return;
                             }
                         }
+
+                        // TODO: handle lookup on tasktable
+
 
                         let node = await routetable.lookupNode(taskId);
                         if (node){

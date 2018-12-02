@@ -20,8 +20,9 @@
 const uuidv4 = require('uuid/v4');
 const fs = require('fs');
 const async = require('async');
-const  logger = require('./logger');
+const logger = require('./logger');
 const Readable = require('stream').Readable;
+const rimraf = require('rimraf');
 
 module.exports = {
 	get: function(scope, prop, defaultValue){
@@ -41,7 +42,18 @@ module.exports = {
     
     temporaryFilePath: function(){
         return `tmp/${uuidv4()}`;
-    } ,
+    },
+
+    uuidv4: function(){
+        return uuidv4();
+    },
+
+    shuffleArray: function(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+    },
 
     cleanupTemporaryDirectory: async function(wipeAll = false){
         return new Promise((resolve, reject) => {
@@ -60,7 +72,7 @@ module.exports = {
                                 const mtime = new Date(stats.mtime);
                                 if (wipeAll || (new Date().getTime() - mtime.getTime() > 1000 * 60 * 60 * 48)){
                                     logger.info("Cleaning up " + entry);
-                                    fs.unlink(`tmp/${entry}`, cb);
+                                    rimraf(`tmp/${entry}`, cb);
                                 }else{
                                     cb();
                                 }
