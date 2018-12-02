@@ -44,7 +44,7 @@ module.exports = {
         // Allow index, .css and .js files to be retrieved from nodes
         // without authentication
         const publicPath = (p) => {
-            for (let ext of [".css", ".js", ".woff", ".ttf"]){
+            for (let ext of [".css", ".js", ".woff", ".ttf", ".ico"]){
                 if (p.substr(-ext.length) === ext){
                     return true;
                 }
