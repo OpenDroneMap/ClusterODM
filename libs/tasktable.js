@@ -44,6 +44,8 @@ module.exports = {
         if (!taskId) throw new Error("taskId is not valid");
         if (!obj) throw new Error("obj is not valid");
 
+        logger.debug(`Added ${taskId} --> ${JSON.stringify(obj)} in task table`);
+
         tasks[taskId] = {
             obj: obj,
             accessed: new Date().getTime()

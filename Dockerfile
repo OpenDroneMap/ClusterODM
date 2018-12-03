@@ -5,7 +5,7 @@ EXPOSE 3000
 
 USER root
 
-RUN apt update && apt install -y telnet
+RUN apt update && apt install -y telnet curl
 
 COPY . /var/www
 WORKDIR "/var/www"

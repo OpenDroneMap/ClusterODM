@@ -19,19 +19,20 @@
 
 let fs = require('fs');
 let argv = require('minimist')(process.argv.slice(2), {
-    string: ['port', 'admin-cli-port', 'admin-cli-pass', 'cloud-provider', 'downloads-from-s3'],
+    string: ['port', 'admin-cli-port', 'admin-cli-pass', 'cloud-provider', 'downloads-from-s3', 'log-level'],
     boolean: ['debug'],
     alias: {
         p: 'port',
         c: 'cloud-provider'
     },
     default: {
-        port: 3000,
+        'port': 3000,
         'admin-cli-port': 8080,
         'admin-cli-pass': '',
         'cloud-provider': 'local',
         'downloads-from-s3': '',
-        debug: false
+        'debug': false,
+        'log-level': 'info'
     }
 });
 

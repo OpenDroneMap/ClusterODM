@@ -32,7 +32,7 @@ const utils = require('./utils');
 const routetable = require('./routetable');
 const tasktable = require('./tasktable');
 const logger = require('./logger');
-const request = require('request');
+const Curl = require('node-libcurl').Curl;
 
 module.exports = {
 	initialize: async function(cloudProvider){
@@ -180,7 +180,7 @@ module.exports = {
                         }else{
                             // Something is not right, notify an admin
                             // as we cannot record this transaction
-                            logger.error(`Cannot record transaction, token is missing: ${taskInfo}`);
+                            logger.error(`Cannot record transaction, token is missing: ${JSON.stringify(taskInfo)}`);
                         }
 
                         json(res, {ok: true});
@@ -321,43 +321,62 @@ module.exports = {
                             };
 
                             // Start forwarding the task to the node
-                            const formData = {
-                                images: fileNames.map(f => fs.createReadStream(path.join(tmpPath, f))),
-                                name: taskName,
-                                options: JSON.stringify(taskOptions)
-                            };
+                            // (using CURL, because NodeJS libraries are buggy)
+                            const curl = new Curl(),
+                                  close = curl.close.bind(curl);
 
-                            const postReq = request.post({
-                                url: `${node.proxyTargetUrl()}/task/new`,
-                                qs: {
-                                    token: node.token
-                                },
-                                headers: {
-                                    'set-uuid': uuid
-                                },
-                                formData: formData
-                            }, async (err, _, body) => { 
-                                if (!err){
-                                    body = JSON.parse(body);
-                                    if (body.uuid !== uuid) throw new Error(`set-uuid did not match, ${body.uuid} !== ${uuid}`);
-                                    
-                                    await routetable.add(uuid, node, query.token);
-                                    await tasktable.delete(uuid);
-                                }else{
-                                    const taskInfo = await tasktable.lookup(uuid);
-                                    if (taskInfo){
-                                        taskInfo.status = 30; // Canceled
-                                        await tasktable.add(uuid, { taskInfo });
-                                        logger.warn(`Cannot forward task ${uuid} to processing node ${node}: ${err.message}`);
-                                    }
-                                    utils.rmdir(tmpPath)
-                                }
+                            const multiPartBody = fileNames.map(f => { return { name: 'images', file: path.join(tmpPath, f) } });
+                            multiPartBody.push({
+                                name: 'name',
+                                contents: taskName
+                            });
+                            multiPartBody.push({
+                                name: 'options',
+                                contents: JSON.stringify(taskOptions)
                             });
 
-                            await tasktable.add(uuid, { taskInfo, req: postReq });
+                            const curlErrorHandler = async err => {
+                                const taskInfo = (await tasktable.lookup(uuid)).taskInfo;
+                                if (taskInfo){
+                                    taskInfo.status.code = 30; // Failed
+                                    await tasktable.add(uuid, { taskInfo });
+                                    logger.warn(`Cannot forward task ${uuid} to processing node ${node}: ${err.message}`);
+                                }
+                                utils.rmdir(tmpPath);
+                                close();
+                            };
+
+                            curl.setOpt(Curl.option.URL, `${node.proxyTargetUrl()}/task/new?token=${node.token}`);
+                            curl.setOpt(Curl.option.HTTPPOST, multiPartBody);
+                            curl.setOpt(Curl.option.HTTPHEADER, [
+                                'Content-Type: multipart/form-data',
+                                `set-uuid: ${uuid}`
+                            ]);
+
+                            curl.on('end', async function (statusCode, body, headers){
+                                if (statusCode === 200){
+                                    try{
+                                        body = JSON.parse(body);
+                                        if (body.error) throw new Error(body.error);
+                                        if (body.uuid !== uuid) throw new Error(`set-uuid did not match, ${body.uuid} !== ${uuid}`);
+                                    
+                                        await routetable.add(uuid, node, query.token);
+                                        await tasktable.delete(uuid);
+                                    }catch(e){
+                                        curlErrorHandler(e);
+                                    }
+                                }else{
+                                    curlErrorHandler(new Error(`statusCode is ${statusCode}, expected 200`));
+                                }
+                            });
+                            curl.on('error', curlErrorHandler);
+
+                            await tasktable.add(uuid, { taskInfo, abort: close });
 
                             // Send back response to user
                             json(res, { uuid });
+
+                            curl.perform();
                         }else{
                             json(res, { error: "No nodes available"});
                         }
@@ -388,8 +407,9 @@ module.exports = {
                                 const taskTableEntry = await tasktable.lookup(taskId);
                                 if (taskTableEntry && taskTableEntry.taskInfo){
                                     if (pathname === '/task/cancel' || pathname === '/task/remove'){
-                                        if (taskTableEntry.req){ 
-                                            taskTableEntry.req.abort();
+                                        if (taskTableEntry.abort){ 
+                                            taskTableEntry.abort();
+                                            taskTableEntry.abort = null;
                                             logger.info(`Task ${taskId} aborted via ${pathname}`);
                                         }
                                         
@@ -400,7 +420,7 @@ module.exports = {
                                         }
 
                                         if (pathname === '/task/cancel'){
-                                            taskTableEntry.taskInfo.status.code = 50;
+                                            taskTableEntry.taskInfo.status.code = 50; // CANCELED TODO: bring status code enums from nodeodm
                                             await tasktable.add(taskId, taskTableEntry);
                                         }
 
