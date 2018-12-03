@@ -36,7 +36,6 @@ const tasktable = require('./libs/tasktable');
     const gracefulShutdown = async() => {
         await nodes.cleanup();
         await routetable.cleanup();
-        await tasktable.cleanup();
         
         logger.info("Bye!");
         process.exit(0);

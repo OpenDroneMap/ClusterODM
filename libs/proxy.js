@@ -32,7 +32,6 @@ const utils = require('./utils');
 const routetable = require('./routetable');
 const tasktable = require('./tasktable');
 const logger = require('./logger');
-const rmdir = require('rimraf');
 const request = require('request');
 
 module.exports = {
@@ -217,7 +216,7 @@ module.exports = {
                     let options = null;
                     let taskName = "";
                     let uploadError = null;
-                    let uuid = utils.uuidv4();
+                    let uuid = utils.uuidv4(); // TODO: add support for set-uuid header parameter
                     let tmpPath = path.join('tmp', uuid);
                     let fileNames = [];
 
@@ -248,14 +247,8 @@ module.exports = {
                     });
                     busboy.on('finish', async function() {
                         const die = (err) => {
-                            cleanup();
+                            utils.rmdir(tmpPath);
                             json(res, {error: err});
-                        };
-
-                        const cleanup = () => {
-                            rmdir(tmpPath, err => {
-                                if (err) logger.warn(`Cannot delete ${tmpPath}: ${err}`);
-                            });
                         };
 
                         if (uploadError){
@@ -319,27 +312,22 @@ module.exports = {
 
                             const taskInfo = {
                                 uuid,
-                                name: taskName || "-----------",
+                                name: taskName || "Unnamed Task",
                                 dateCreated: (new Date()).getTime(),
                                 processingTime: -1,
-                                status: 20,
+                                status: {code: 20},
                                 options: taskOptions,
                                 imagesCount: imagesCount
                             };
 
-                            await tasktable.add(uuid, taskInfo);
-
-                            // Send back response to user
-                            json(res, { uuid });
-
-                            // Now forward the task to the node
+                            // Start forwarding the task to the node
                             const formData = {
                                 images: fileNames.map(f => fs.createReadStream(path.join(tmpPath, f))),
                                 name: taskName,
                                 options: JSON.stringify(taskOptions)
                             };
 
-                            request.post({
+                            const postReq = request.post({
                                 url: `${node.proxyTargetUrl()}/task/new`,
                                 qs: {
                                     token: node.token
@@ -359,11 +347,17 @@ module.exports = {
                                     const taskInfo = await tasktable.lookup(uuid);
                                     if (taskInfo){
                                         taskInfo.status = 30; // Canceled
-                                        await tasktable.add(uuid, taskInfo); // TODO: check for redis implm
+                                        await tasktable.add(uuid, { taskInfo });
                                         logger.warn(`Cannot forward task ${uuid} to processing node ${node}: ${err.message}`);
                                     }
+                                    utils.rmdir(tmpPath)
                                 }
                             });
+
+                            await tasktable.add(uuid, { taskInfo, req: postReq });
+
+                            // Send back response to user
+                            json(res, { uuid });
                         }else{
                             json(res, { error: "No nodes available"});
                         }
@@ -391,7 +385,32 @@ module.exports = {
                                         buffer: utils.stringToStream(body)
                                     });
                             }else{
-                                json(res, { error: `Invalid route for taskId ${taskId}, no nodes in routing table.`});
+                                const taskTableEntry = await tasktable.lookup(taskId);
+                                if (taskTableEntry && taskTableEntry.taskInfo){
+                                    if (pathname === '/task/cancel' || pathname === '/task/remove'){
+                                        if (taskTableEntry.req){ 
+                                            taskTableEntry.req.abort();
+                                            logger.info(`Task ${taskId} aborted via ${pathname}`);
+                                        }
+                                        
+                                        utils.rmdir(`tmp/${taskId}`);
+
+                                        if (pathname === '/task/remove'){
+                                            await tasktable.delete(taskId);
+                                        }
+
+                                        if (pathname === '/task/cancel'){
+                                            taskTableEntry.taskInfo.status.code = 50;
+                                            await tasktable.add(taskId, taskTableEntry);
+                                        }
+
+                                        json(res, { success: true });
+                                    }else{
+                                        json(res, { error: `Action not supported. Please create a new task.` });
+                                    }
+                                }else{
+                                    json(res, { error: `Invalid route for taskId ${taskId}, no nodes in routing table.`});
+                                }
                             }
                         }else{
                             json(res, { error: `No uuid found in ${pathname}`});
@@ -427,15 +446,18 @@ module.exports = {
                             }
                         }
 
-                        // TODO: handle lookup on tasktable
+                        const node = await routetable.lookupNode(taskId);
 
-
-                        let node = await routetable.lookupNode(taskId);
                         if (node){
                             overrideRequest(req, node, query, pathname);
                             proxy.web(req, res, { target: node.proxyTargetUrl() });
                         }else{
-                            json(res, { error: `Invalid route for taskId ${taskId}, no nodes in routing table.`});
+                            const taskTableEntry = await tasktable.lookup(taskId);
+                            if (taskTableEntry && action === 'info'){
+                                json(res, taskTableEntry.taskInfo);
+                            }else{
+                                json(res, { error: `Invalid route for taskId ${taskId}, no valid route possible.`});
+                            }
                         }
                     }else{
                         json(res, { error: `Cannot handle ${pathname}`});

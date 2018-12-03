@@ -48,7 +48,6 @@ module.exports = {
     add: async function(taskId, node, token){
         if (!node) throw new Error("Node is not valid");
         if (!taskId) throw new Error("taskId is not valid");
-        if (!token) throw new Error("token is not valid");
 
         routes[taskId] = {
             node,

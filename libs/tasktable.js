@@ -25,9 +25,7 @@ let tasks = null;
 
 module.exports = {
     initialize: async function(){
-        tasks = await this.loadFromDisk();
-
-        logger.info(`Loaded ${Object.keys(tasks).length} tasks`);
+        tasks = {};
 
         const cleanup = () => {
             const expires = 1000 * 60 * 60 * 24 * 2; // 2 days
@@ -37,19 +35,17 @@ module.exports = {
                     delete(tasks[taskId]);
                 }
             });
-
-            this.saveToDisk();
         };
 
         setInterval(cleanup, 1000 * 60 * 60);
     },
 
-    add: async function(taskId, taskInfo){
+    add: async function(taskId, obj){
         if (!taskId) throw new Error("taskId is not valid");
-        if (!taskInfo) throw new Error("taskInfo is not valid");
+        if (!obj) throw new Error("obj is not valid");
 
         tasks[taskId] = {
-            info: taskInfo,
+            obj: obj,
             accessed: new Date().getTime()
         };
     },
@@ -62,51 +58,9 @@ module.exports = {
         const entry = tasks[taskId];
         if (entry){
             entry.accessed = new Date().getTime();
-            return entry.info;
+            return entry.obj;
         }
 
         return null;
-    },
-
-    saveToDisk: async function(){
-        return new Promise((resolve, reject) => {
-            fs.writeFile('data/tasks.json', JSON.stringify(tasks), (err) => {
-                if (err){
-                    logger.warn("Cannot save tasks to disk: ${err.message}");
-                    reject(err);
-                }else{
-                    resolve();
-                }
-            });
-        });
-    },
-
-    loadFromDisk: async function(){
-        return new Promise((resolve, reject) => {
-            fs.exists("data/tasks.json", (exists) => {
-                if (exists){
-                    fs.readFile("data/tasks.json", (err, json) => {
-                        if (err){
-                            logger.warn("Cannot read tasks from disk: ${err.message}");
-                            reject(err);
-                        }else{
-                            const content = JSON.parse(json);
-                            resolve(content);
-                        }
-                    });
-                }else{
-                    resolve({});
-                }
-            });
-        });
-    },
-
-    cleanup: async function(){
-        try{
-            await this.saveToDisk();
-            logger.info("Saved tasks to disk");
-        }catch(e){
-            logger.warn(e);
-        }
     }
 };

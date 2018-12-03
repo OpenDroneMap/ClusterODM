@@ -98,5 +98,15 @@ module.exports = {
      // min and max included
     randomIntFromInterval: function(min,max){
         return Math.floor(Math.random()*(max-min+1)+min);
+    },
+
+    rmdir: function(dir){
+        fs.exists(dir, exists => {
+            if (exists){
+                rimraf(dir, err => {
+                    if (err) logger.warn(`Cannot delete ${dir}: ${err}`);
+                });
+            }
+        });
     }
 };
