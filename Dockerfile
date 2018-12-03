@@ -1,4 +1,4 @@
-FROM node:8.14
+FROM node:lts
 MAINTAINER Piero Toffanin <pt@masseranolabs.com>
 
 EXPOSE 3000
