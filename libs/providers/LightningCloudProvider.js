@@ -100,7 +100,7 @@ module.exports = class LightningCloudProvider extends AbstractCloudProvider{
                 logger.error(`Cannot call /tasks/finished with ${JSON.stringify(taskInfo)}, ${token}, returned status ${response.status}`);
             }
         }catch(e){
-            logger.error(`Cannot call /tasks/finished with ${taskInfo}, ${token}: ${e.message}`);
+            logger.error(`Cannot call /tasks/finished with ${JSON.stringify(taskInfo)}, ${token}: ${e.message}`);
         }
     }
 };
