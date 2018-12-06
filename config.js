@@ -19,7 +19,9 @@
 
 let fs = require('fs');
 let argv = require('minimist')(process.argv.slice(2), {
-    string: ['port', 'admin-cli-port', 'admin-cli-pass', 'cloud-provider', 'downloads-from-s3', 'log-level'],
+    string: ['port', 'admin-cli-port', 'admin-cli-pass', 
+            'cloud-provider', 'downloads-from-s3', 'log-level',
+            'upload-max-speed'],
     boolean: ['debug'],
     alias: {
         p: 'port',
@@ -32,7 +34,8 @@ let argv = require('minimist')(process.argv.slice(2), {
         'cloud-provider': 'local',
         'downloads-from-s3': '',
         'debug': false,
-        'log-level': 'info'
+        'log-level': 'info',
+        'upload-max-speed': 0
     }
 });
 
@@ -46,6 +49,7 @@ Options:
     --admin-cli-pass <string> 	Password to log-in to the admin CLI (default: none)
     --log-level <logLevel>	Set log level verbosity (default: info)
     -c, --cloud-provider	Cloud provider to use (default: local)
+    --upload-max-speed <number>	Upload to processing nodes speed limit in bytes / second (default: no limit)
     --downloads-from-s3 <URL>	S3 URL prefix where to redirect /task/<uuid>/download requests. (default: do not use S3, forward download requests to nodes) 
     --debug 	Disable caches and other settings to facilitate debug (default: false)
 Log Levels: 
@@ -68,5 +72,6 @@ config.admin_cli_pass = argv['admin-cli-pass'];
 config.cloud_provider = argv['cloud-provider'];
 config.debug = argv['debug'];
 config.downloads_from_s3 = argv['downloads-from-s3'];
+config.upload_max_speed = argv['upload-max-speed'];
 
 module.exports = config;

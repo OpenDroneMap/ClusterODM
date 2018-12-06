@@ -347,6 +347,7 @@ module.exports = {
                             };
 
                             curl.setOpt(Curl.option.URL, `${node.proxyTargetUrl()}/task/new?token=${node.getToken()}`);
+                            if (config.upload_max_speed) curl.setOpt(Curl.option.MAX_SEND_SPEED_LARGE, config.upload_max_speed);
                             curl.setOpt(Curl.option.HTTPPOST, multiPartBody);
                             curl.setOpt(Curl.option.HTTPHEADER, [
                                 'Content-Type: multipart/form-data',
