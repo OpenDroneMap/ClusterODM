@@ -100,7 +100,7 @@ module.exports = {
 
         // Replace token 
         const overrideRequest = (req, node, query, pathname) => {
-            if (query.token && node.getToken()){
+            if (node.getToken()){
                 // Override token. When requests come in through
                 // the proxy, the token is the user's token
                 // but when we redirect them to a node
@@ -346,7 +346,7 @@ module.exports = {
                                 close();
                             };
 
-                            curl.setOpt(Curl.option.URL, `${node.proxyTargetUrl()}/task/new?token=${node.token}`);
+                            curl.setOpt(Curl.option.URL, `${node.proxyTargetUrl()}/task/new?token=${node.getToken()}`);
                             curl.setOpt(Curl.option.HTTPPOST, multiPartBody);
                             curl.setOpt(Curl.option.HTTPHEADER, [
                                 'Content-Type: multipart/form-data',

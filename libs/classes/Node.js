@@ -30,8 +30,12 @@ module.exports = class Node{
         try{
             let response = await axios.get(this.urlFor('/info'), { timeout: this.timeout });
             if (response.status === 200){
-                this.nodeData.info = response.data;
-                this.nodeData.last_refreshed = new Date().getTime();
+                if (!response.data.error){
+                    this.nodeData.info = response.data;
+                    this.nodeData.last_refreshed = new Date().getTime();
+                }else{
+                    throw new Error(`Cannot update info for ${this}, error: ${response.data.error}`);
+                }
             }else{
                 throw new Error(`Cannot update info for ${this}, returned status ${response.status}`);
                 this.nodeData.last_refreshed = 0;
