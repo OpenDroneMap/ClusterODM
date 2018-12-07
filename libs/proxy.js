@@ -33,6 +33,7 @@ const routetable = require('./routetable');
 const tasktable = require('./tasktable');
 const logger = require('./logger');
 const Curl = require('node-libcurl').Curl;
+const statusCodes = require('./statusCodes');
 
 module.exports = {
 	initialize: async function(cloudProvider){
@@ -338,8 +339,8 @@ module.exports = {
                             const curlErrorHandler = async err => {
                                 const taskInfo = (await tasktable.lookup(uuid)).taskInfo;
                                 if (taskInfo){
-                                    taskInfo.status.code = 30; // Failed
-                                    await tasktable.add(uuid, { taskInfo });
+                                    taskInfo.status.code = statusCodes.FAILED;
+                                    await tasktable.add(uuid, { taskInfo, output: [err.message] });
                                     logger.warn(`Cannot forward task ${uuid} to processing node ${node}: ${err.message}`);
                                 }
                                 utils.rmdir(tmpPath);
@@ -375,7 +376,7 @@ module.exports = {
                             });
                             curl.on('error', curlErrorHandler);
 
-                            await tasktable.add(uuid, { taskInfo, abort: close });
+                            await tasktable.add(uuid, { taskInfo, abort: close, output: [""] });
 
                             // Send back response to user
                             json(res, { uuid });
@@ -424,7 +425,7 @@ module.exports = {
                                         }
 
                                         if (pathname === '/task/cancel'){
-                                            taskTableEntry.taskInfo.status.code = 50; // CANCELED TODO: bring status code enums from nodeodm
+                                            taskTableEntry.taskInfo.status.code = statusCodes.CANCELED;
                                             await tasktable.add(taskId, taskTableEntry);
                                         }
 
@@ -477,10 +478,16 @@ module.exports = {
                             proxy.web(req, res, { target: node.proxyTargetUrl() });
                         }else{
                             const taskTableEntry = await tasktable.lookup(taskId);
-                            if (taskTableEntry && action === 'info'){
-                                json(res, taskTableEntry.taskInfo);
+                            if (taskTableEntry){
+                                if (action === 'info'){
+                                    json(res, taskTableEntry.taskInfo);
+                                }else if (action === 'output'){
+                                    json(res, taskTableEntry.output || []);
+                                }else{
+                                    json(res, { error: `Invalid route for taskId ${taskId}:${action}, no valid route possible.`});
+                                }
                             }else{
-                                json(res, { error: `Invalid route for taskId ${taskId}, no valid route possible.`});
+                                json(res, { error: `Invalid route for taskId ${taskId}:${action}, no task table entry.`});
                             }
                         }
                     }else{
