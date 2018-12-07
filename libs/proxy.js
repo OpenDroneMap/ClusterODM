@@ -482,7 +482,9 @@ module.exports = {
                                 if (action === 'info'){
                                     json(res, taskTableEntry.taskInfo);
                                 }else if (action === 'output'){
-                                    json(res, taskTableEntry.output || []);
+                                    const line = query.line || 0;
+                                    const output = taskTableEntry.output || [];
+                                    json(res, output.slice(line, output.length));
                                 }else{
                                     json(res, { error: `Invalid route for taskId ${taskId}:${action}, no valid route possible.`});
                                 }
