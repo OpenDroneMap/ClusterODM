@@ -1,0 +1,15 @@
+[Unit]
+Description=Start nodeodm-proxy Service
+
+[Service]
+Type=simple
+PIDFile=/run/nodeodm-proxy.pid
+User=odm
+Group=odm
+WorkingDirectory=/www
+ExecStart=/usr/bin/node index.js
+ExecStop=/bin/kill -s QUIT $MAINPID
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
