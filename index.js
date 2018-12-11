@@ -25,37 +25,37 @@ const routetable = require('./libs/routetable');
 const tasktable = require('./libs/tasktable');
 
 (async function(){
-    try{
-        if (config.debug) logger.warn("Running in debug mode");
-        logger.info(package_info.name + " " + package_info.version);
-        admincli.create({port: config.admin_cli_port, password: config.admin_cli_pass});
-        const cloudProvider = (require('./libs/cloudProvider')).initialize(config.cloud_provider);
-        await nodes.initialize();
+    if (config.debug) logger.warn("Running in debug mode");
+    logger.info(package_info.name + " " + package_info.version);
+    admincli.create({port: config.admin_cli_port, password: config.admin_cli_pass});
+    const cloudProvider = (require('./libs/cloudProvider')).initialize(config.cloud_provider);
+    await nodes.initialize();
 
-        const proxyServer = await proxy.initialize(cloudProvider);
+    const proxyServer = await proxy.initialize(cloudProvider);
 
-        proxyServer.on('error', e => {
-            logger.error(e);
-        });
+    proxyServer.on('error', e => {
+        logger.error(e);
+    });
 
-        const gracefulShutdown = async() => {
-            await nodes.cleanup();
-            await routetable.cleanup();
-            
-            logger.info("Bye!");
-            process.exit(0);
-        };
+    const gracefulShutdown = async() => {
+        await nodes.cleanup();
+        await routetable.cleanup();
+        
+        logger.info("Bye!");
+        process.exit(0);
+    };
 
-        // listen for TERM signal .e.g. kill
-        process.on('SIGTERM', gracefulShutdown);
+    // listen for TERM signal .e.g. kill
+    process.on('SIGTERM', gracefulShutdown);
 
-        // listen for INT signal e.g. Ctrl-C
-        process.on('SIGINT', gracefulShutdown);
+    // listen for INT signal e.g. Ctrl-C
+    process.on('SIGINT', gracefulShutdown);
 
-        // Start
-        logger.info(`Starting proxy on ${config.port}`);
-        proxyServer.listen(config.port);
-    }catch(e){
-        logger.error("UNCAUGHT EXCEPTION: " + e.stack);
-    }
+    process.on('uncaughtException', err => {
+        logger.error(`Uncaught Exception: ${err.stack}`);
+    });
+
+    // Start
+    logger.info(`Starting proxy on ${config.port}`);
+    proxyServer.listen(config.port);
 })();
