@@ -23,6 +23,9 @@ let tasks = null;
 // TODO: use redis to have a shared tasks table
 // accessible from multiple proxies
 
+// The task table keeps information (task info, console output) about tasks that 
+// are waiting to be sent to a processing node or are being uploaded to a processing node. 
+
 module.exports = {
     initialize: async function(){
         tasks = {};

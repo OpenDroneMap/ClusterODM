@@ -24,6 +24,8 @@ let routes = null;
 // TODO: use redis to have a shared routing table
 // accessible from multiple proxies
 
+// The route table maps taskIDs to nodes and task owners (via token)
+
 module.exports = {
     initialize: async function(){
         routes = await this.loadFromDisk();
@@ -54,6 +56,8 @@ module.exports = {
             token,
             accessed: new Date().getTime()
         };
+
+        this.saveToDisk();
     },
 
     lookup: async function(taskId){
