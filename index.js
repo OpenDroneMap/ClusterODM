@@ -31,11 +31,7 @@ const tasktable = require('./libs/tasktable');
     const cloudProvider = (require('./libs/cloudProvider')).initialize(config.cloud_provider);
     await nodes.initialize();
 
-    const proxyServer = await proxy.initialize(cloudProvider);
-
-    proxyServer.on('error', e => {
-        logger.error(e);
-    });
+    const proxies = await proxy.initialize(cloudProvider);
 
     const gracefulShutdown = async() => {
         await nodes.cleanup();
@@ -56,6 +52,20 @@ const tasktable = require('./libs/tasktable');
     });
 
     // Start
-    logger.info(`Starting proxy on ${config.port}`);
-    proxyServer.listen(config.port);
+    proxies.forEach(proxy => {
+        // Do not start insecure server if SSL is enabled and a secure port parameter
+        // is not specified (that implies we want both secure and non secure)
+        if (config.use_ssl && !config.secure_port && !proxy.secure) return;
+
+        let port = config.port;
+
+        // If we specified a secure port, it means we need to bind the secure service
+        // to this port
+        if (config.use_ssl && config.secure_port && proxy.secure){
+            port = config.secure_port;
+        }
+
+        logger.info(`Starting ${proxy.secure ? 'https' : 'http'} proxy on ${port}`);
+        proxy.server.listen(port);
+    });
 })();

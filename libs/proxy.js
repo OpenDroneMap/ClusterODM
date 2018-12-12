@@ -18,6 +18,7 @@
 "use strict";
 const HttpProxy = require('http-proxy');
 const http = require('http');
+const https = require('https');
 const path = require('path');
 const url = require('url');
 const Busboy = require('busboy');
@@ -148,9 +149,7 @@ module.exports = {
             json(res, {error: `Proxy redirect error: ${err.message}`});
         });
 
-        // TODO: https support
-
-        return http.createServer(async function (req, res) {
+        const requestListener = async function (req, res) {
             try{
                 const urlParts = url.parse(req.url, true);
                 const { query, pathname } = urlParts;
@@ -501,6 +500,23 @@ module.exports = {
                 json(res, { error: 'exception'});
                 if (config.debug) throw e;
             }
-        });
+        };
+
+        const servers = [{
+            server: http.createServer(requestListener),
+            secure: false
+        }];
+
+        if (config.use_ssl){
+            servers.push({
+                server: https.createServer({
+                    key: fs.readFileSync(config.ssl_key, 'utf8'),
+                    cert: fs.readFileSync(config.ssl_cert, 'utf8')
+                }, requestListener),
+                secure: true
+            });
+        }
+
+        return servers;
     }
 };
