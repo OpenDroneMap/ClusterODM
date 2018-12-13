@@ -348,8 +348,8 @@ module.exports = {
 
                             curl.setOpt(Curl.option.URL, `${node.proxyTargetUrl()}/task/new?token=${node.getToken()}`);
                             if (config.upload_max_speed) curl.setOpt(Curl.option.MAX_SEND_SPEED_LARGE, config.upload_max_speed);
-                            // abort if slower than 30 bytes/sec during 180 seconds */
-                            curl.setOpt(Curl.option.LOW_SPEED_TIME, 180);
+                            // abort if slower than 30 bytes/sec during 1600 seconds */
+                            curl.setOpt(Curl.option.LOW_SPEED_TIME, 1600);
                             curl.setOpt(Curl.option.LOW_SPEED_LIMIT, 30);
                             curl.setOpt(Curl.option.HTTPPOST, multiPartBody);
                             curl.setOpt(Curl.option.HTTPHEADER, [
