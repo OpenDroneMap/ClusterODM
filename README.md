@@ -18,7 +18,7 @@ node index.js
 To connect to the CLI and connect new NodeODM instances:
 
 ```bash
-telnet localhost 3000
+telnet localhost 8080
 > HELP
 > NODES ADD nodeodm-host 3001
 > NODES LIST
