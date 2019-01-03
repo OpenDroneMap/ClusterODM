@@ -90,13 +90,25 @@ module.exports = class Node{
         return (this.nodeData || {}).info;
     }
 
-    getVersion(){
+    getInfoProperty(prop, defaultValue){
         const info = this.getInfo();
         if (info){
-            return info.version || "?";
+            return info[prop] !== undefined ? info[prop] : defaultValue;
         }else{
-            return "?";
+            return defaultValue;
         }
+    }
+
+    getVersion(){
+        return this.getInfoProperty('version', '?');
+    }
+
+    getMaxParallelTasks(){
+        return this.getInfoProperty('maxParallelTasks', '?');
+    }
+
+    getTaskQueueCount(){
+        return this.getInfoProperty('taskQueueCount', '?');
     }
 
     isOnline(){

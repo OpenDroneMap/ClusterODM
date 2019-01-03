@@ -49,7 +49,7 @@ module.exports = {
                 else fail();
             };
             const printNode = (socket, i, node) => {
-                socket.write(`${(i + 1)}) ${node.toString()} ${node.isOnline() ? '[online]' : '[offline]'} <version ${node.getVersion()}>\r\n`);
+                socket.write(`${(i + 1)}) ${node.toString()} ${node.isOnline() ? '[online]' : '[offline]'} [${node.getTaskQueueCount()}/${node.getMaxParallelTasks()}] <version ${node.getVersion()}>\r\n`);
             };
 
 
