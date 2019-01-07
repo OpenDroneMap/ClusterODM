@@ -192,6 +192,11 @@ module.exports = {
                     return;
                 }
 
+                if (pathname === '/auth/info'){
+                    cloudProvider.handleAuthInfo(req, res);
+                    return;
+                }
+
                 // Validate user token
                 const { valid, limits } = await cloudProvider.validate(query.token);
                 if (!valid){
@@ -215,6 +220,7 @@ module.exports = {
                     let imagesCount = 0;
                     let options = null;
                     let taskName = "";
+                    let skipPostProcessing = false;
                     let uploadError = null;
                     let uuid = utils.uuidv4(); // TODO: add support for set-uuid header parameter
                     let tmpPath = path.join('tmp', uuid);
@@ -243,6 +249,10 @@ module.exports = {
 
                         else if (fieldname === 'name' && val){
                             taskName = val;
+                        }
+
+                        else if (fieldname === 'skipPostProcessing' && val === 'true'){
+                            skipPostProcessing = val;
                         }
                     });
                     busboy.on('finish', async function() {
@@ -334,6 +344,12 @@ module.exports = {
                                 name: 'options',
                                 contents: JSON.stringify(taskOptions)
                             });
+                            if (skipPostProcessing){
+                                multiPartBody.push({
+                                    name: 'skipPostProcessing',
+                                    contents: "true"
+                                });
+                            }
 
                             const curlErrorHandler = async err => {
                                 const taskInfo = (await tasktable.lookup(uuid)).taskInfo;

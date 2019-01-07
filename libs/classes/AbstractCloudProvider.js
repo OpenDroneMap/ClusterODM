@@ -50,4 +50,15 @@ module.exports = class AbstractCloudProvider{
     async taskFinished(token, taskInfo){
         throw new Error("Not Implemented");
     }
+
+
+    // Override this to handle /auth/info
+    handleAuthInfo(req, res){
+        res.writeHead(200, {"Content-Type": "application/json"});
+        res.end(JSON.stringify({
+            message:"Authentication not available on this node",
+            loginUrl:null,
+            registerUrl:null
+        }));
+    }
 };

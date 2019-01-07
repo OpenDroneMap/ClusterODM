@@ -103,4 +103,13 @@ module.exports = class LightningCloudProvider extends AbstractCloudProvider{
             logger.error(`Cannot call /tasks/finished with ${JSON.stringify(taskInfo)}, ${token}: ${e.message}`);
         }
     }
+
+    handleAuthInfo(req, res){
+        res.writeHead(200, {"Content-Type": "application/json"});
+        res.end(JSON.stringify({
+            message: "Please enter your webodm.net credentials. If you don't have an account, register for free at https://webodm.net/register",
+            loginUrl: "https://webodm.net/r/auth/getToken",
+            registerUrl: null
+        }));
+    }
 };
