@@ -122,7 +122,7 @@ module.exports = {
                 const node = nodes.referenceNode();
                 
                 json(res, {
-                    version: package_info.version,
+                    version: "1.3.1", // this is the version we speak
                     taskQueueCount: 0,
                     totalMemory: 99999999999, 
                     availableMemory: 99999999999,
@@ -199,7 +199,7 @@ module.exports = {
 
                 // Validate user token
                 const { valid, limits } = await cloudProvider.validate(query.token);
-                if (!valid || req.query._debugUnauthorized){
+                if (!valid || query._debugUnauthorized){
                     // json(res, {error: "Invalid authentication token"});
                     res.writeHead(401, "unauthorized")
                     res.end();

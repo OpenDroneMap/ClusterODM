@@ -23,4 +23,13 @@ module.exports = class LightningDevCloudProvider extends LightningCloudProvider{
         this.validateCache.disable();
         this.urlBase = "http://localhost:5000/r";
     }
+
+    handleAuthInfo(req, res){
+        res.writeHead(200, {"Content-Type": "application/json"});
+        res.end(JSON.stringify({
+            message: "Please enter your localhost credentials. If you don't have an account, register for free at http://localhost:5000/register",
+            loginUrl:  this.urlBase + "/auth/getToken",
+            registerUrl: null
+        }));
+    }
 };
