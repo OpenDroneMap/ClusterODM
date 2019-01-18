@@ -19,6 +19,7 @@ const logger = require('./libs/logger');
 const net = require('net');
 const package_info = require('./package_info');
 const nodes = require('./libs/nodes');
+const routetable = require('./libs/routetable');
 
 module.exports = {
     create: function(options){
@@ -82,13 +83,14 @@ module.exports = {
 
                 if (loggedIn){
                     if (command === "HELP"){
-                        socket.write("NODES ADD <hostname> <port> [token] - Add new node\r\n");
-                        socket.write("NODES DEL <node number> - Remove a node\r\n");
-                        socket.write("NODES INFO <node number> - View JSON info of node\r\n");
-                        socket.write("NODES LIST - List nodes\r\n");
-                        socket.write("NODES UPDATE - Update all nodes info\r\n");
-                        socket.write("NODES BEST <number of images> - Show best node for the number of images\r\n");
-                    }else if (command === "NODES" && args.length > 0){
+                        socket.write("NODE ADD <hostname> <port> [token] - Add new node\r\n");
+                        socket.write("NODE DEL <node number> - Remove a node\r\n");
+                        socket.write("NODE INFO <node number> - View JSON info of node\r\n");
+                        socket.write("NODE LIST - List nodes\r\n");
+                        socket.write("NODE UPDATE - Update all nodes info\r\n");
+                        socket.write("NODE BEST <number of images> - Show best node for the number of images\r\n");
+                        socket.write("ROUTE INFO <taskId> - Find route information\r\n");
+                    }else if (command === "NODE" && args.length > 0){
                         const subcommand = args[0].toLocaleUpperCase();
                         args = args.slice(1, args.length);
 
@@ -128,6 +130,17 @@ module.exports = {
                             }
                         }else{
                             invalid();
+                        }
+                    }else if (command === "ROUTE" && args.length > 0){
+                        const subcommand = args[0].toLocaleUpperCase();
+                        args = args.slice(1, args.length);
+                        
+                        if (subcommand === "INFO" && args.length >= 1){
+                            const [ taskId ] = args;
+                            const route = await routetable.lookup(taskId);
+                            if (route){
+                                socket.write(JSON.stringify(route) + "\r\n");
+                            }else invalid();
                         }
                     }else{
                         invalid();
