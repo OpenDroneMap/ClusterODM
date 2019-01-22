@@ -22,9 +22,8 @@ const https = require('https');
 const path = require('path');
 const url = require('url');
 const Busboy = require('busboy');
-const sizeOf = require('image-size');
+const probeImageSize = require('probe-image-size');
 const fs = require('fs');
-const package_info = require('../package_info');
 const nodes = require('./nodes');
 const odmOptions = require('./odmOptions');
 const ValueCache = require('./classes/ValueCache');
@@ -285,7 +284,7 @@ module.exports = {
                             // Skip .txt files
                             if (/.txt$/i.test(filePath)) continue;
 
-                            const dims = sizeOf(filePath);
+                            const dims = await probeImageSize(fs.createReadStream(filePath));
                             if (dims.width > 16 && dims.height > 16){
                                 imageDimensions.width += dims.width;
                                 imageDimensions.height += dims.height;
