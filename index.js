@@ -22,7 +22,6 @@ const package_info = require('./package_info');
 const nodes = require('./libs/nodes');
 const proxy = require('./libs/proxy');
 const routetable = require('./libs/routetable');
-const tasktable = require('./libs/tasktable');
 
 (async function(){
     if (config.debug) logger.warn("Running in debug mode");

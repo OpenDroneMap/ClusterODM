@@ -34,10 +34,11 @@ const tasktable = require('./tasktable');
 const logger = require('./logger');
 const Curl = require('node-libcurl').Curl;
 const statusCodes = require('./statusCodes');
+const taskNew = require('./taskNew');
 
 module.exports = {
 	initialize: async function(cloudProvider){
-        utils.cleanupTemporaryDirectory(true);
+        utils.cleanupTemporaryDirectory();
         await routetable.initialize();
         await tasktable.initialize();
 
@@ -65,10 +66,7 @@ module.exports = {
         };
 
         // JSON helper for responses
-        const json = (res, json) => {
-            res.writeHead(200, {"Content-Type": "application/json"});
-            res.end(JSON.stringify(json));
-        };
+        const json = utils.json;
 
         const forwardToReferenceNode = (req, res) => {
             const referenceNode = nodes.referenceNode();
@@ -121,7 +119,7 @@ module.exports = {
                 const node = nodes.referenceNode();
                 
                 json(res, {
-                    version: "1.3.1", // this is the version we speak
+                    version: "1.4.0", // this is the version we speak
                     taskQueueCount: 0,
                     totalMemory: 99999999999, 
                     availableMemory: 99999999999,
@@ -214,54 +212,57 @@ module.exports = {
                     (pathHandlers[pathname])(req, res, { token: query.token, limits });
                     return;
                 }
-                
-                if (req.method === 'POST' && pathname === '/task/new') {
-                    let imagesCount = 0;
-                    let options = null;
-                    let taskName = "";
-                    let skipPostProcessing = false;
-                    let uploadError = null;
-                    let uuid = utils.uuidv4(); // TODO: add support for set-uuid header parameter
-                    let tmpPath = path.join('tmp', uuid);
-                    let fileNames = [];
 
-                    if (!fs.existsSync(tmpPath)) fs.mkdirSync(tmpPath);
+                if (req.method === 'POST' && pathname === '/task/new/init'){
+                    const { uuid, tmpPath, die } = taskNew.createContext(req, res);
 
-                    const busboy = new Busboy({ headers: req.headers });
-                    busboy.on('file', function(fieldname, file, filename, encoding, mimetype) {
-                        const name = path.basename(filename);
-                        fileNames.push(name);
+                    taskNew.formDataParser(req, async function(params){
+                        const { options } = params;
+                        if (params.error){
+                            die(params.error);
+                            return;
+                        }
 
-                        const saveTo = path.join(tmpPath, name);
-                        file.pipe(fs.createWriteStream(saveTo));
-                        imagesCount++;
+                        const referenceNode = nodes.referenceNode();
+                        if (!referenceNode){
+                            die("Cannot create task, no nodes are online.");
+                            return;
+                        }
+
+                        // Validate options
+                        try{
+                            odmOptions.filterOptions(options, await getLimitedOptions(query.token, limits, referenceNode));
+                        }catch(e){
+                            die(e.message);
+                            return;
+                        }
+
+                        // Save
+                        fs.writeFile(path.join(tmpPath, "body.json"),
+                                    JSON.stringify(params), {encoding: 'utf8'}, err => {
+                            if (err) json(res, { error: err });
+                            else{
+                                // All good
+                                json(res, { uuid });
+                            }
+                        });
                     });
-                    busboy.on('field', function(fieldname, val, fieldnameTruncated, valTruncated) {
-                        // Save options
-                        if (fieldname === 'options'){
-                            options = val;
-                        }
+                }else if (req.method === 'POST' && pathname.indexOf('/task/new/upload') === 0){
+                    const matches = pathname.match(/^\/task\/new\/upload\/([\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+)$/);
+                    if (matches && matches[1]){
+                        const taskId = matches[1];
 
-                        else if (fieldname === 'zipurl' && val){
-                            uploadError = "File upload via URL is not available. Sorry :(";
-                        }
+                        console.log(taskId);
+                        // TODO! implement file upload
+                    }else json(res, { error: `No uuid found in ${pathname}`});                
+                }else if (req.method === 'POST' && pathname === '/task/new') {
+                    const { uuid, tmpPath, die } = taskNew.createContext(req, res);
 
-                        else if (fieldname === 'name' && val){
-                            taskName = val;
-                        }
+                    taskNew.formDataParser(req, async function(params) {
+                        const { options, taskName, skipPostProcessing, fileNames, imagesCount} = params;
 
-                        else if (fieldname === 'skipPostProcessing' && val === 'true'){
-                            skipPostProcessing = val;
-                        }
-                    });
-                    busboy.on('finish', async function() {
-                        const die = (err) => {
-                            utils.rmdir(tmpPath);
-                            json(res, {error: err});
-                        };
-
-                        if (uploadError){
-                            die(uploadError);
+                        if (params.error){
+                            die(params.error);
                             return;
                         }
 
@@ -399,9 +400,7 @@ module.exports = {
                         }else{
                             json(res, { error: "No nodes available"});
                         }
-                    });
-
-                    req.pipe(busboy);
+                    }, { saveFilesToDir: tmpPath });
                 }else if (req.method === 'POST' && ['/task/restart', '/task/cancel', '/task/remove'].indexOf(pathname) !== -1){
                     // Lookup task id from body
                     let taskId = null;
