@@ -108,7 +108,7 @@ module.exports = {
             return {
                 node: n, 
                 score: 10 * (1000 + (n.getInfo().maxParallelTasks - n.getInfo().taskQueueCount)) +
-                        1 * (maxMemory / n.getInfo().availableMemory)
+                        1 * (n.getInfo().availableMemory / maxMemory)
             }
         });
 
