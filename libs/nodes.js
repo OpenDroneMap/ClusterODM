@@ -106,9 +106,9 @@ module.exports = {
 
         let scores = candidates.map(n => {
             return {
-                node: n, 
+                node: n, // TODO
                 score: 10 * (1000 + (n.getInfo().maxParallelTasks - n.getInfo().taskQueueCount)) +
-                        1 * (n.getInfo().availableMemory / maxMemory)
+                        1 * (maxMemory / n.getInfo().availableMemory)
             }
         });
 

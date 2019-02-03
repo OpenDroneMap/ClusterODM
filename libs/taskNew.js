@@ -19,6 +19,13 @@ const Busboy = require('busboy');
 const utils = require('./utils');
 const path = require('path');
 const fs = require('fs');
+const config = require('../config');
+const probeImageSize = require('probe-image-size');
+const Curl = require('node-libcurl').Curl;
+const tasktable = require('./tasktable');
+const routetable = require('./routetable');
+const nodes = require('./nodes');
+const odmOptions = require('./odmOptions');
 
 module.exports = {
     // @return {object} Context object with methods and variables to use during task/new operations 
@@ -95,5 +102,145 @@ module.exports = {
             onFinish(params);
         });
         req.pipe(busboy);
+    },
+
+    getTaskIdFromPath: function(pathname){
+        const matches = pathname.match(/\/([\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+)$/);
+        if (matches && matches[1]){
+            return matches[1];        
+        }else return null;
+    },
+
+
+    process: async function(res, cloudProvider, uuid, params, token, limits, getLimitedOptions){
+        const tmpPath = path.join("tmp", uuid);
+        const { options, taskName, skipPostProcessing, fileNames, imagesCount} = params;
+
+        // Estimate image sizes
+        const IMAGE_TARGET_SAMPLES = 3;
+        let imageDimensions = {width: 0, height: 0},
+            imgSamplesCount = 0;
+
+        if (fileNames.length < 2){
+            throw new Error(`Not enough images (${fileNames.length} files uploaded)`);
+        }
+
+        utils.shuffleArray(fileNames);
+
+        for (let i = 0; i < fileNames.length; i++){
+            const fileName = fileNames[i];
+            const filePath = path.join(tmpPath, fileName);
+
+            // Skip .txt files
+            if (/.txt$/i.test(filePath)) continue;
+
+            const dims = await probeImageSize(fs.createReadStream(filePath));
+            if (dims.width > 16 && dims.height > 16){
+                imageDimensions.width += dims.width;
+                imageDimensions.height += dims.height;
+                if (++imgSamplesCount === IMAGE_TARGET_SAMPLES) break;
+            }
+        }
+
+        if (imgSamplesCount === 0){
+            throw new Error(`Not enough images. You need at least 2 images.`);
+        }
+
+        imageDimensions.width /= imgSamplesCount;
+        imageDimensions.height /= imgSamplesCount;
+
+        // Check with provider if we're allowed to process these many images
+        // at this resolution
+        const { approved, error } = await cloudProvider.approveNewTask(token, imagesCount, imageDimensions);
+        if (!approved) throw new Error(error);
+
+        const node = await nodes.findBestAvailableNode(imagesCount, true);
+        if (node){
+            // Validate options
+            // Will throw an exception on failure
+            let taskOptions = odmOptions.filterOptions(options, await getLimitedOptions(token, limits, node));
+
+            const taskInfo = {
+                uuid,
+                name: taskName || "Unnamed Task",
+                dateCreated: (new Date()).getTime(),
+                processingTime: -1,
+                status: {code: 20},
+                options: taskOptions,
+                imagesCount: imagesCount
+            };
+
+            // Start forwarding the task to the node
+            // (using CURL, because NodeJS libraries are buggy)
+            const curl = new Curl(),
+                close = curl.close.bind(curl);
+
+            const multiPartBody = fileNames.map(f => { return { name: 'images', file: path.join(tmpPath, f) } });
+            multiPartBody.push({
+                name: 'name',
+                contents: taskName
+            });
+            multiPartBody.push({
+                name: 'options',
+                contents: JSON.stringify(taskOptions)
+            });
+            if (skipPostProcessing){
+                multiPartBody.push({
+                    name: 'skipPostProcessing',
+                    contents: "true"
+                });
+            }
+
+            const curlErrorHandler = async err => {
+                const taskInfo = (await tasktable.lookup(uuid)).taskInfo;
+                if (taskInfo){
+                    taskInfo.status.code = statusCodes.FAILED;
+                    await tasktable.add(uuid, { taskInfo, output: [err.message] });
+                    logger.warn(`Cannot forward task ${uuid} to processing node ${node}: ${err.message}`);
+                }
+                utils.rmdir(tmpPath);
+                close();
+            };
+
+            curl.setOpt(Curl.option.URL, `${node.proxyTargetUrl()}/task/new?token=${node.getToken()}`);
+            if (config.upload_max_speed) curl.setOpt(Curl.option.MAX_SEND_SPEED_LARGE, config.upload_max_speed);
+            // abort if slower than 30 bytes/sec during 1600 seconds */
+            curl.setOpt(Curl.option.LOW_SPEED_TIME, 1600);
+            curl.setOpt(Curl.option.LOW_SPEED_LIMIT, 30);
+            curl.setOpt(Curl.option.HTTPPOST, multiPartBody);
+            curl.setOpt(Curl.option.HTTPHEADER, [
+                'Content-Type: multipart/form-data',
+                `set-uuid: ${uuid}`
+            ]);
+
+            curl.on('end', async function (statusCode, body, headers){
+                if (statusCode === 200){
+                    try{
+                        body = JSON.parse(body);
+                        if (body.error) throw new Error(body.error);
+                        if (body.uuid !== uuid) throw new Error(`set-uuid did not match, ${body.uuid} !== ${uuid}`);
+                    
+                        await routetable.add(uuid, node, token);
+                        await tasktable.delete(uuid);
+
+                        utils.rmdir(tmpPath);
+                    }catch(e){
+                        curlErrorHandler(e);
+                    }
+                }else{
+                    curlErrorHandler(new Error(`statusCode is ${statusCode}, expected 200`));
+                }
+            });
+            curl.on('error', curlErrorHandler);
+
+            await tasktable.add(uuid, { taskInfo, abort: close, output: [""] });
+
+            // Send back response to user
+            utils.json(res, { uuid });
+
+            curl.perform();
+        }else{
+            throw new Error("No nodes available");
+        }
     }
 };
