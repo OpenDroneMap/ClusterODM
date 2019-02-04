@@ -108,5 +108,15 @@ module.exports = {
                 });
             }
         });
+    },
+
+    // JSON helper for responses
+    json: (res, json) => {
+        res.writeHead(200, {"Content-Type": "application/json"});
+        res.end(JSON.stringify(json));
+    },
+
+    sanitize: function(filePath){
+        return filePath.replace(/(\/|\\)/g, "_");
     }
 };

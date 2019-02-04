@@ -99,20 +99,33 @@ module.exports = {
                                                    (!n.getInfo().maxImages || n.getInfo().maxImages >= numImages));
         if (!candidates.length) return null;
 
-        const maxMemory = candidates.reduce((acc, n) => {
-            if (n.getInfo().totalMemory > acc) return n.getInfo().totalMemory;
-            else return acc;
-        }, 0);
-
-        let scores = candidates.map(n => {
+        let sorted = candidates.map(n => {
             return {
-                node: n, 
-                score: 10 * (1000 + (n.getInfo().maxParallelTasks - n.getInfo().taskQueueCount)) +
-                        1 * (n.getInfo().availableMemory / maxMemory)
-            }
+                node: n,
+                maxImages: n.getInfo().maxImages ? n.getInfo().maxImages : 999999999,
+                slots: Math.max(0, n.getInfo().maxParallelTasks - n.getInfo().taskQueueCount),
+                queueCount: n.getInfo().taskQueueCount
+            };
         });
 
-        return (scores.sort((a, b) => b.score - a.score))[0].node;
+        // Sort by node with smallest maxImages value
+        // tie break sort by available slots
+        // and further by queue count
+        sorted.sort((a, b) => {
+            if (a.maxImages < b.maxImages) return -1;
+            else if (a.maxImages > b.maxImages) return 1;
+            else if (a.slots > b.slots) return -1;
+            else if (a.slots < b.slots) return 1;
+            else if (a.queueCount < b.queueCount) return -1;
+            else return 1;
+        });
+
+        for (let i = 0; i < sorted.length; i++){
+            if (sorted[i].slots > 0) return sorted[i].node;
+        }
+
+        // All nodes are full, pick the first
+        return sorted[0].node;
     },
 
     saveToDisk: async function(){
