@@ -142,7 +142,7 @@ module.exports = {
                 // to follow proper image standards. In this case, we
                 // simply make a higher range estimate
                 dims = {width: 5000, height: 3750};
-                console.warn(`Cannot read image dimensions for ${filePath}`);
+                console.warn(`${uuid}: cannot read image dimensions for ${filePath}`);
             }
 
             if (dims.width > 16 && dims.height > 16){
