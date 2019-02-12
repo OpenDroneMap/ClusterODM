@@ -134,7 +134,17 @@ module.exports = {
             // Skip .txt files
             if (/.txt$/i.test(filePath)) continue;
 
-            const dims = await probeImageSize(fs.createReadStream(filePath));
+            let dims = {};
+            try{
+                dims = await probeImageSize(fs.createReadStream(filePath));
+            }catch(e){
+                // Some drones (ex. YUNEEC) produce images that don't seem
+                // to follow proper image standards. In this case, we
+                // simply make a higher range estimate
+                dims = {width: 5000, height: 3750};
+                console.warn(`Cannot read image dimensions for ${filePath}`);
+            }
+
             if (dims.width > 16 && dims.height > 16){
                 imageDimensions.width += dims.width;
                 imageDimensions.height += dims.height;
