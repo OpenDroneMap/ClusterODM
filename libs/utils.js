@@ -23,6 +23,7 @@ const async = require('async');
 const logger = require('./logger');
 const Readable = require('stream').Readable;
 const rimraf = require('rimraf');
+const child_process = require('child_process');
 
 module.exports = {
 	get: function(scope, prop, defaultValue){
@@ -56,6 +57,8 @@ module.exports = {
     },
 
     cleanupTemporaryDirectory: async function(wipeAll = false){
+        const self = this;
+
         return new Promise((resolve, reject) => {
             fs.readdir('tmp', (err, entries) => {
                 if (err) reject(err);
@@ -72,7 +75,7 @@ module.exports = {
                                 const mtime = new Date(stats.mtime);
                                 if (wipeAll || (new Date().getTime() - mtime.getTime() > 1000 * 60 * 60 * 48)){
                                     logger.info("Cleaning up " + entry);
-                                    rimraf(`tmp/${entry}`, cb);
+                                    self.rmfr(`tmp/${entry}`, cb);
                                 }else{
                                     cb();
                                 }
@@ -103,11 +106,21 @@ module.exports = {
     rmdir: function(dir){
         fs.exists(dir, exists => {
             if (exists){
-                rimraf(dir, err => {
+                this.rmfr(dir, err => {
                     if (err) logger.warn(`Cannot delete ${dir}: ${err}`);
                 });
             }
         });
+    },
+
+    // rm -fr implementation. dir is not checked, so this could wipe out your system.
+    rmfr: function(dir, cb){
+        if (['darwin', 'linux', 'freebsd'].indexOf(os.platform()) !== -1){
+            // Rimraf leaks on Linux, use faster/better rm -fr
+            return child_process.exec(`rm -rf ${dir}`, cb);
+        }else{
+            return rimraf(dir, cb);
+        }
     },
 
     // JSON helper for responses
