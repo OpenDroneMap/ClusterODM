@@ -24,6 +24,7 @@ const logger = require('./logger');
 const Readable = require('stream').Readable;
 const rimraf = require('rimraf');
 const child_process = require('child_process');
+const os = require('os');
 
 module.exports = {
 	get: function(scope, prop, defaultValue){
