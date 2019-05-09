@@ -18,7 +18,7 @@
 'use strict';
 
 let argv = require('minimist')(process.argv.slice(2), {
-    string: ['port', 'admin-cli-port', 'admin-cli-pass', 
+    string: ['port', 'admin-cli-port', 'admin-pass', 'admin-web-port',
             'cloud-provider', 'downloads-from-s3', 'log-level',
             'upload-max-speed', 'ssl-key', 'ssl-cert', 'secure-port',
             'cluster-address'],
@@ -31,7 +31,8 @@ let argv = require('minimist')(process.argv.slice(2), {
         'port': 3000,
         'secure-port': 0,
         'admin-cli-port': 8080,
-        'admin-cli-pass': '',
+        'admin-web-port': 10000,
+        'admin-pass': '',
         'cloud-provider': 'local',
         'downloads-from-s3': '',
         'no-cluster': false,
@@ -51,8 +52,9 @@ Usage: node index.js [options]
 Options:
     -p, --port <number> 	Port to bind the server to (default: 3000)
     --secure-port <number>	If SSL is enabled and you want to expose both a secure and non-secure service, set this value to the secure port. Otherwise only SSL will be enabled using the --port value. (default: none)
-    --admin-cli-port <number> 	Port to bind the admin CLI to (default: 8080)
-    --admin-cli-pass <string> 	Password to log-in to the admin CLI (default: none)
+    --admin-cli-port <number> 	Port to bind the admin CLI to. Set to zero to disable. (default: 8080)
+    --admin-web-port <number> 	Port to bind the admin web interface to. Set to zero to disable. (default: 10000)
+    --admin-pass <string> 	Password to log-in to the admin functions (default: none)
     --log-level <logLevel>	Set log level verbosity (default: info)
     -c, --cloud-provider	Cloud provider to use (default: local)
     --upload-max-speed <number>	Upload to processing nodes speed limit in bytes / second (default: no limit)
@@ -79,7 +81,8 @@ config.logger.logDirectory = '' // Set this to a full path to a directory - if n
 config.port = parseInt(argv.port);
 config.secure_port = parseInt(argv['secure-port']);
 config.admin_cli_port = parseInt(argv['admin-cli-port']);
-config.admin_cli_pass = argv['admin-cli-pass'];
+config.admin_web_port = parseInt(argv['admin-web-port']);
+config.admin_pass = argv['admin-pass'];
 config.cloud_provider = argv['cloud-provider'];
 config.no_cluster = argv['no-cluster'];
 config.cluster_address = argv['cluster-address'];

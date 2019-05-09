@@ -17,6 +17,7 @@
  */
 const config = require('./config');
 const admincli = require('./admincli');
+const adminweb = require('./adminweb');
 const logger = require('./libs/logger');
 const package_info = require('./package_info');
 const nodes = require('./libs/nodes');
@@ -26,7 +27,8 @@ const routetable = require('./libs/routetable');
 (async function(){
     if (config.debug) logger.warn("Running in debug mode");
     logger.info(package_info.name + " " + package_info.version);
-    admincli.create({port: config.admin_cli_port, password: config.admin_cli_pass});
+    if (config.admin_cli_port !== 0) admincli.create({port: config.admin_cli_port, password: config.admin_pass});
+    if (config.admin_web_port !== 0) adminweb.create({port: config.admin_web_port, password: config.admin_pass});
     const cloudProvider = (require('./libs/cloudProvider')).initialize(config.cloud_provider);
     await nodes.initialize();
 
