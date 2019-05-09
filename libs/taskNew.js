@@ -118,6 +118,9 @@ module.exports = {
     },
 
     augmentTaskOptions: function(req, taskOptions, token){
+        if (typeof taskOptions === "string") taskOptions = JSON.parse(taskOptions);
+        if (!Array.isArray(taskOptions)) taskOptions = [];
+
         if (!config.no_cluster){
             // We automatically set the "sm-cluster" parameter
             // to match the address that was used to reach nodeodm-proxy.
