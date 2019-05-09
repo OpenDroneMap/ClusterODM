@@ -1,5 +1,5 @@
 /**
- *  nodeodm-proxy - A reverse proxy, load balancer and task tracker for NodeODM
+ *  ClusterODM - A reverse proxy, load balancer and task tracker for NodeODM
  *  Copyright (C) 2018-present MasseranoLabs LLC
  *
  *  This program is free software: you can redistribute it and/or modify
@@ -60,7 +60,7 @@ Options:
     --upload-max-speed <number>	Upload to processing nodes speed limit in bytes / second (default: no limit)
     --downloads-from-s3 <URL>	S3 URL prefix where to redirect /task/<uuid>/download requests. (default: do not use S3, forward download requests to nodes) 
     --no-cluster	By default the program will set itself as being a cluster node for all split/merge tasks. Setting this option disables it. (default: false)
-    --cluster-address <http(s)://host:port>	Should be set to a public URL that worker nodes can use to reach nodeodm-proxy for the purpose of allowing split/merge workflows. (default: match the "host" header from client's HTTP request)
+    --cluster-address <http(s)://host:port>	Should be set to a public URL that worker nodes can use to reach ClusterODM for the purpose of allowing split/merge workflows. (default: match the "host" header from client's HTTP request)
     --debug 	Disable caches and other settings to facilitate debug (default: false)
     --ssl-key <file>	Path to .pem SSL key file
     --ssl-cert <file>	Path to SSL .pem certificate

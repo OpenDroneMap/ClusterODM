@@ -1,9 +1,9 @@
 [Unit]
-Description=Start nodeodm-proxy Service
+Description=Start ClusterODM Service
 
 [Service]
 Type=simple
-PIDFile=/run/nodeodm-proxy.pid
+PIDFile=/run/clusterodm.pid
 User=odm
 Group=odm
 WorkingDirectory=/www

@@ -14,8 +14,8 @@ if [ -z $DOMAIN ]; then
 	exit 1
 fi
 
-echo Stopping nodeodm-proxy services...
-systemctl stop "nodeodm-proxy*"
+echo Stopping ClusterODM services...
+systemctl stop "clusterodm*"
 
 # Generate/update certificate
 certbot certonly --work-dir ./letsencrypt --config-dir ./letsencrypt --logs-dir ./letsencrypt --standalone -d $DOMAIN --register-unsafely-without-email --agree-tos --keep
@@ -27,5 +27,5 @@ else
 	echo -e "\033[91mWARN: We couldn't automatically generate the SSL certificate. Review the console log. WebODM will likely be inaccessible.\033[39m"
 fi
 
-echo Starting nodeodm-proxy services...
-systemctl start "nodeodm-proxy*"
+echo Starting ClusterODM services...
+systemctl start "clusterodm*"

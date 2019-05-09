@@ -1,5 +1,5 @@
 /**
- *  nodeodm-proxy - A reverse proxy, load balancer and task tracker for NodeODM
+ *  ClusterODM - A reverse proxy, load balancer and task tracker for NodeODM
  *  Copyright (C) 2018-present MasseranoLabs LLC
  *
  *  This program is free software: you can redistribute it and/or modify
@@ -123,7 +123,7 @@ module.exports = {
 
         if (!config.no_cluster){
             // We automatically set the "sm-cluster" parameter
-            // to match the address that was used to reach nodeodm-proxy.
+            // to match the address that was used to reach ClusterODM.
             // if "--split" is set.
             const addr = config.cluster_address ? 
                         config.cluster_address : 

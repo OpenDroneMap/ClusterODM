@@ -1,4 +1,4 @@
-# nodeodm-proxy
+# ClusterODM
 A reverse proxy, load balancer and task tracker for NodeODM
 
 ## Installation
