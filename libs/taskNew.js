@@ -26,6 +26,7 @@ const tasktable = require('./tasktable');
 const routetable = require('./routetable');
 const nodes = require('./nodes');
 const odmOptions = require('./odmOptions');
+const statusCodes = require('./statusCodes');
 
 module.exports = {
     // @return {object} Context object with methods and variables to use during task/new operations 
@@ -55,6 +56,7 @@ module.exports = {
             options: null,
             taskName: "",
             skipPostProcessing: false,
+            outputs: null,
             error: null,
 
             fileNames: [],
@@ -78,6 +80,10 @@ module.exports = {
     
                 else if (fieldname === 'skipPostProcessing' && val === 'true'){
                     params.skipPostProcessing = val;
+                }
+
+                else if (fieldname === 'outputs' && val){
+                    params.outputs = val;
                 }
             });
         }
@@ -111,10 +117,44 @@ module.exports = {
         }else return null;
     },
 
+    augmentTaskOptions: function(req, taskOptions, token){
+        if (!config.no_cluster){
+            // We automatically set the "sm-cluster" parameter
+            // to match the address that was used to reach nodeodm-proxy.
+            // if "--split" is set.
+            const addr = config.cluster_address ? 
+                        config.cluster_address : 
+                        `${config.use_ssl ? "https" : "http"}://${req.headers.host}`;
+            const clusterUrl = `${addr}/?token=${token}`;
 
-    process: async function(res, cloudProvider, uuid, params, token, limits, getLimitedOptions){
+            let result = [];
+            let foundSplit = false, foundSMCluster = false;
+            taskOptions.forEach(to => {
+                if (to.name === 'split'){
+                    foundSplit = true;
+                    result.push({name: to.name, value: to.value});
+                }else if (to.name === 'sm-cluster'){
+                    foundSMCluster = true;
+                    result.push({name: to.name, value: clusterUrl});
+                }else{
+                    result.push({name: to.name, value: to.value});
+                }
+            });
+
+            if (foundSplit && !foundSMCluster){
+                result.push({name: 'sm-cluster', value: clusterUrl });
+            }
+
+            return result;
+        }else{
+            // Make sure the "sm-cluster" parameter is removed
+            return taskOptions.filter(to => to.name !== 'sm-cluster');
+        }
+    },
+
+    process: async function(req, res, cloudProvider, uuid, params, token, limits, getLimitedOptions){
         const tmpPath = path.join("tmp", uuid);
-        const { options, taskName, skipPostProcessing, fileNames, imagesCount} = params;
+        const { options, taskName, skipPostProcessing, outputs, fileNames, imagesCount} = params;
 
         // Estimate image sizes
         const IMAGE_TARGET_SAMPLES = 3;
@@ -131,8 +171,8 @@ module.exports = {
             const fileName = fileNames[i];
             const filePath = path.join(tmpPath, fileName);
 
-            // Skip .txt files
-            if (/.txt$/i.test(filePath)) continue;
+            // Skip .txt,.zip files
+            if (/.(txt|zip)$/i.test(filePath)) continue;
 
             let dims = {};
             try{
@@ -168,14 +208,15 @@ module.exports = {
         if (node){
             // Validate options
             // Will throw an exception on failure
-            let taskOptions = odmOptions.filterOptions(options, await getLimitedOptions(token, limits, node));
+            let taskOptions = odmOptions.filterOptions(this.augmentTaskOptions(req, options, token), 
+                                                        await getLimitedOptions(token, limits, node));
 
             const taskInfo = {
                 uuid,
                 name: taskName || "Unnamed Task",
                 dateCreated: (new Date()).getTime(),
                 processingTime: -1,
-                status: {code: 20},
+                status: {code: statusCodes.RUNNING},
                 options: taskOptions,
                 imagesCount: imagesCount
             };
@@ -198,6 +239,12 @@ module.exports = {
                 multiPartBody.push({
                     name: 'skipPostProcessing',
                     contents: "true"
+                });
+            }
+            if (outputs){
+                multiPartBody.push({
+                    name: 'outputs',
+                    contents: outputs
                 });
             }
 

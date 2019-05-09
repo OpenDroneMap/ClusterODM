@@ -118,7 +118,7 @@ module.exports = {
                 const node = nodes.referenceNode();
                 
                 json(res, {
-                    version: "1.4.0", // this is the version we speak
+                    version: "1.5.0", // this is the version we speak
                     taskQueueCount: 0,
                     totalMemory: 99999999999, 
                     availableMemory: 99999999999,
@@ -306,7 +306,7 @@ module.exports = {
                                 body.imagesCount = files.length;
 
                                 try{
-                                    await taskNew.process(res, cloudProvider, taskId, body, query.token, limits, getLimitedOptions);
+                                    await taskNew.process(req, res, cloudProvider, taskId, body, query.token, limits, getLimitedOptions);
                                 }catch(e){
                                     die(e.message);
                                     return;
@@ -324,7 +324,7 @@ module.exports = {
                         }
 
                         try{
-                            await taskNew.process(res, cloudProvider, uuid, params, query.token, limits, getLimitedOptions);
+                            await taskNew.process(req, res, cloudProvider, uuid, params, query.token, limits, getLimitedOptions);
                         }catch(e){
                             die(e.message);
                             return;
