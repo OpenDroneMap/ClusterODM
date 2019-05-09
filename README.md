@@ -2,7 +2,7 @@
 
 A reverse proxy, load balancer and task tracker for NodeODM. In a nutshell, it's a program to link together multiple [NodeODM](https://github.com/OpenDroneMap/NodeODM) nodes under a single network address. The program allows to distribute tasks across multiple nodes while taking in consideration factors such as maximum number of images, queue size and memory availability.
 
-![image](https://user-images.githubusercontent.com/1951843/57490001-d61dba00-7285-11e9-9cf0-ad254ef3a6cf.png)
+![image](https://user-images.githubusercontent.com/1951843/57490594-b9828180-7287-11e9-9328-740cc0be8f7e.png)
 
 The program has been battle tested on the [WebODM Lightning Network](https://webodm.net) for quite some time and has proven reliable in processing thousands of datasets. However, if you find bugs, please [report them](https://github.com/OpenDroneMap/ClusterODM/issues).
 
