@@ -92,8 +92,22 @@ module.exports = {
         return nodes.find(n => n.isOnline());
     },
 
+    maxTurnNumber: function(){
+        return Math.max(...nodes.map(n => n.turn));
+    },
+
+    clearTurnNumbers: function(){
+        nodes.forEach(n => n.turn = 0);
+    },
+
     findBestAvailableNode: async function(numImages, update = false){
         if (update) await this.updateInfo();
+
+        let maxTurnNumber = this.maxTurnNumber();
+        if (maxTurnNumber > 2000000000){
+            this.clearTurnNumbers();
+            maxTurnNumber = 0;
+        }
 
         const candidates = nodes.filter(n => n.isOnline() && 
                                                    (!n.getInfo().maxImages || n.getInfo().maxImages >= numImages));
@@ -109,23 +123,31 @@ module.exports = {
         });
 
         // Sort by node with smallest maxImages value
-        // tie break sort by available slots
-        // and further by queue count
+        // tie break by most available slots
+        // and further by least queue count
+        // and further by turn number
         sorted.sort((a, b) => {
             if (a.maxImages < b.maxImages) return -1;
             else if (a.maxImages > b.maxImages) return 1;
             else if (a.slots > b.slots) return -1;
             else if (a.slots < b.slots) return 1;
             else if (a.queueCount < b.queueCount) return -1;
+            else if (a.node.turn < b.node.turn) return -1;
             else return 1;
         });
-
+        
+        let bestNode = null;
         for (let i = 0; i < sorted.length; i++){
-            if (sorted[i].slots > 0) return sorted[i].node;
+            if (sorted[i].slots > 0) {
+                bestNode = sorted[i].node;
+                break;
+            }
         }
 
         // All nodes are full, pick the first
-        return sorted[0].node;
+        if (!bestNode) bestNode = sorted[0].node;
+        bestNode.turn = maxTurnNumber + 1;
+        return bestNode;
     },
 
     saveToDisk: async function(){

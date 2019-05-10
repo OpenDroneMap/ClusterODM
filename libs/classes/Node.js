@@ -22,6 +22,7 @@ const axios = require('axios');
 module.exports = class Node{
     constructor(nodeData){
         this.nodeData = nodeData;
+        this.turn = 0;
 
         this.timeout = 10000;
     }
