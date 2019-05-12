@@ -12,4 +12,5 @@ WORKDIR "/var/www"
 
 RUN npm install
 
+VOLUME ["/var/www/data"]
 ENTRYPOINT ["/usr/local/bin/node", "/var/www/index.js"]
