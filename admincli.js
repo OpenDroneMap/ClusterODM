@@ -50,7 +50,7 @@ module.exports = {
                 else fail();
             };
             const printNode = (socket, i, node) => {
-                socket.write(`${(i + 1)}) ${node.toString()} ${node.isOnline() ? '[online]' : '[offline]'} [${node.getTaskQueueCount()}/${node.getMaxParallelTasks()}] <version ${node.getVersion()}>\r\n`);
+                socket.write(`${(i + 1)}) ${node.toString()} ${node.isOnline() ? '[online]' : '[offline]'} [${node.getTaskQueueCount()}/${node.getMaxParallelTasks()}] <version ${node.getVersion()}>${node.isLocked() ? " [L]" : ""}\r\n`);
             };
 
 
@@ -87,6 +87,8 @@ module.exports = {
                         socket.write("NODE DEL <node number> - Remove a node\r\n");
                         socket.write("NODE INFO <node number> - View JSON info of node\r\n");
                         socket.write("NODE LIST - List nodes\r\n");
+                        socket.write("NODE LOCK <node number> - Stop forwarding tasks to this node\r\n");
+                        socket.write("NODE UNLOCK <node number> - Resume forwarding tasks to this node\r\n");
                         socket.write("NODE UPDATE - Update all nodes info\r\n");
                         socket.write("NODE BEST <number of images> - Show best node for the number of images\r\n");
                         socket.write("ROUTE INFO <taskId> - Find route information\r\n");
@@ -102,6 +104,12 @@ module.exports = {
                         }else if (subcommand === "DEL" && args.length >= 1){
                             const [ number ] = args;
                             reply(nodes.remove(nodes.nth(number)));
+                        }else if (subcommand === "LOCK" && args.length >= 1){
+                            const [ number ] = args;
+                            reply(nodes.lock(nodes.nth(number)));
+                        }else if (subcommand === "UNLOCK" && args.length >= 1){
+                            const [ number ] = args;
+                            reply(nodes.unlock(nodes.nth(number)));
                         }else if (subcommand === "LIST"){
                             nodes.all().forEach((n, i) => {
                                 printNode(socket, i, n);

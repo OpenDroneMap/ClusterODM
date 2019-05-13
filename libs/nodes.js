@@ -59,6 +59,26 @@ module.exports = {
         }
     },
 
+    lock: function(node){
+        if (node){
+            node.setLocked(true);
+            this.saveToDisk();
+            return true;
+        }else{
+            return false;
+        }
+    },
+
+    unlock: function(node){
+        if (node){
+            node.setLocked(false);
+            this.saveToDisk();
+            return true;
+        }else{
+            return false;
+        }
+    },
+
     all: function(){
         return nodes;
     },
@@ -89,7 +109,7 @@ module.exports = {
     // node information for the proxy (for example,
     // when returning calls to /info or /options)
     referenceNode: function(){
-        return nodes.find(n => n.isOnline());
+        return nodes.find(n => n.isOnline() && !n.isLocked());
     },
 
     maxTurnNumber: function(){
@@ -110,7 +130,8 @@ module.exports = {
         }
 
         const candidates = nodes.filter(n => n.isOnline() && 
-                                                   (!n.getInfo().maxImages || n.getInfo().maxImages >= numImages));
+                                             !n.isLocked() &&
+                                            (!n.getInfo().maxImages || n.getInfo().maxImages >= numImages));
         if (!candidates.length) return null;
 
         let sorted = candidates.map(n => {

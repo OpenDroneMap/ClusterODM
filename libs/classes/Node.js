@@ -64,6 +64,14 @@ module.exports = class Node{
         return (this.nodeData || {}).port;
     }
 
+    isLocked(){
+        return !!(this.nodeData || {}).locked;
+    }
+
+    setLocked(flag){
+        this.nodeData.locked = flag;
+    }
+
     proxyTargetUrl(){
         const { hostname, port } = this.nodeData;
 

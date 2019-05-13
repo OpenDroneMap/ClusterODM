@@ -16,12 +16,20 @@ cd ClusterODM
 npm install
 ```
 
+There's also a docker image available at `opendronemap/clusterodm`.
+
 ## Usage
 
 First, start the program:
 
 ```bash
-node index.js
+node index.js [parameters]
+```
+
+Or with docker:
+
+```bash
+docker run --rm -ti -p 3000:3000 -p 8080:8080 opendronemap/clusterodm [parameters]
 ```
 
 Then connect to the CLI and connect new [NodeODM](https://github.com/OpenDroneMap/NodeODM) instances:
@@ -35,7 +43,7 @@ telnet localhost 8080
 
 Finally, use a web browser to connect to `http://localhost:3000`. A normal [NodeODM](https://github.com/OpenDroneMap/NodeODM) UI should appear. This means the application is working, as web requests are being properly forwarded to nodes.
 
-See `node index.js --help` for more configuration options.
+See `node index.js --help` for all parameter options.
 
 ## Roadmap
 
