@@ -118,14 +118,15 @@ module.exports = {
                 const node = nodes.referenceNode();
                 
                 json(res, {
-                    version: "1.5.0", // this is the version we speak
+                    version: "1.5.1", // this is the version we speak
                     taskQueueCount: 0,
                     totalMemory: 99999999999, 
                     availableMemory: 99999999999,
                     cpuCores: 99999999999,
                     maxImages: limits.maxImages || null,
                     maxParallelTasks: 99999999999,
-                    odmVersion: node !== undefined ? node.getInfo().odmVersion : '?' 
+                    engineVersion: node !== undefined ? node.getInfo().engineVersion : '?',
+                    engine: node !== undefined ? node.getInfo().engine : '?'
                 });
             },
 
