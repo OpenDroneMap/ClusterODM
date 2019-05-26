@@ -32,6 +32,7 @@ module.exports = {
 
             if (limitOptions[odmOption.name] !== undefined){
                 let lo = limitOptions[odmOption.name];
+                if (lo.remove) continue;                 
 
                 let option = Object.assign({}, odmOption);
 
