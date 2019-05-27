@@ -30,6 +30,7 @@ const routetable = require('./libs/routetable');
     if (config.admin_cli_port !== 0) admincli.create({port: config.admin_cli_port, password: config.admin_pass});
     if (config.admin_web_port !== 0) adminweb.create({port: config.admin_web_port, password: config.admin_pass});
     const cloudProvider = (require('./libs/cloudProvider')).initialize(config.cloud_provider);
+    const asrProvider = (require('./libs/asrProvider')).initialize(config.asr_provider);
     await nodes.initialize();
 
     const proxies = await proxy.initialize(cloudProvider);

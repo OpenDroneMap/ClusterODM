@@ -12,5 +12,7 @@
     "log-level": "info",
     "upload-max-speed": 0,
     "ssl-key": "",
-    "ssl-cert": ""
+    "ssl-cert": "",
+    "asr-provider": "none",
+    "asr-config": ""
 }

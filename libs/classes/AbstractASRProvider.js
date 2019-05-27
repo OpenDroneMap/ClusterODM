@@ -15,23 +15,18 @@
  *  You should have received a copy of the GNU Affero General Public License
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-const logger = require('./logger');
+const logger = require('../logger');
 
-let cloudProvider = null;
-
-module.exports = {
-    initialize: function(providerName){
-        providerName = providerName[0].toUpperCase() + providerName.slice(1, providerName.length);
-        try{
-            cloudProvider = new (require('./cloud-providers/' + providerName + 'CloudProvider.js'))();
-        }catch(e){
-            logger.error(`Invalid cloud provider: ${providerName}. ${e}`);
-            process.exit(1);
-        }
-        return cloudProvider;
-    },
-
-    get: function(){
-        return cloudProvider;
+module.exports = class AbstractASRProvider{
+    constructor(){
+        logger.info(`ASR: ${this.constructor.name}`);
     }
-};
+
+    // Providers should override this function to ...
+
+    // @param token {String} a token passed to the proxy to authenticate a request
+    // @return {Object} See LocalCloudProvider for an example.
+    // async validate(token){
+    //     throw new Error("Not Implemented");
+    // }
+}

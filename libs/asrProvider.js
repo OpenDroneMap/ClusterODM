@@ -15,23 +15,26 @@
  *  You should have received a copy of the GNU Affero General Public License
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+const fs = require('fs');
 const logger = require('./logger');
+const nodes = require('./nodes');
 
-let cloudProvider = null;
+// The autoscaler provides the ability to automatically spawn
+// new VMs in the cloud to handle workloads when we run out of existing nodes
+let asrProvider = null;
 
 module.exports = {
     initialize: function(providerName){
-        providerName = providerName[0].toUpperCase() + providerName.slice(1, providerName.length);
         try{
-            cloudProvider = new (require('./cloud-providers/' + providerName + 'CloudProvider.js'))();
+            asrProvider = new (require('./asr-providers/' + providerName + '/index.js'))();
         }catch(e){
-            logger.error(`Invalid cloud provider: ${providerName}. ${e}`);
+            logger.error(`Invalid ASR provider: ${providerName}. ${e}`);
             process.exit(1);
         }
-        return cloudProvider;
+        return asrProvider;
     },
 
     get: function(){
-        return cloudProvider;
+        return asrProvider;
     }
-};
+}

@@ -35,7 +35,8 @@ let argDefs = {
     string: ['port', 'admin-cli-port', 'admin-pass', 'admin-web-port',
             'cloud-provider', 'downloads-from-s3', 'log-level',
             'upload-max-speed', 'ssl-key', 'ssl-cert', 'secure-port',
-            'cluster-address', 'config'],
+            'cluster-address', 'config',
+            'asr-provider', 'asr-config'],
     boolean: ['no-cluster', 'debug'],
     alias: {
         p: 'port',
@@ -43,7 +44,8 @@ let argDefs = {
     },
     default: defaultConfig,
 
-    int: ['port', 'admin-cli-port', 'admin-web-port', 'secure-port', 'upload-max-speed'] // for cast only, not used by minimist
+    int: ['port', 'admin-cli-port', 'admin-web-port', 
+          'secure-port', 'upload-max-speed'] // for cast only, not used by minimist
 };
 let argv = require('minimist')(process.argv.slice(2), argDefs);
 
@@ -67,6 +69,9 @@ Options:
     --debug 	Disable caches and other settings to facilitate debug (default: false)
     --ssl-key <file>	Path to .pem SSL key file
     --ssl-cert <file>	Path to SSL .pem certificate
+    --asr-provider <provider>	Enable the autoscaler using a provider. Possible values are [none, digitalocean] (default: none)
+    --asr-config <file>	Path to custom configuration for the autoscaler. This is combined with the provider's default configuration (default: none)
+
 Log Levels: 
 error | debug | info | verbose | debug | silly 
 `);
