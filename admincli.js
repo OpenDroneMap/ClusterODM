@@ -190,10 +190,11 @@ module.exports = {
                                 const tasks = [];
 
                                 await new Promise((resolve) => {
-                                    async.each(Object.keys(routes), async (taskId, cb) => {
-                                        const taskInfo = await (routes[taskId]).node.taskInfo(taskId);
-                                        if (taskInfo !== null && taskInfo.error === undefined) tasks.push(taskInfo);
-                                        cb();
+                                    async.each(Object.keys(routes), (taskId, cb) => {
+                                        (routes[taskId]).node.taskInfo(taskId).then((taskInfo) => {
+                                            if (!taskInfo.error) tasks.push(taskInfo);
+                                            cb();
+                                        });
                                     }, resolve);
                                 });
 
