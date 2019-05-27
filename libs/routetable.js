@@ -30,8 +30,6 @@ module.exports = {
     initialize: async function(){
         routes = await this.loadFromDisk();
 
-        logger.info(`Loaded ${Object.keys(routes).length} routes`);
-
         const cleanup = () => {
             const expires = 1000 * 60 * 60 * 24 * 5; // 5 days
 
@@ -44,7 +42,10 @@ module.exports = {
             this.saveToDisk();
         };
 
+        cleanup();
         setInterval(cleanup, 1000 * 60 * 60);
+
+        logger.info(`Loaded ${Object.keys(routes).length} routes`);
     },
 
     add: async function(taskId, node, token){
@@ -68,6 +69,19 @@ module.exports = {
         }
 
         return null;
+    },
+
+    get: async function(node = null){
+        if (!node) return routes;
+        else{
+            const result = {};
+            for (let taskId in routes){
+                if (routes[taskId].node === node){
+                    result[taskId] = routes[taskId];
+                }
+            }
+            return result;
+        }
     },
 
     lookupNode: async function(taskId){

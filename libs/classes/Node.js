@@ -47,13 +47,56 @@ module.exports = class Node{
         }
     }
 
-    urlFor(pathname){
+    async taskInfo(taskId){
+        return this.getRequest(`/task/${taskId}/info`);
+    }
+
+    async taskOutput(taskId, line = 0){
+        return this.getRequest(`/task/${taskId}/output`, {line});
+    }
+
+    async taskCancel(taskId){
+        return this.postRequest(`/task/cancel`, {uuid: taskId});
+    }
+
+    async taskRemove(taskId){
+        return this.postRequest(`/task/remove`, {uuid: taskId});
+    }
+
+    async postRequest(url, formData = {}, query = {}){
+        try{
+            let response = await axios.post(this.urlFor(url, query), formData, { 
+                                timeout: this.timeout,
+                            });
+            if (response.status === 200){
+                return response.data;
+            }else{
+                throw new Error(`Got response code: ${response.status}`);
+            }
+        }catch(e){
+            return {error: e.message};
+        }
+    }
+
+    async getRequest(url, query = {}){
+        try{
+            let response = await axios.get(this.urlFor(url, query), { timeout: this.timeout });
+            if (response.status === 200){
+                return response.data;
+            }else{
+                throw new Error(`Got response code: ${response.status}`);
+            }
+        }catch(e){
+            return {error: e.message};
+        }
+    }
+
+    urlFor(pathname, query = {}){
         const { hostname, port, token } = this.nodeData;
-        const query = {};
+        const proto = port === 443 ? 'https' : 'http';
         if (token) query.token = token;
 
-        // TODO: add SSL support
-        return url.format({protocol: 'http', hostname, port, pathname, query});
+        return url.format({protocol: proto, hostname, port, pathname, query});
     }
 
     hostname(){
