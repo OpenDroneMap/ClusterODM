@@ -17,40 +17,43 @@
  */
 'use strict';
 
-let argv = require('minimist')(process.argv.slice(2), {
+const fs = require('fs');
+
+// Read configuration from file
+let defaultConfigFilePath = "config-default.json";
+let defaultConfig = {};
+try{
+    let data = fs.readFileSync(defaultConfigFilePath);
+    defaultConfig = JSON.parse(data.toString());
+    defaultConfig.config = defaultConfigFilePath;
+}catch(e){
+    console.warn(`config-default.json not found or invalid: ${e.message}`);
+    process.exit(1);
+}
+
+let argDefs = {
     string: ['port', 'admin-cli-port', 'admin-pass', 'admin-web-port',
             'cloud-provider', 'downloads-from-s3', 'log-level',
             'upload-max-speed', 'ssl-key', 'ssl-cert', 'secure-port',
-            'cluster-address'],
+            'cluster-address', 'config'],
     boolean: ['no-cluster', 'debug'],
     alias: {
         p: 'port',
         c: 'cloud-provider'
     },
-    default: {
-        'port': 3000,
-        'secure-port': 0,
-        'admin-cli-port': 8080,
-        'admin-web-port': 10000,
-        'admin-pass': '',
-        'cloud-provider': 'local',
-        'downloads-from-s3': '',
-        'no-cluster': false,
-        'cluster-address': '',
-        'debug': false,
-        'log-level': 'info',
-        'upload-max-speed': 0,
-        'ssl-key': '',
-        'ssl-cert': ''
-    }
-});
+    default: defaultConfig,
+
+    int: ['port', 'admin-cli-port', 'admin-web-port', 'secure-port', 'upload-max-speed'] // for cast only, not used by minimist
+};
+let argv = require('minimist')(process.argv.slice(2), argDefs);
 
 if (argv.help){
 	console.log(`
 Usage: node index.js [options]
 
 Options:
-    -p, --port <number> 	Port to bind the server to (default: 3000)
+    --config <path>	Path to JSON configuration file. You can use a configuration file instead of passing command line parameters. (default: config-default.json)
+    -p, --port <number>	Port to bind the server to (default: 3000)
     --secure-port <number>	If SSL is enabled and you want to expose both a secure and non-secure service, set this value to the secure port. Otherwise only SSL will be enabled using the --port value. (default: none)
     --admin-cli-port <number> 	Port to bind the admin CLI to. Set to zero to disable. (default: 8080)
     --admin-web-port <number> 	Port to bind the admin web interface to. Set to zero to disable. (default: 10000)
@@ -69,28 +72,40 @@ error | debug | info | verbose | debug | silly
 `);
 	process.exit(0);
 }
+
+let userConfig = {};
+if (argv.config !== defaultConfigFilePath){
+    try{
+        userConfig = JSON.parse(fs.readFileSync(argv.config).toString());
+    }catch(e){
+        console.warn(`${argv.config} not found or invalid: ${e.message}`);
+        process.exit(1);
+    }
+}
+
+function readConfig(key, cast = String){
+    if (userConfig[key] !== undefined) return cast(userConfig[key]);
+    else if (argv[key] !== undefined) return cast(argv[key]);
+    else return '';
+}
+
 let config = {};
 
 // Logging configuration
 config.logger = {};
-config.logger.level = argv['log-level'] || 'info'; // What level to log at; info, verbose or debug are most useful. Levels are (npm defaults): silly, debug, verbose, info, warn, error.
+config.logger.level = readConfig('log-level'); // What level to log at; info, verbose or debug are most useful. Levels are (npm defaults): silly, debug, verbose, info, warn, error.
 config.logger.maxFileSize = 1024 * 1024 * 100; // Max file size in bytes of each log file; default 100MB
 config.logger.maxFiles = 10; // Max number of log files kept
 config.logger.logDirectory = '' // Set this to a full path to a directory - if not set logs will be written to the application directory.
 
-config.port = parseInt(argv.port);
-config.secure_port = parseInt(argv['secure-port']);
-config.admin_cli_port = parseInt(argv['admin-cli-port']);
-config.admin_web_port = parseInt(argv['admin-web-port']);
-config.admin_pass = argv['admin-pass'];
-config.cloud_provider = argv['cloud-provider'];
-config.no_cluster = argv['no-cluster'];
-config.cluster_address = argv['cluster-address'];
-config.debug = argv['debug'];
-config.downloads_from_s3 = argv['downloads-from-s3'];
-config.upload_max_speed = argv['upload-max-speed'];
-config.ssl_key = argv['ssl-key'];
-config.ssl_cert = argv['ssl-cert'];
-config.use_ssl = config.ssl_key && config.ssl_cert;
+for (let k in argv){
+    if (k === '_' || k.length === 1) continue;
+    let ck = k.replace(/-/g, "_");
+    let cast = String;
+    if (argDefs.int.indexOf(k) !== -1) cast = parseInt;
+    if (argDefs.boolean.indexOf(k) !== -1) cast = Boolean;
+    config[ck] = readConfig(k, cast);
+}
 
+config.use_ssl = config.ssl_key && config.ssl_cert;
 module.exports = config;
