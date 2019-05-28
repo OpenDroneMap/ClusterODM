@@ -29,9 +29,9 @@ module.exports = {
                     if (code === 0){
                         logger.info("Found docker-machine executable");
                         resolve();
-                    }else reject("Docker-machine does not seem to work. Please make sure docker-machine is working.");
-                })
-                .on('error', () => reject("Docker-machine not found in PATH. Please install docker-machine if you want to use the autoscaler."));
+                    }else reject(new Error("Docker-machine does not seem to work. Please make sure docker-machine is working."));                })
+                .on('error', () => reject(new Error("Docker-machine not found in PATH. Please install docker-machine if you want to use the autoscaler.")));
+            childProcess        
         });
     },
 
@@ -40,8 +40,40 @@ module.exports = {
             this.machineName = machineName;
         }
 
-        create(args){
-            
+        async run(args){
+            logger.debug("Running: docker-machine " + args.join(" "));
+
+            return new Promise((resolve, reject) => {
+                const childProcess = spawn("docker-machine", args);
+
+                childProcess
+                    .on('exit', (code, _) => {
+                        if (code === 0) resolve();
+                        else reject(new Error(`docker-machine exited with code ${code}`));
+                    })
+                    .on('error', () => reject(new Error("Docker-machine not found in PATH. Please install docker-machine if you want to use the autoscaler.")));
+                
+                const processOutput = chunk => logger.debug(chunk.toString());
+                childProcess.stdout.on('data', processOutput);
+                childProcess.stderr.on('data', processOutput);
+            });
+        }
+
+        async create(args){
+            return this.run(["create"].concat(args).concat([this.machineName]));
+        }
+
+        async inspect(){
+            return this.run(["inspect", this.machineName]);
+        }
+
+        async getIP(){
+            const info = await this.inspect();
+            // if (info)
+        }
+
+        async kill(){
+
         }
     }
 }

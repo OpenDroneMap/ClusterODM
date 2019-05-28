@@ -32,7 +32,7 @@ module.exports = {
             asrProvider = new (require('./asr-providers/' + providerName + '.js'))(userConfig);
             await DockerMachine.checkInstalled();
         }catch(e){
-            logger.error(`Cannot initialize ASR provider: ${providerName}. ${e}`);
+            logger.error(`Cannot initialize ASR provider: ${providerName}. ${e.message}`);
             process.exit(1);
         }
 

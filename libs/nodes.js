@@ -109,7 +109,7 @@ module.exports = {
     // node information for the proxy (for example,
     // when returning calls to /info or /options)
     referenceNode: function(){
-        return nodes.find(n => n.isOnline() && !n.isLocked());
+        return nodes.find(n => n.isOnline());
     },
 
     maxTurnNumber: function(){

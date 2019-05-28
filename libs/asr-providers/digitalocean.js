@@ -21,23 +21,34 @@ const AbstractASRProvider = require('../classes/AbstractASRProvider');
 module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
     constructor(userConfig){
         super({
-            "access-token": "CHANGEME!",
+            "accessToken": "CHANGEME!",
 
-            "max-runtime": 172800,
+            "maxRuntime": 172800,
             "region": "nyc3",
             "monitoring": true,
             "tags": ["clusterodm"],
             "image": "ubuntu-16-04-x64",
-        
-            "image-size-mapping": [
-                {"max-images": 5, "slug": "s-1vcpu-1gb"},
-                {"max-images": 50, "slug": "s-4vcpu-8gb"}
+
+            "imageSizeMapping": [
+                {"maxImages": 5, "slug": "s-1vcpu-1gb"},
+                {"maxImages": 50, "slug": "s-4vcpu-8gb"}
             ],
-        
-            "add_swap": 1
+
+            "addSwap": 1,
+            "dockerImage": "opendronemap/nodeodm"
         }, userConfig);
 
-        if (this.getConfig("access-token") === "CHANGEME!") throw new Error("You need to create a configuration file and set an access-token value.");
+        if (this.getConfig("accessToken") === "CHANGEME!") throw new Error("You need to create a configuration file and set an accessToken value.");
+
+        const im = this.getConfig("imageSizeMapping", []);
+        if (!Array.isArray(im)) throw new Error("Invalid config key imageSizeMapping (array expected)");
+
+        // Sort by ascending maxImages
+        im.sort((a, b) => {
+            if (a['maxImages'] < b['maxImages']) return -1;
+            else if (a['maxImages'] > b['maxImages']) return 1;
+            else return 0;
+        });
     }
 
     getDriverName(){
@@ -49,21 +60,30 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
     }
 
     getImageSlugFor(imagesCount){
-        // TODO: 
-        return null;
+        const im = this.getConfig("imageSizeMapping");
+
+        let slug = null;
+        for (var k in im){
+            const mapping = im[k];
+            if (mapping['maxImages'] >= imagesCount){
+                slug = mapping['slug'];
+                break;
+            }
+        }
+
+        return slug;
     }
 
     getCreateArgs(imagesCount){
         const args = [
-            "--digitalocean-access-token", this.getConfig("access-token"),
+            "--digitalocean-access-token", this.getConfig("accessToken"),
             "--digitalocean-region", this.getConfig("region"),
             "--digitalocean-image", this.getConfig("image"),
             "--digitalocean-size", this.getImageSlugFor(imagesCount)
         ];
 
         if (this.getConfig("monitoring")){
-            args.push("--digitalocean-monitoring");
-            args.push("true");
+            args.push("--digitalocean-monitoring=true");
         }
 
         if (this.getConfig("tags", []).length > 0){

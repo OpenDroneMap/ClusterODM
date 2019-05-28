@@ -28,6 +28,7 @@ const nodes = require('./nodes');
 const odmOptions = require('./odmOptions');
 const statusCodes = require('./statusCodes');
 const asrProvider = require('./asrProvider');
+const logger = require('./logger');
 
 module.exports = {
     // @return {object} Context object with methods and variables to use during task/new operations 
@@ -211,16 +212,8 @@ module.exports = {
         let node = await nodes.findBestAvailableNode(imagesCount, true);
 
         // Do we need to / can we create a new node via autoscaling?
-        if ((!node || node.availableSlots() === 0) && asrProvider.get()){
-            const asr = asrProvider.get();
-            try{
-                node = await asr.createNode(imagesCount);
-                // TODO: add to nodes database (mark as autoscale)
-            }catch(e){
-                logger.warn(`Cannot create node via autoscaling: ${e.message}`);
-                throw new Error("No nodes available (attempted to autoscale but failed).");
-            }
-        }
+        const autoscale = (!node || node.availableSlots() === 0) && asrProvider.get();
+        if (autoscale) node = nodes.referenceNode(); // Use the reference node for task options purposes
 
         if (node){
             // Validate options
@@ -238,7 +231,7 @@ module.exports = {
                 imagesCount: imagesCount
             };
 
-            // Start forwarding the task to the node
+            // Get read to forward the task to the node
             // (using CURL, because NodeJS libraries are buggy)
             const curl = new Curl(),
                 close = curl.close.bind(curl);
@@ -265,7 +258,7 @@ module.exports = {
                 });
             }
 
-            const curlErrorHandler = async err => {
+            const asyncErrorHandler = async err => {
                 const taskInfo = (await tasktable.lookup(uuid)).taskInfo;
                 if (taskInfo){
                     taskInfo.status.code = statusCodes.FAILED;
@@ -299,18 +292,32 @@ module.exports = {
 
                         utils.rmdir(tmpPath);
                     }catch(e){
-                        curlErrorHandler(e);
+                        asyncErrorHandler(e);
                     }
                 }else{
-                    curlErrorHandler(new Error(`statusCode is ${statusCode}, expected 200`));
+                    asyncErrorHandler(new Error(`statusCode is ${statusCode}, expected 200`));
                 }
             });
-            curl.on('error', curlErrorHandler);
+            curl.on('error', asyncErrorHandler);
 
             await tasktable.add(uuid, { taskInfo, abort: close, output: ["Launching... please wait!"] });
 
             // Send back response to user
             utils.json(res, { uuid });
+
+            if (autoscale){
+                const asr = asrProvider.get();
+                try{
+                    node = await asr.createNode(imagesCount);
+                    // TODO: add to nodes database (mark as autoscale)
+                    throw new Error("TODO!");
+                }catch(e){
+                    const err = new Error("No nodes available (attempted to autoscale but failed). Try again later.");
+                    logger.warn(`Cannot create node via autoscaling: ${e.message}`);
+                    asyncErrorHandler(err);
+                    return;
+                }
+            }
 
             curl.perform();
         }else{

@@ -60,7 +60,13 @@ module.exports = class AbstractASRProvider{
         const dm = new DockerMachine(hostname);
         const args = ["--driver", this.getDriverName()]
                         .concat(this.getCreateArgs(imagesCount));
-        dm.create(args);
+        await dm.create(args);
+
+
+
+        // TODO: create node instance
+        console.log("TODO: Early exit");
+        process.exit(1);
     }
 
     generateHostname(){
