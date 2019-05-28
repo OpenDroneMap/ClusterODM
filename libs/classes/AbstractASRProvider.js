@@ -16,17 +16,59 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 const logger = require('../logger');
+const fs = require('fs');
+const DockerMachine = require('./DockerMachine').Class;
+const short = require('short-uuid');
 
 module.exports = class AbstractASRProvider{
-    constructor(){
+    constructor(defaults, userConfigFile){
         logger.info(`ASR: ${this.constructor.name}`);
+        
+        this.config = defaults;
+
+        if (userConfigFile){
+            try{
+                const userConfig = JSON.parse(fs.readFileSync(userConfigFile).toString());
+                for (let k in userConfig){
+                    this.config[k] = userConfig[k];
+                }
+            }catch(e){
+                throw new Error(`Invalid configuration file ${userConfigFile}`);
+            }
+        }
     }
 
-    // Providers should override this function to ...
+    getDriverName(){
+        throw new Error("Not implemented");
+    }
 
-    // @param token {String} a token passed to the proxy to authenticate a request
-    // @return {Object} See LocalCloudProvider for an example.
-    // async validate(token){
-    //     throw new Error("Not Implemented");
-    // }
+    getCreateArgs(imagesCount){
+        throw new Error("Not implemented");
+    }
+
+    canHandle(imagesCount){
+        throw new Error("Not implemented");
+    }
+
+    // Spawn new nodes
+    // @param imagesCount {Number} number of images this node should be able to process
+    // @return {Node} a new Node instance
+    async createNode(imagesCount){
+        if (!this.canHandle(imagesCount)) throw new Error(`Cannot handle ${imagesCount} images.`);
+
+        const hostname = this.generateHostname();
+        const dm = new DockerMachine(hostname);
+        const args = ["--driver", this.getDriverName()]
+                        .concat(this.getCreateArgs(imagesCount));
+        dm.create(args);
+    }
+
+    generateHostname(){
+        return `clusterodm-${short.generate()}`;
+    }
+
+    getConfig(key, defaultValue = ""){
+        return this.config[key] !== undefined ? this.config[key] : defaultValue;
+    }
+    
 }

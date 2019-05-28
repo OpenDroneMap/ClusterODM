@@ -27,6 +27,7 @@ const routetable = require('./routetable');
 const nodes = require('./nodes');
 const odmOptions = require('./odmOptions');
 const statusCodes = require('./statusCodes');
+const asrProvider = require('./asrProvider');
 
 module.exports = {
     // @return {object} Context object with methods and variables to use during task/new operations 
@@ -207,7 +208,20 @@ module.exports = {
         const { approved, error } = await cloudProvider.approveNewTask(token, imagesCount, imageDimensions);
         if (!approved) throw new Error(error);
 
-        const node = await nodes.findBestAvailableNode(imagesCount, true);
+        let node = await nodes.findBestAvailableNode(imagesCount, true);
+
+        // Do we need to / can we create a new node via autoscaling?
+        if ((!node || node.availableSlots() === 0) && asrProvider.get()){
+            const asr = asrProvider.get();
+            try{
+                node = await asr.createNode(imagesCount);
+                // TODO: add to nodes database (mark as autoscale)
+            }catch(e){
+                logger.warn(`Cannot create node via autoscaling: ${e.message}`);
+                throw new Error("No nodes available (attempted to autoscale but failed).");
+            }
+        }
+
         if (node){
             // Validate options
             // Will throw an exception on failure
@@ -293,7 +307,7 @@ module.exports = {
             });
             curl.on('error', curlErrorHandler);
 
-            await tasktable.add(uuid, { taskInfo, abort: close, output: [""] });
+            await tasktable.add(uuid, { taskInfo, abort: close, output: ["Launching... please wait!"] });
 
             // Send back response to user
             utils.json(res, { uuid });

@@ -18,19 +18,24 @@
 const fs = require('fs');
 const logger = require('./logger');
 const nodes = require('./nodes');
+const DockerMachine = require('./classes/DockerMachine');
 
 // The autoscaler provides the ability to automatically spawn
 // new VMs in the cloud to handle workloads when we run out of existing nodes
 let asrProvider = null;
 
 module.exports = {
-    initialize: function(providerName){
+    initialize: async function(providerName, userConfig){
+        if (!providerName) return;
+
         try{
-            asrProvider = new (require('./asr-providers/' + providerName + '/provider.js'))();
+            asrProvider = new (require('./asr-providers/' + providerName + '.js'))(userConfig);
+            await DockerMachine.checkInstalled();
         }catch(e){
-            logger.error(`Invalid ASR provider: ${providerName}. ${e}`);
+            logger.error(`Cannot initialize ASR provider: ${providerName}. ${e}`);
             process.exit(1);
         }
+
         return asrProvider;
     },
 

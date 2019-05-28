@@ -69,7 +69,7 @@ Options:
     --debug 	Disable caches and other settings to facilitate debug (default: false)
     --ssl-key <file>	Path to .pem SSL key file
     --ssl-cert <file>	Path to SSL .pem certificate
-    --asr-provider <provider>	Enable the autoscaler using a provider. Possible values are [none, digitalocean] (default: none)
+    --asr-provider <provider>	Enable the autoscaler using a provider. Possible values are [digitalocean] (default: none)
     --asr-config <file>	Path to custom configuration for the autoscaler. This is combined with the provider's default configuration (default: none)
 
 Log Levels: 

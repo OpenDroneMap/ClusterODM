@@ -13,6 +13,6 @@
     "upload-max-speed": 0,
     "ssl-key": "",
     "ssl-cert": "",
-    "asr-provider": "none",
+    "asr-provider": "",
     "asr-config": ""
 }

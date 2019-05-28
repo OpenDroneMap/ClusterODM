@@ -115,6 +115,10 @@ module.exports = class Node{
         this.nodeData.locked = flag;
     }
 
+    availableSlots(){
+        return Math.max(0, this.getInfoProperty('maxParallelTasks', 0) - this.getInfoProperty('taskQueueCount', 0));
+    }
+
     proxyTargetUrl(){
         const { hostname, port } = this.nodeData;
 
