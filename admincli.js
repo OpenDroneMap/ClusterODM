@@ -174,7 +174,7 @@ module.exports = {
                             if (number !== undefined) node = nodes.nth(number);
                             if (number !== undefined && !node) invalid();
                             else{
-                                jsonResponse(await routetable.get(node));
+                                jsonResponse(await routetable.findByNode(node));
                             }
                         }
                     }else if (command === "TASK" && args.length > 0){
@@ -186,7 +186,7 @@ module.exports = {
                             if (number !== undefined) node = nodes.nth(number);
                             if (number !== undefined && !node) invalid();
                             else{
-                                const routes = await routetable.get(node);
+                                const routes = await routetable.findByNode(node);
                                 const tasks = [];
 
                                 await new Promise((resolve) => {

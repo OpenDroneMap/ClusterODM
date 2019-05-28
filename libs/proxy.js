@@ -85,6 +85,23 @@ module.exports = {
             return optionsCache.set(token, limitedOptions);
         };
 
+        const maxConcurrencyLimitReached = async (maxConcurrentTasks, token) => {
+            if (!maxConcurrentTasks) return false;
+
+            const userRoutes = await routetable.findByToken(token);
+            let runningTasks = 0;
+            await new Promise((resolve) => {
+                async.each(Object.keys(userRoutes), (taskId, cb) => {
+                    (userRoutes[taskId]).node.taskInfo(taskId).then((taskInfo) => {
+                        if (taskInfo.status && [statusCodes.QUEUED, statusCodes.RUNNING].indexOf(taskInfo.status.code) !== -1) runningTasks++;
+                        cb();
+                    });
+                }, resolve);
+            });
+            
+            return runningTasks >= maxConcurrentTasks;
+        };
+
         const getReqBody = async (req) => {
             return new Promise((resolve, reject) => {
                 let body = [];
@@ -229,6 +246,14 @@ module.exports = {
                             return;
                         }
 
+                        if (await maxConcurrencyLimitReached(limits.maxConcurrentTasks, query.token)){
+                            // TODO: A better solution would be to put the task in a queue
+                            // but it's non-trivial to keep such a state, as well as to deal
+                            // with scalability of storage requirements.
+                            die(`Reached maximum number of concurrent tasks: ${limits.maxConcurrentTasks}. Please wait until other tasks have finished, then restart the task.`);
+                            return;
+                        }
+
                         // Validate options
                         try{
                             odmOptions.filterOptions(options, await getLimitedOptions(query.token, limits, referenceNode));
@@ -279,6 +304,11 @@ module.exports = {
                             utils.json(res, {error: err});
                         };
 
+                        if (await maxConcurrencyLimitReached(limits.maxConcurrentTasks, query.token)){
+                            die(`Reached maximum number of concurrent tasks: ${limits.maxConcurrentTasks}. Please wait until other tasks have finished, then restart the task.`);
+                            return;
+                        }
+
                         async.series([
                             cb => {
                                 fs.readFile(bodyFile, 'utf8', (err, data) => {
@@ -321,6 +351,11 @@ module.exports = {
                     taskNew.formDataParser(req, async function(params) {
                         if (params.error){
                             die(params.error);
+                            return;
+                        }
+
+                        if (await maxConcurrencyLimitReached(limits.maxConcurrentTasks, query.token)){
+                            die(`Reached maximum number of concurrent tasks: ${limits.maxConcurrentTasks}. Please wait until other tasks have finished, then restart the task.`);
                             return;
                         }
 

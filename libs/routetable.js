@@ -71,7 +71,7 @@ module.exports = {
         return null;
     },
 
-    get: async function(node = null){
+    findByNode: async function(node = null){
         if (!node) return routes;
         else{
             const result = {};
@@ -82,6 +82,16 @@ module.exports = {
             }
             return result;
         }
+    },
+
+    findByToken: async function(token){
+        const result = {};
+        for (let taskId in routes){
+            if (routes[taskId].token === token){
+                result[taskId] = routes[taskId];
+            }
+        }
+        return result;
     },
 
     lookupNode: async function(taskId){

@@ -26,7 +26,7 @@ let asrProvider = null;
 module.exports = {
     initialize: function(providerName){
         try{
-            asrProvider = new (require('./asr-providers/' + providerName + '/index.js'))();
+            asrProvider = new (require('./asr-providers/' + providerName + '/provider.js'))();
         }catch(e){
             logger.error(`Invalid ASR provider: ${providerName}. ${e}`);
             process.exit(1);
