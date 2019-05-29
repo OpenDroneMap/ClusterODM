@@ -37,8 +37,8 @@ Then connect to the CLI and connect new [NodeODM](https://github.com/OpenDroneMa
 ```bash
 telnet localhost 8080
 > HELP
-> NODES ADD nodeodm-host 3001
-> NODES LIST
+> NODE ADD nodeodm-host 3001
+> NODE LIST
 ```
 
 Finally, use a web browser to connect to `http://localhost:3000`. A normal [NodeODM](https://github.com/OpenDroneMap/NodeODM) UI should appear. This means the application is working, as web requests are being properly forwarded to nodes.
