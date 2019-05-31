@@ -175,7 +175,7 @@ module.exports = {
         return new Promise((resolve, reject) => {
             fs.writeFile('data/nodes.json', JSON.stringify(nodes), (err) => {
                 if (err){
-                    logger.warn("Cannot save nodes to disk: ${err.message}");
+                    logger.warn(`Cannot save nodes to disk: ${err.message}`);
                     reject(err);
                 }else{
                     resolve();
@@ -190,7 +190,7 @@ module.exports = {
                 if (exists){
                     fs.readFile("data/nodes.json", (err, json) => {
                         if (err){
-                            logger.warn("Cannot read nodes from disk: ${err.message}");
+                            logger.warn(`Cannot read nodes from disk: ${err.message}`);
                             reject(err);
                         }else{
                             const nodesjson = JSON.parse(json);
