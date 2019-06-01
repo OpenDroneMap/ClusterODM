@@ -59,6 +59,21 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
         return this.getImageSlugFor(imagesCount) !== null;
     }
 
+    async setupMachine(dm){
+        // Add swap proportional to the available RAM
+        const swapToMemRatio = this.getConfig("addSwap");
+        if (swapToMemRatio){
+            await dm.ssh(`bash -c "fallocate -l \\$(expr \\$(awk '/MemTotal/ { printf \\\"%d\\n\\\", \\$2 }' /proc/meminfo) * ${swapToMemRatio}) /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile && free -h"`);
+        }
+
+        const dockerImage = this.getConfig("dockerImage");
+        if (dockerImage){
+            // TODO: pass S3 configurations
+            // TODO: pass webhook
+            await dm.ssh(`docker run -d -p 3000:3000 ${dockerImage} -q 1`);
+        }
+    }
+
     getImageSlugFor(imagesCount){
         const im = this.getConfig("imageSizeMapping");
 

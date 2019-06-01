@@ -18,6 +18,7 @@
 const fs = require('fs');
 const logger = require('./logger');
 const nodes = require('./nodes');
+const routetable = require('./routetable');
 const DockerMachine = require('./classes/DockerMachine');
 
 // The autoscaler provides the ability to automatically spawn
@@ -25,14 +26,19 @@ const DockerMachine = require('./classes/DockerMachine');
 let asrProvider = null;
 
 module.exports = {
-    initialize: async function(providerName, userConfig){
-        if (!providerName) return;
+    initialize: async function(userConfig){
+        if (!userConfig) return;
 
         try{
-            asrProvider = new (require('./asr-providers/' + providerName + '.js'))(userConfig);
-            await DockerMachine.checkInstalled();
+            const { provider } = JSON.parse(fs.readFileSync(userConfig, {encoding: 'utf8'}));
+            if (provider){
+                asrProvider = new (require('./asr-providers/' + provider + '.js'))(userConfig);
+                await DockerMachine.checkInstalled();
+            }else{
+                throw new Error("Your ASR configuration must specify a provider key (we didn't find it).");
+            }
         }catch(e){
-            logger.error(`Cannot initialize ASR provider: ${providerName}. ${e.message}`);
+            logger.error(`Cannot initialize ASR: ${e.message}`);
             process.exit(1);
         }
 
@@ -41,5 +47,22 @@ module.exports = {
 
     get: function(){
         return asrProvider;
+    },
+
+    cleanup: async function(taskId, delay = 0){
+        const asr = this.get();
+        if (asr){
+            const node = await routetable.lookupNode(taskId);
+            if (node && node.isAutoSpawned()){
+                const run = () => {
+                    asr.destroyNode(node);
+                    nodes.remove(node);
+                };
+
+                logger.debug(`ASR cleanup (delay: ${delay})`);
+                if (delay) setTimeout(run, delay);
+                else run();
+            }
+        }
     }
 }

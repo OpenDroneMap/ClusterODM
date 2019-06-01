@@ -20,12 +20,12 @@ const url = require('url');
 const axios = require('axios');
 
 module.exports = class Node{
-    constructor(hostname, port, token = "", info = {}){
+    constructor(hostname, port, token = ""){
         this.nodeData = {
             hostname,
             port,
             token,
-            info
+            info: {}
         };
         this.turn = 0;
 
@@ -33,7 +33,11 @@ module.exports = class Node{
     }
 
     static FromJSON(json){
-        return new Node(json.hostname, json.port, json.token, json.info);
+        const n = new Node(json.hostname, json.port, json.token);
+        for (let k in json){
+            n.nodeData[k] = json[k];
+        }
+        return n;
     }
 
     async updateInfo(){
@@ -42,17 +46,17 @@ module.exports = class Node{
             if (response.status === 200){
                 if (!response.data.error){
                     this.nodeData.info = response.data;
-                    this.nodeData.last_refreshed = new Date().getTime();
+                    this.nodeData.lastRefreshed = new Date().getTime();
                 }else{
                     throw new Error(`Cannot update info for ${this}, error: ${response.data.error}`);
                 }
             }else{
-                this.nodeData.last_refreshed = 0;
+                this.nodeData.lastRefreshed = 0;
                 throw new Error(`Cannot update info for ${this}, returned status ${response.status}`);
             }
         }catch(e){
             logger.warn(`Cannot update info for ${this}: ${e.message}`);
-            this.nodeData.last_refreshed = 0;
+            this.nodeData.lastRefreshed = 0;
         }
     }
 
@@ -116,8 +120,8 @@ module.exports = class Node{
         return this.nodeData.port;
     }
 
-    autoSpawned(){
-        return this.nodeData.autoSpawned;
+    isAutoSpawned(){
+        return !!this.nodeData.dockerMachineName;
     }
 
     isLocked(){
@@ -128,8 +132,15 @@ module.exports = class Node{
         this.nodeData.locked = flag;
     }
 
-    setAutoSpawned(flag){
-        this.nodeData.autoSpawned = flag;
+    setDockerMachineName(name){
+        this.nodeData.dockerMachine = {
+            name,
+            updated: new Date().getTime()
+        };
+    }
+
+    getDockerMachineName(){
+        return (this.nodeData.dockerMachine || {}).name;
     }
 
     availableSlots(){
@@ -138,8 +149,9 @@ module.exports = class Node{
 
     proxyTargetUrl(){
         const { hostname, port } = this.nodeData;
-
-        return `http://${hostname}:${port}`; // TODO: add SSL support
+        const proto = port === 443 ? 'https' : 'http'; 
+        
+        return `${proto}://${hostname}:${port}`;
     }
 
     getToken(){
@@ -189,13 +201,13 @@ module.exports = class Node{
     }
 
     getLastRefreshed(){
-        return this.nodeData.last_refreshed || 0;
+        return this.nodeData.lastRefreshed || 0;
     }
 
     toJSON(){
         let clone = JSON.parse(JSON.stringify(this.nodeData));
         delete(clone.info);
-        delete(clone.last_refreshed);
+        delete(clone.lastRefreshed);
         return clone;
     }
 

@@ -45,15 +45,20 @@ module.exports = {
 
             return new Promise((resolve, reject) => {
                 const childProcess = spawn("docker-machine", args);
+                const output = [];
 
                 childProcess
                     .on('exit', (code, _) => {
-                        if (code === 0) resolve();
+                        if (code === 0) resolve(output.join("\n"));
                         else reject(new Error(`docker-machine exited with code ${code}`));
                     })
                     .on('error', () => reject(new Error("Docker-machine not found in PATH. Please install docker-machine if you want to use the autoscaler.")));
                 
-                const processOutput = chunk => logger.debug(chunk.toString());
+                const processOutput = chunk => {
+                    const line = chunk.toString().trim();
+                    logger.debug(line);
+                    output.push(line);
+                };
                 childProcess.stdout.on('data', processOutput);
                 childProcess.stderr.on('data', processOutput);
             });
@@ -64,16 +69,31 @@ module.exports = {
         }
 
         async inspect(){
-            return this.run(["inspect", this.machineName]);
+            let output = "";
+            try{
+                output = await this.run(["inspect", this.machineName]);
+                return JSON.parse(output);
+            }catch(e){
+                logger.warn(`Cannot parse output of inspect: ${output}`);
+                return {};
+            }
+        }
+
+        async ssh(command){
+            return this.run(['ssh', this.machineName, command]);
         }
 
         async getIP(){
             const info = await this.inspect();
-            // if (info)
+            if (info && info.Driver && info.Driver.IPAddress){
+                return info.Driver.IPAddress;
+            }else{
+                throw new Error(`Cannot get IP for machine: ${this.machineName}`);
+            }
         }
 
-        async kill(){
-
+        async rm(){
+            return this.run(["rm", "-y", this.machineName]);
         }
     }
 }

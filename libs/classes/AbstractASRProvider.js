@@ -19,6 +19,8 @@ const logger = require('../logger');
 const fs = require('fs');
 const DockerMachine = require('./DockerMachine').Class;
 const short = require('short-uuid');
+const Node = require('./Node');
+const utils = require('../utils');
 
 module.exports = class AbstractASRProvider{
     constructor(defaults, userConfigFile){
@@ -50,6 +52,14 @@ module.exports = class AbstractASRProvider{
         throw new Error("Not implemented");
     }
 
+    getServicePort(){
+        return 3000;
+    }
+
+    async setupMachine(dm){
+        // Override
+    }
+
     // Spawn new nodes
     // @param imagesCount {Number} number of images this node should be able to process
     // @return {Node} a new Node instance
@@ -60,13 +70,39 @@ module.exports = class AbstractASRProvider{
         const dm = new DockerMachine(hostname);
         const args = ["--driver", this.getDriverName()]
                         .concat(this.getCreateArgs(imagesCount));
-        await dm.create(args);
+        try{
+            await dm.create(args);
+            await this.setupMachine(dm);
+            
+            const node = new Node(await dm.getIP(), this.getServicePort());
+    
+            // Wait for the node to get online
+            for (let i = 1; i <= 5; i++){
+                await node.updateInfo();
+                if (node.isOnline()) break;
+                logger.info(`Waiting for ${node} to get online... (${i})`);
+                await utils.sleep(1000 * i);
+            }
+            if (!node.isOnline()) throw new Error("No nodes available (spawned a new node, but the node did not get online).");
+    
+            node.setDockerMachineName(hostname);
+            return node;
+        }catch(e){
+            dm.rm(); // Make sure to cleanup if something goes wrong!
+            throw e;
+        }
+    }
 
-
-
-        // TODO: create node instance
-        console.log("TODO: Early exit");
-        process.exit(1);
+    async destroyNode(node){
+        if (node.isAutoSpawned()){
+            const hostname = node.getDockerMachineName();
+            logger.debug(`About to destroy ${hostname} (${node})`);
+            const dm = new DockerMachine(node.getDockerMachineName());
+            return dm.rm();
+        }else{
+            // Should never happen
+            logger.warn(`Tried to call destroyNode on a non-autospawned node: ${node}`);
+        }
     }
 
     generateHostname(){

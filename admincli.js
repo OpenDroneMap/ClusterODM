@@ -51,7 +51,11 @@ module.exports = {
                 else fail();
             };
             const printNode = (socket, i, node) => {
-                socket.write(`${(i + 1)}) ${node.toString()} ${node.isOnline() ? '[online]' : '[offline]'} [${node.getTaskQueueCount()}/${node.getMaxParallelTasks()}] <version ${node.getVersion()}>${node.isLocked() ? " [L]" : ""}\r\n`);
+                const flags = [];
+                if (node.isLocked()) flags.push("L");
+                if (node.isAutoSpawned()) flags.push("A");
+
+                socket.write(`${(i + 1)}) ${node.toString()} ${node.isOnline() ? '[online]' : '[offline]'} [${node.getTaskQueueCount()}/${node.getMaxParallelTasks()}] <version ${node.getVersion()}>${flags.length ? ` [${flags.join(",")}]` : ""}\r\n`);
             };
             const prettyJson = (json) => {
                 return JSON.stringify(json, null, 2);
@@ -97,7 +101,7 @@ module.exports = {
                     if (command === "HELP"){
                         socket.write("NODE ADD <hostname> <port> [token] - Add new node\r\n");
                         socket.write("NODE DEL <node number> - Remove a node\r\n");
-                        socket.write("NODE INFO <node number> - View JSON info of node\r\n");
+                        socket.write("NODE INFO <node number> - View node info\r\n");
                         socket.write("NODE LIST - List nodes\r\n");
                         socket.write("NODE LOCK <node number> - Stop forwarding tasks to this node\r\n");
                         socket.write("NODE UNLOCK <node number> - Resume forwarding tasks to this node\r\n");
@@ -145,7 +149,7 @@ module.exports = {
                             const [ number ] = args;
                             const node = nodes.nth(number);
                             if (node){
-                                jsonResponse(node.getInfo());
+                                jsonResponse(node.nodeData);
                             }else invalid();
                         }else if (subcommand === "BEST" && args.length >= 1){
                             const [ numImages ] = args;

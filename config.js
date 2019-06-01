@@ -35,9 +35,9 @@ let argDefs = {
     string: ['port', 'admin-cli-port', 'admin-pass', 'admin-web-port',
             'cloud-provider', 'downloads-from-s3', 'log-level',
             'upload-max-speed', 'ssl-key', 'ssl-cert', 'secure-port',
-            'cluster-address', 'config',
-            'asr-provider', 'asr-config'],
-    boolean: ['no-cluster', 'debug'],
+            'public-address', 'config',
+            'asr'],
+    boolean: ['splitmerge', 'debug'],
     alias: {
         p: 'port',
         c: 'cloud-provider'
@@ -64,13 +64,12 @@ Options:
     -c, --cloud-provider	Cloud provider to use (default: local)
     --upload-max-speed <number>	Upload to processing nodes speed limit in bytes / second (default: no limit)
     --downloads-from-s3 <URL>	S3 URL prefix where to redirect /task/<uuid>/download requests. (default: do not use S3, forward download requests to nodes) 
-    --no-cluster	By default the program will set itself as being a cluster node for all split/merge tasks. Setting this option disables it. (default: false)
-    --cluster-address <http(s)://host:port>	Should be set to a public URL that worker nodes can use to reach ClusterODM for the purpose of allowing split/merge workflows. (default: match the "host" header from client's HTTP request)
+    --no-splitmerge	By default the program will set itself as being a cluster node for all split/merge tasks. Setting this option disables it. (default: false)
+    --public-address <http(s)://host:port>	Should be set to a public URL that nodes can use to reach ClusterODM. (default: match the "host" header from client's HTTP request)
     --debug 	Disable caches and other settings to facilitate debug (default: false)
     --ssl-key <file>	Path to .pem SSL key file
     --ssl-cert <file>	Path to SSL .pem certificate
-    --asr-provider <provider>	Enable the autoscaler using a provider. Possible values are [digitalocean] (default: none)
-    --asr-config <file>	Path to custom configuration for the autoscaler. This is combined with the provider's default configuration (default: none)
+    --asr <file>	Path to configuration for enabling the autoscaler. This is combined with the provider's default configuration (default: none)
 
 Log Levels: 
 error | debug | info | verbose | debug | silly 

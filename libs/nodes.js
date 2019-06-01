@@ -50,6 +50,7 @@ module.exports = {
 
     add: function(node){
         nodes.push(node);
+        logger.debug(`Added node: ${node}`);
         this.saveToDisk();
         return node;
     },
@@ -57,6 +58,7 @@ module.exports = {
     remove: function(node){
         if (node){
             nodes = nodes.filter(n => n !== node);
+            logger.debug(`Removed node: ${node}`);
             this.saveToDisk();
             return true;
         }else{
@@ -136,6 +138,7 @@ module.exports = {
 
         const candidates = nodes.filter(n => n.isOnline() && 
                                              !n.isLocked() &&
+                                             !n.isAutoSpawned() &&
                                             (!n.getInfo().maxImages || n.getInfo().maxImages >= numImages));
         if (!candidates.length) return null;
 

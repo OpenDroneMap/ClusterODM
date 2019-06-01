@@ -44,6 +44,7 @@ module.exports = {
             die: (err) => {
                 utils.rmdir(tmpPath);
                 utils.json(res, {error: err});
+                asrProvider.cleanup(uuid);
             }
         };
     },
@@ -123,14 +124,11 @@ module.exports = {
         if (typeof taskOptions === "string") taskOptions = JSON.parse(taskOptions);
         if (!Array.isArray(taskOptions)) taskOptions = [];
 
-        if (!config.no_cluster){
+        if (config.splitmerge){
             // We automatically set the "sm-cluster" parameter
             // to match the address that was used to reach ClusterODM.
             // if "--split" is set.
-            const addr = config.cluster_address ? 
-                        config.cluster_address : 
-                        `${config.use_ssl ? "https" : "http"}://${req.headers.host}`;
-            const clusterUrl = `${addr}/?token=${token}`;
+            const clusterUrl = utils.publicAddress(req, token);
 
             let result = [];
             let foundSplit = false, foundSMCluster = false;
@@ -171,6 +169,11 @@ module.exports = {
         }
 
         utils.shuffleArray(fileNames);
+
+        // When --no-splitmerge is set, do not allow seed.zip
+        if (!config.splitmerge){
+            if (fileNames.indexOf("seed.zip") !== -1) throw new Error("Cannot use this node as a split-merge cluster.");
+        }
 
         for (let i = 0; i < fileNames.length; i++){
             const fileName = fileNames[i];
@@ -269,17 +272,6 @@ module.exports = {
                 close();
             };
 
-            curl.setOpt(Curl.option.URL, `${node.proxyTargetUrl()}/task/new?token=${node.getToken()}`);
-            if (config.upload_max_speed) curl.setOpt(Curl.option.MAX_SEND_SPEED_LARGE, config.upload_max_speed);
-            // abort if slower than 30 bytes/sec during 1600 seconds */
-            curl.setOpt(Curl.option.LOW_SPEED_TIME, 1600);
-            curl.setOpt(Curl.option.LOW_SPEED_LIMIT, 30);
-            curl.setOpt(Curl.option.HTTPPOST, multiPartBody);
-            curl.setOpt(Curl.option.HTTPHEADER, [
-                'Content-Type: multipart/form-data',
-                `set-uuid: ${uuid}`
-            ]);
-
             curl.on('end', async function (statusCode, body, headers){
                 if (statusCode === 200){
                     try{
@@ -309,7 +301,6 @@ module.exports = {
                 const asr = asrProvider.get();
                 try{
                     node = await asr.createNode(imagesCount);
-                    node.setAutoSpawned(true);
                     nodes.add(node);
                 }catch(e){
                     const err = new Error("No nodes available (attempted to autoscale but failed). Try again later.");
@@ -318,6 +309,17 @@ module.exports = {
                     return;
                 }
             }
+
+            curl.setOpt(Curl.option.URL, `${node.proxyTargetUrl()}/task/new?token=${node.getToken()}`);
+            if (config.upload_max_speed) curl.setOpt(Curl.option.MAX_SEND_SPEED_LARGE, config.upload_max_speed);
+            // abort if slower than 30 bytes/sec during 1600 seconds */
+            curl.setOpt(Curl.option.LOW_SPEED_TIME, 1600);
+            curl.setOpt(Curl.option.LOW_SPEED_LIMIT, 30);
+            curl.setOpt(Curl.option.HTTPPOST, multiPartBody);
+            curl.setOpt(Curl.option.HTTPHEADER, [
+                'Content-Type: multipart/form-data',
+                `set-uuid: ${uuid}`
+            ]);
 
             curl.perform();
         }else{

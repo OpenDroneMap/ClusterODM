@@ -34,6 +34,7 @@ const statusCodes = require('./statusCodes');
 const taskNew = require('./taskNew');
 const async = require('async');
 const odmOptions = require('./odmOptions');
+const asrProvider = require('./asrProvider');
 
 module.exports = {
 	initialize: async function(cloudProvider){
@@ -141,7 +142,7 @@ module.exports = {
                     availableMemory: 99999999999,
                     cpuCores: 99999999999,
                     maxImages: limits.maxImages || null,
-                    maxParallelTasks: 99999999999,
+                    maxParallelTasks: limits.maxConcurrentTasks !== undefined ? limits.maxConcurrentTasks : 99999999999,
                     engineVersion: node !== undefined ? node.getInfo().engineVersion : '?',
                     engine: node !== undefined ? node.getInfo().engine : '?'
                 });
@@ -178,6 +179,8 @@ module.exports = {
                     try{
                         const taskInfo = JSON.parse(body);
                         const taskId = taskInfo.uuid;
+
+                        asrProvider.cleanup(taskId, 60 * 1000); // Wait 1 minute before deleting any autoscaled node (so clients can still post API requests)
 
                         // Add reference to S3 path if necessary
                         if (config.downloads_from_s3){
@@ -302,6 +305,7 @@ module.exports = {
                         const die = (err) => {
                             utils.rmdir(tmpPath);
                             utils.json(res, {error: err});
+                            asrProvider.cleanup(taskId);
                         };
 
                         if (await maxConcurrencyLimitReached(limits.maxConcurrentTasks, query.token)){

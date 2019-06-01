@@ -6,7 +6,7 @@
     "admin-pass": "",
     "cloud-provider": "local",
     "downloads-from-s3": "",
-    "no-cluster": false,
+    "splitmerge": true,
     "cluster-address": "",
     "debug": false,
     "log-level": "info",

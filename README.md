@@ -48,3 +48,7 @@ See `node index.js --help` for all parameter options.
 ## Roadmap
 
 We have [plenty of goals](https://github.com/OpenDroneMap/ClusterODM/issues?q=is%3Aopen+is%3Aissue+label%3Aenhancement). If you want to help, or need help getting started contributing, get in touch on the [OpenDroneMap community forum](https://community.opendronemap.org).
+
+## License
+
+ClusterODM is licensed under the AGPL. [Contact us](https://www.masseranolabs.com/contact/) for other licensing options.

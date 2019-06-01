@@ -20,6 +20,7 @@
 const uuidv4 = require('uuid/v4');
 const fs = require('fs');
 const async = require('async');
+const config = require('../config');
 const logger = require('./logger');
 const Readable = require('stream').Readable;
 const rimraf = require('rimraf');
@@ -132,5 +133,16 @@ module.exports = {
 
     sanitize: function(filePath){
         return filePath.replace(/(\/|\\)/g, "_");
+    },
+
+    publicAddress: function(req, token){
+        const addr = config.public_address ? 
+                    config.public_address : 
+                    `${config.use_ssl ? "https" : "http"}://${req.headers.host}`;
+        return `${addr}/?token=${token}`;
+    },
+
+    sleep: async function(msecs){
+        return new Promise((resolve) => setTimeout(resolve, msecs));
     }
 };
