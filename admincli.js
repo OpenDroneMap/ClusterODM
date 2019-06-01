@@ -117,7 +117,7 @@ module.exports = {
 
                         if (subcommand === "ADD" && args.length >= 2){
                             const [ hostname, port, token ] = args;
-                            const node = nodes.add(hostname, port, token);
+                            const node = nodes.addUnique(hostname, port, token);
                             if (node) node.updateInfo();
                             reply(!!node);
                         }else if (subcommand === "DEL" && args.length >= 1){

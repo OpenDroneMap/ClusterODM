@@ -20,11 +20,20 @@ const url = require('url');
 const axios = require('axios');
 
 module.exports = class Node{
-    constructor(nodeData){
-        this.nodeData = nodeData;
+    constructor(hostname, port, token = "", info = {}){
+        this.nodeData = {
+            hostname,
+            port,
+            token,
+            info
+        };
         this.turn = 0;
 
         this.timeout = 10000;
+    }
+
+    static FromJSON(json){
+        return new Node(json.hostname, json.port, json.token, json.info);
     }
 
     async updateInfo(){
@@ -38,8 +47,8 @@ module.exports = class Node{
                     throw new Error(`Cannot update info for ${this}, error: ${response.data.error}`);
                 }
             }else{
-                throw new Error(`Cannot update info for ${this}, returned status ${response.status}`);
                 this.nodeData.last_refreshed = 0;
+                throw new Error(`Cannot update info for ${this}, returned status ${response.status}`);
             }
         }catch(e){
             logger.warn(`Cannot update info for ${this}: ${e.message}`);
@@ -100,19 +109,27 @@ module.exports = class Node{
     }
 
     hostname(){
-        return (this.nodeData || {}).hostname;
+        return this.nodeData.hostname;
     }
 
     port(){
-        return (this.nodeData || {}).port;
+        return this.nodeData.port;
+    }
+
+    autoSpawned(){
+        return this.nodeData.autoSpawned;
     }
 
     isLocked(){
-        return !!(this.nodeData || {}).locked;
+        return !!this.nodeData.locked;
     }
 
     setLocked(flag){
         this.nodeData.locked = flag;
+    }
+
+    setAutoSpawned(flag){
+        this.nodeData.autoSpawned = flag;
     }
 
     availableSlots(){
@@ -143,7 +160,7 @@ module.exports = class Node{
     }
 
     getInfo(){
-        return (this.nodeData || {}).info;
+        return this.nodeData.info;
     }
 
     getInfoProperty(prop, defaultValue){

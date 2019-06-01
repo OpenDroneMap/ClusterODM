@@ -41,7 +41,7 @@ module.exports = {
         // API
         app.post('/r/node/add', (req, res) => {
             const { hostname, port, token } = req.body;
-            const node = nodes.add(hostname, port, token);
+            const node = nodes.addUnique(hostname, port, token);
             if (node) {
                 node.updateInfo();
                 res.send({success: true});

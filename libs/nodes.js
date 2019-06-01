@@ -36,17 +36,22 @@ module.exports = {
         initialized = true;
     },
 
-    add: function(hostname, port, token){
+    addUnique: function(hostname, port, token){
         if (!hostname || !port) return false;
 
-        if (!nodes.find(n => n.hostname === hostname && n.port === port)){
-            const node = new Node({hostname, port, token, info: {}});
-            nodes.push(node);
-            this.saveToDisk();
+        if (!nodes.find(n => n.hostname() === hostname && n.port() === port)){
+            const node = new Node(hostname, port, token);
+            this.add(node);
             return node;
         }else{
             return false;
         }
+    },
+
+    add: function(node){
+        nodes.push(node);
+        this.saveToDisk();
+        return node;
     },
 
     remove: function(node){
@@ -194,7 +199,7 @@ module.exports = {
                             reject(err);
                         }else{
                             const nodesjson = JSON.parse(json);
-                            nodes = nodesjson.map(n => new Node(n));
+                            nodes = nodesjson.map(n => Node.FromJSON(n));
                             resolve();
                         }
                     });

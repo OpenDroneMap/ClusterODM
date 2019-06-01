@@ -309,8 +309,8 @@ module.exports = {
                 const asr = asrProvider.get();
                 try{
                     node = await asr.createNode(imagesCount);
-                    // TODO: add to nodes database (mark as autoscale)
-                    throw new Error("TODO!");
+                    node.setAutoSpawned(true);
+                    nodes.add(node);
                 }catch(e){
                     const err = new Error("No nodes available (attempted to autoscale but failed). Try again later.");
                     logger.warn(`Cannot create node via autoscaling: ${e.message}`);
