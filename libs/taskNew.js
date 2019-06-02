@@ -17,6 +17,7 @@
  */
 const Busboy = require('busboy');
 const utils = require('./utils');
+const netutils = require('./netutils');
 const path = require('path');
 const fs = require('fs');
 const config = require('../config');
@@ -128,7 +129,7 @@ module.exports = {
             // We automatically set the "sm-cluster" parameter
             // to match the address that was used to reach ClusterODM.
             // if "--split" is set.
-            const clusterUrl = utils.publicAddress(req, token);
+            const clusterUrl = netutils.publicAddress(req, token);
 
             let result = [];
             let foundSplit = false, foundSMCluster = false;
@@ -300,7 +301,7 @@ module.exports = {
             if (autoscale){
                 const asr = asrProvider.get();
                 try{
-                    node = await asr.createNode(imagesCount);
+                    node = await asr.createNode(req, imagesCount, token);
                     nodes.add(node);
                 }catch(e){
                     const err = new Error("No nodes available (attempted to autoscale but failed). Try again later.");

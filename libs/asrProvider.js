@@ -19,6 +19,7 @@ const fs = require('fs');
 const logger = require('./logger');
 const nodes = require('./nodes');
 const routetable = require('./routetable');
+const netutils = require('./netutils');
 const DockerMachine = require('./classes/DockerMachine');
 
 // The autoscaler provides the ability to automatically spawn
@@ -33,6 +34,7 @@ module.exports = {
             const { provider } = JSON.parse(fs.readFileSync(userConfig, {encoding: 'utf8'}));
             if (provider){
                 asrProvider = new (require('./asr-providers/' + provider + '.js'))(userConfig);
+                await asrProvider.initialize();
                 await DockerMachine.checkInstalled();
             }else{
                 throw new Error("Your ASR configuration must specify a provider key (we didn't find it).");
@@ -41,6 +43,9 @@ module.exports = {
             logger.error(`Cannot initialize ASR: ${e.message}`);
             process.exit(1);
         }
+
+        setInterval(this.vacuum.bind(this), 1000 * 60 * 10);
+        this.vacuum();
 
         return asrProvider;
     },
@@ -55,8 +60,7 @@ module.exports = {
             const node = await routetable.lookupNode(taskId);
             if (node && node.isAutoSpawned()){
                 const run = () => {
-                    asr.destroyNode(node);
-                    nodes.remove(node);
+                    netutils.removeAndCleanupNode(node);
                 };
 
                 logger.debug(`ASR cleanup (delay: ${delay})`);
@@ -64,5 +68,15 @@ module.exports = {
                 else run();
             }
         }
+    },
+
+    vacuum: function(){
+        const autoNodes = nodes.find(n => n.isAutoSpawned());
+
+        // Automatically remove autospawned nodes if either:
+        // - They have been online for too long (stuck?)
+        // - They have a task that is CANCELED, DELETED or COMPLETED
+
+        // TODO:
     }
 }

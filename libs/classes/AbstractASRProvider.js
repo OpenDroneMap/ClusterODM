@@ -44,7 +44,7 @@ module.exports = class AbstractASRProvider{
         throw new Error("Not implemented");
     }
 
-    getCreateArgs(imagesCount){
+    async getCreateArgs(imagesCount){
         throw new Error("Not implemented");
     }
 
@@ -56,25 +56,40 @@ module.exports = class AbstractASRProvider{
         return 3000;
     }
 
-    async setupMachine(dm){
+    validateConfigKeys(keys){
+        for (let prop of keys){
+            if (this.getConfig(prop) === "CHANGEME!" || this.getConfig(prop, undefined) === undefined) throw new Error(`You need to create a configuration file and set ${prop}.`);
+        }
+    }
+
+    // Setup docker machine after creation
+    // @param req {http.ClientRequest} request object from HttpProxy
+    // @param token {String} user token
+    // @param dm {DockerMachine} docker machine client
+    // @param nodeToken {String} token to set to protect the new machine instance services
+    async setupMachine(req, token, dm, nodeToken){
         // Override
     }
 
     // Spawn new nodes
+    // @param req {http.ClientRequest} request object from HttpProxy
     // @param imagesCount {Number} number of images this node should be able to process
+    // @param token {String} user token
     // @return {Node} a new Node instance
-    async createNode(imagesCount){
+    async createNode(req, imagesCount, token){
         if (!this.canHandle(imagesCount)) throw new Error(`Cannot handle ${imagesCount} images.`);
 
         const hostname = this.generateHostname();
         const dm = new DockerMachine(hostname);
         const args = ["--driver", this.getDriverName()]
-                        .concat(this.getCreateArgs(imagesCount));
+                        .concat(await this.getCreateArgs(imagesCount));
+        const nodeToken = short.generate();
+
         try{
             await dm.create(args);
-            await this.setupMachine(dm);
+            await this.setupMachine(req, token, dm, nodeToken);
             
-            const node = new Node(await dm.getIP(), this.getServicePort());
+            const node = new Node(await dm.getIP(), this.getServicePort(), nodeToken);
     
             // Wait for the node to get online
             for (let i = 1; i <= 5; i++){
@@ -88,7 +103,11 @@ module.exports = class AbstractASRProvider{
             node.setDockerMachineName(hostname);
             return node;
         }catch(e){
-            dm.rm(); // Make sure to cleanup if something goes wrong!
+            try{
+                dm.rm(); // Make sure to cleanup if something goes wrong!
+            }catch(e){
+                logger.warn("Could not remove docker-machine, it's likely that the machine was not created, but double-check!");
+            }
             throw e;
         }
     }
@@ -110,7 +129,6 @@ module.exports = class AbstractASRProvider{
     }
 
     getConfig(key, defaultValue = ""){
-        return this.config[key] !== undefined ? this.config[key] : defaultValue;
+        return utils.get(this.config, key, defaultValue);
     }
-    
 }

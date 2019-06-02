@@ -461,8 +461,21 @@ module.exports = {
                         }else{
                             const taskTableEntry = await tasktable.lookup(taskId);
                             if (taskTableEntry){
+
+                                // GET: /task/<uuid>/info
                                 if (action === 'info'){
-                                    json(res, taskTableEntry.taskInfo);
+                                    let response = taskTableEntry.taskInfo;
+
+                                    // ?with_output support
+                                    if (query.with_output !== undefined){
+                                        const line = parseInt(query.with_output) || 0;
+                                        const output = taskTableEntry.output || [];
+                                        response.output = output.slice(line, output.length);
+                                    }
+
+                                    json(res, response);
+
+                                // GET: /task/<uuid>/output
                                 }else if (action === 'output'){
                                     const line = query.line || 0;
                                     const output = taskTableEntry.output || [];

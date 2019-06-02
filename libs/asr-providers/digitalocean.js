@@ -15,19 +15,30 @@
  *  You should have received a copy of the GNU Affero General Public License
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-const logger = require('../logger');
 const AbstractASRProvider = require('../classes/AbstractASRProvider');
+const netutils = require('../netutils');
+const S3 = require('../S3');
+const axios = require('axios');
+const logger = require('../logger');
 
 module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
     constructor(userConfig){
         super({
             "accessToken": "CHANGEME!",
+            "s3":{
+                "accessKey": "CHANGEME!",
+                "secretKey": "CHANGEME!",
+                "endpoint": "CHANGEME!",
+                "bucket": "CHANGEME!"
+            },
 
-            "maxRuntime": 172800,
+            "maxRuntime": 259200, // TODO!
             "region": "nyc3",
             "monitoring": true,
             "tags": ["clusterodm"],
-            "image": "ubuntu-16-04-x64",
+            
+            "image": "nodeodm-image",
+            "snapshot": true,
 
             "imageSizeMapping": [
                 {"maxImages": 5, "slug": "s-1vcpu-1gb"},
@@ -37,9 +48,15 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
             "addSwap": 1,
             "dockerImage": "opendronemap/nodeodm"
         }, userConfig);
+    }
 
-        if (this.getConfig("accessToken") === "CHANGEME!") throw new Error("You need to create a configuration file and set an accessToken value.");
+    async initialize(){
+        this.validateConfigKeys(["accessToken", "s3.accessKey", "s3.secretKey", "s3.endpoint", "s3.bucket"]);
 
+        // Test S3
+        const { accessKey, secretKey, endpoint, bucket } = this.getConfig("s3");
+        await S3.testBucket(accessKey, secretKey, endpoint, bucket);
+        
         const im = this.getConfig("imageSizeMapping", []);
         if (!Array.isArray(im)) throw new Error("Invalid config key imageSizeMapping (array expected)");
 
@@ -59,7 +76,7 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
         return this.getImageSlugFor(imagesCount) !== null;
     }
 
-    async setupMachine(dm){
+    async setupMachine(req, token, dm, nodeToken){
         // Add swap proportional to the available RAM
         const swapToMemRatio = this.getConfig("addSwap");
         if (swapToMemRatio){
@@ -67,11 +84,16 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
         }
 
         const dockerImage = this.getConfig("dockerImage");
-        if (dockerImage){
-            // TODO: pass S3 configurations
-            // TODO: pass webhook
-            await dm.ssh(`docker run -d -p 3000:3000 ${dockerImage} -q 1`);
-        }
+        const s3 = this.getConfig("s3");
+        const webhook = netutils.publicAddress(req, token);
+
+        await dm.ssh([`docker run -d -p 3000:3000 ${dockerImage} -q 1`,
+                     `--s3_access_key ${s3.accessKey}`,
+                     `--s3_secret_key ${s3.secretKey}`,
+                     `--s3_endpoint ${s3.endpoint}`,
+                     `--s3_bucket ${s3.bucket}`,
+                     `--webhook ${webhook}`,
+                     `--token ${nodeToken}`].join(" "));
     }
 
     getImageSlugFor(imagesCount){
@@ -89,11 +111,57 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
         return slug;
     }
 
-    getCreateArgs(imagesCount){
+    async getImageInfo(){
+        let imageName = this.getConfig("image");
+        let imageRegion = this.getConfig("region");
+
+        if (this.getConfig("snapshot")){
+            // We need to fetch the imageID
+            const response = await axios.get("https://api.digitalocean.com/v2/images?page=1&per_page=9999999&private=true", { 
+                timeout: 10000,
+                headers: {
+                    Authorization: `Bearer ${this.getConfig("accessToken")}`
+                }
+            });
+
+            if (response.status === 200){
+                const { images } = response.data;
+                const img = images.find(img => img.name === imageName);
+                if (img && img.id && img.regions){
+                    // Check that the snapshot is available in our preferred region
+                    if (img.regions.indexOf(imageRegion) === -1){
+                        if (img.regions.length > 0){
+                            const newRegion = img.regions[0];
+                            logger.warn(`The snapshot ${imageName} is not available in the ${imageRegion}, switching to ${newRegion}`);
+                            imageRegion = newRegion;
+                        }else{
+                            // Can this ever happen?
+                            throw new Error(`Snapshot found, but not available in any region.`);
+                        }
+                    }
+
+                    imageName = img.id;
+                }else{
+                    throw new Error(`Snapshot ${imageName} not found.`);
+                }
+            }else{
+                throw new Error(`Cannot contact DigitalOcean API: ${response.status}`);
+            }
+        }
+
+        return {
+            image: imageName,
+            region: imageRegion
+        };
+    }
+
+    async getCreateArgs(imagesCount){
+        const imageInfo = await this.getImageInfo();
+
         const args = [
             "--digitalocean-access-token", this.getConfig("accessToken"),
-            "--digitalocean-region", this.getConfig("region"),
-            "--digitalocean-image", this.getConfig("image"),
+            "--digitalocean-region", imageInfo.region,
+            "--digitalocean-image", imageInfo.image,
             "--digitalocean-size", this.getImageSlugFor(imagesCount)
         ];
 

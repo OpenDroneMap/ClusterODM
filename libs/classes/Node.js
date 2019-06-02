@@ -121,7 +121,7 @@ module.exports = class Node{
     }
 
     isAutoSpawned(){
-        return !!this.nodeData.dockerMachineName;
+        return !!this.getDockerMachineName();
     }
 
     isLocked(){

@@ -18,6 +18,7 @@
 const Node = require('./classes/Node');
 const fs = require('fs');
 const logger = require('./logger');
+
 let nodes = [];
 let initialized = false;
 

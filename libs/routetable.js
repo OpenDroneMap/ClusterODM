@@ -71,6 +71,17 @@ module.exports = {
         return null;
     },
 
+    removeByNode: async function(node){
+        if (!node) return;
+
+        const routesForNode = this.findByNode(node);
+        for (let taskId in routesForNode){
+            delete(routes[taskId]);
+        }
+
+        this.saveToDisk();
+    },
+
     findByNode: async function(node = null){
         if (!node) return routes;
         else{
