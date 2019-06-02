@@ -180,7 +180,7 @@ module.exports = {
                         const taskInfo = JSON.parse(body);
                         const taskId = taskInfo.uuid;
 
-                        asrProvider.cleanup(taskId, 60 * 1000); // Wait 1 minute before deleting any autoscaled node (so clients can still post API requests)
+                        asrProvider.onCommit(taskId, 10 * 1000);
 
                         // Add reference to S3 path if necessary
                         if (config.downloads_from_s3){

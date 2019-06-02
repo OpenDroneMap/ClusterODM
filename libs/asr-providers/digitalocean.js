@@ -86,7 +86,7 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
 
         const dockerImage = this.getConfig("dockerImage");
         const s3 = this.getConfig("s3");
-        const webhook = netutils.publicAddress(req, token);
+        const webhook = netutils.publicAddressPath("/commit", req, token);
 
         await dm.ssh([`docker run -d -p 3000:3000 ${dockerImage} -q 1`,
                      `--s3_access_key ${s3.accessKey}`,

@@ -19,6 +19,7 @@ const fs = require('fs');
 const logger = require('./logger');
 const nodes = require('./nodes');
 const routetable = require('./routetable');
+const tasktable = require('./tasktable');
 const netutils = require('./netutils');
 const DockerMachine = require('./classes/DockerMachine');
 
@@ -54,16 +55,34 @@ module.exports = {
         return asrProvider;
     },
 
+    onCommit: async function(taskId, cleanupDelay = 0){
+        const asr = this.get();
+        if (asr){
+            const node = await routetable.lookupNode(taskId);
+            if (node && node.isAutoSpawned()){
+                // Attempt to retrieve task info and save it in task table before deleting node
+                // so that users can continue to access this information.
+                try{
+                    await tasktable.add(taskId, {taskInfo: await node.taskInfo(taskId)});
+                }catch(e){
+                    logger.warn(`Cannot add task table entry for ${taskId} from ${node}`);
+                }
+                
+                this.cleanup(taskId, cleanupDelay);
+            }
+        }
+    },
+
     cleanup: async function(taskId, delay = 0){
         const asr = this.get();
         if (asr){
             const node = await routetable.lookupNode(taskId);
             if (node && node.isAutoSpawned()){
                 const run = () => {
-                    netutils.removeAndCleanupNode(node);
+                    netutils.removeAndCleanupNode(node, this.get());
                 };
 
-                logger.debug(`ASR cleanup (delay: ${delay})`);
+                logger.debug(`ASR cleanup (in ${delay / 1000} seconds)`);
                 if (delay) setTimeout(run, delay);
                 else run();
             }
@@ -71,9 +90,8 @@ module.exports = {
     },
 
     vacuum: async function(){
-        const autoNodes = nodes.find(n => n.isAutoSpawned() && n.isOnline());
-        if (!autoNodes) return;
-        
+        const autoNodes = nodes.filter(n => n.isAutoSpawned() && n.isOnline());
+
         // Automatically remove autospawned nodes if either:
         // - They have been online for too long (stuck?)
         // - They have an empty queue and are past their allowed upload time
@@ -96,7 +114,7 @@ module.exports = {
         });
 
         cleanNodes.forEach(n => {
-            netutils.removeAndCleanupNode(n);
+            netutils.removeAndCleanupNode(n, this.get());
         });
     }
 }

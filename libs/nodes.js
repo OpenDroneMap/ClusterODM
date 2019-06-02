@@ -95,6 +95,10 @@ module.exports = {
         return nodes.find(match);
     },
 
+    filter: function(match){
+        return nodes.filter(match);
+    },
+
     nth: function(n){
         n = parseInt(n);
         if (isNaN(n)) return null;

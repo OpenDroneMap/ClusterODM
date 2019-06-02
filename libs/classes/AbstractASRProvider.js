@@ -87,7 +87,7 @@ module.exports = class AbstractASRProvider{
     async createNode(req, imagesCount, token){
         if (!this.canHandle(imagesCount)) throw new Error(`Cannot handle ${imagesCount} images.`);
 
-        const hostname = this.generateHostname();
+        const hostname = this.generateHostname(imagesCount);
         const dm = new DockerMachine(hostname);
         const args = ["--driver", this.getDriverName()]
                         .concat(await this.getCreateArgs(imagesCount));
@@ -132,8 +132,8 @@ module.exports = class AbstractASRProvider{
         }
     }
 
-    generateHostname(){
-        return `clusterodm-${short.generate()}`;
+    generateHostname(imagesCount){
+        return `clusterodm-${imagesCount}-${short.generate()}`;
     }
 
     getConfig(key, defaultValue = ""){

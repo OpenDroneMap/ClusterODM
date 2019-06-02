@@ -15,7 +15,6 @@
  *  You should have received a copy of the GNU Affero General Public License
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-const fs = require('fs');
 const logger = require('./logger');
 
 let tasks = null;
@@ -24,7 +23,8 @@ let tasks = null;
 // accessible from multiple proxies
 
 // The task table keeps information (task info, console output) about tasks that 
-// are waiting to be sent to a processing node or are being uploaded to a processing node. 
+// are waiting to be sent to a processing node or are being uploaded to a processing node or 
+// have completed/failed and their processing node has been tore down
 
 module.exports = {
     initialize: async function(){

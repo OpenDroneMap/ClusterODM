@@ -74,7 +74,7 @@ module.exports = {
     removeByNode: async function(node){
         if (!node) return;
 
-        const routesForNode = this.findByNode(node);
+        const routesForNode = await this.findByNode(node);
         for (let taskId in routesForNode){
             delete(routes[taskId]);
         }

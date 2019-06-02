@@ -129,7 +129,7 @@ module.exports = {
             // We automatically set the "sm-cluster" parameter
             // to match the address that was used to reach ClusterODM.
             // if "--split" is set.
-            const clusterUrl = netutils.publicAddress(req, token);
+            const clusterUrl = netutils.publicAddressPath('/', req, token);
 
             let result = [];
             let foundSplit = false, foundSMCluster = false;

@@ -21,6 +21,7 @@ const package_info = require('./package_info');
 const nodes = require('./libs/nodes');
 const routetable = require('./libs/routetable');
 const netutils = require('./libs/netutils');
+const asrProvider = require('./libs/asrProvider');
 
 module.exports = {
     create: function(options){
@@ -126,7 +127,7 @@ module.exports = {
                             reply(!!node);
                         }else if (subcommand === "DEL" && args.length >= 1){
                             const [ number ] = args;
-                            reply(await netutils.removeAndCleanupNode(nodes.nth(number)));
+                            reply(await netutils.removeAndCleanupNode(nodes.nth(number), asrProvider.get()));
                         }else if (subcommand === "LOCK" && args.length >= 1){
                             const [ number ] = args;
                             reply(nodes.lock(nodes.nth(number)));

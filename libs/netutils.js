@@ -20,14 +20,16 @@ const config = require('../config');
 const nodes = require('./nodes');
 const routetable = require('./routetable');
 const async = require('async');
-const asr = require('./asrProvider');
+const URL = require('url').URL;
 
 module.exports = {
-    publicAddress: function(req, token){
-        const addr = config.public_address ? 
+    publicAddressPath: function(urlPath, req, token){
+        const addrBase = config.public_address ? 
                     config.public_address : 
                     `${config.use_ssl ? "https" : "http"}://${req.headers.host}`;
-        return `${addr}/?token=${token}`;
+        const url = new URL(urlPath, addrBase)
+        url.search = `token=${token}`;
+        return url.toString();
     },
 
     findTasksByNode: async function(node = null){
@@ -47,9 +49,9 @@ module.exports = {
         });
     },
 
-    removeAndCleanupNode: async function(node){
+    removeAndCleanupNode: async function(node, asr = null){
         try{
-            if (node.isAutoSpawned() && asr.get()) await asr.get().destroyNode(node);
+            if (node.isAutoSpawned() && asr) await asr.destroyNode(node);
             await routetable.removeByNode(node);
             return nodes.remove(node);
         }catch(e){
