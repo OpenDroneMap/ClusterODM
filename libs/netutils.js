@@ -19,6 +19,7 @@
 const config = require('../config');
 const nodes = require('./nodes');
 const routetable = require('./routetable');
+const async = require('async');
 const asr = require('./asrProvider');
 
 module.exports = {
@@ -29,9 +30,32 @@ module.exports = {
         return `${addr}/?token=${token}`;
     },
 
+    findTasksByNode: async function(node = null){
+        const routes = await routetable.findByNode(node);
+
+        return new Promise((resolve) => {
+            const tasks = [];
+
+            async.each(Object.keys(routes), (taskId, cb) => {
+                (routes[taskId]).node.taskInfo(taskId).then((taskInfo) => {
+                    if (!taskInfo.error) tasks.push(taskInfo);
+                    cb();
+                });
+            }, () => {
+                resolve(tasks);
+            });
+        });
+    },
+
     removeAndCleanupNode: async function(node){
-        if (node.isAutoSpawned()) await asr.destroyNode(node);
-        await routetable.removeByNode(node);
-        return nodes.remove(node);
+        try{
+            if (node.isAutoSpawned() && asr.get()) await asr.get().destroyNode(node);
+            await routetable.removeByNode(node);
+            return nodes.remove(node);
+        }catch(e){
+            logger.warn(`Remove and cleanup failed: ${e.message}`);
+            logger.debug(e);
+            return false;
+        }
     }
 };

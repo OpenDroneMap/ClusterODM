@@ -20,7 +20,6 @@ const net = require('net');
 const package_info = require('./package_info');
 const nodes = require('./libs/nodes');
 const routetable = require('./libs/routetable');
-const async = require('async');
 const netutils = require('./libs/netutils');
 
 module.exports = {
@@ -190,21 +189,7 @@ module.exports = {
                             let node = null;
                             if (number !== undefined) node = nodes.nth(number);
                             if (number !== undefined && !node) invalid();
-                            else{
-                                const routes = await routetable.findByNode(node);
-                                const tasks = [];
-
-                                await new Promise((resolve) => {
-                                    async.each(Object.keys(routes), (taskId, cb) => {
-                                        (routes[taskId]).node.taskInfo(taskId).then((taskInfo) => {
-                                            if (!taskInfo.error) tasks.push(taskInfo);
-                                            cb();
-                                        });
-                                    }, resolve);
-                                });
-
-                                jsonResponse(tasks);
-                            }
+                            else jsonResponse(await netutils.findTasksByNode(node));
                         }else if (subcommand === "INFO" && args.length >= 1){
                             const [ taskId ] = args;
                             const route = await routetable.lookup(taskId);

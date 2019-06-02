@@ -132,15 +132,32 @@ module.exports = class Node{
         this.nodeData.locked = flag;
     }
 
-    setDockerMachineName(name){
+    // @param name {String} name of docker machine
+    // @param maxRuntime {Number} maximum number of seconds this docker-machine node is allowed to run before getting forcibly terminated.
+    // @param maxUploadTime {Number} maximum number of seconds this docker-machine node is allowed for upload before getting forcibly terminated.
+    setDockerMachine(name, maxRuntime, maxUploadTime){
         this.nodeData.dockerMachine = {
             name,
-            updated: new Date().getTime()
+            created: new Date().getTime(),
+            maxRuntime: maxRuntime,
+            maxUploadTime: maxUploadTime
         };
     }
 
     getDockerMachineName(){
         return (this.nodeData.dockerMachine || {}).name;
+    }
+
+    getDockerMachineCreated(){
+        return (this.nodeData.dockerMachine || {}).created;
+    }
+
+    getDockerMachineMaxRuntime(){
+        return (this.nodeData.dockerMachine || {}).maxRuntime;
+    }
+    
+    getDockerMachineMaxUploadTime(){
+        return (this.nodeData.dockerMachine || {}).maxUploadTime;
     }
 
     availableSlots(){

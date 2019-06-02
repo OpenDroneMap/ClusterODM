@@ -32,7 +32,8 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
                 "bucket": "CHANGEME!"
             },
 
-            "maxRuntime": 259200, // TODO!
+            "maxRuntime": -1,
+            "maxUploadTime": -1,
             "region": "nyc3",
             "monitoring": true,
             "tags": ["clusterodm"],
@@ -109,6 +110,14 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
         }
 
         return slug;
+    }
+
+    getMaxRuntime(){
+        return this.getConfig("maxRuntime");
+    }
+
+    getMaxUploadTime(){
+        return this.getConfig("maxUploadTime");
     }
 
     async getImageInfo(){

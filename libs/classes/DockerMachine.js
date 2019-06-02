@@ -92,8 +92,12 @@ module.exports = {
             }
         }
 
-        async rm(){
-            return this.run(["rm", "-y", this.machineName]);
+        async rm(force){
+            const args = ["rm", "-y"];
+            if (force) args.push("-f");
+            args.push(this.machineName);
+
+            return this.run(args);
         }
     }
 }

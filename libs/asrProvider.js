@@ -70,13 +70,33 @@ module.exports = {
         }
     },
 
-    vacuum: function(){
-        const autoNodes = nodes.find(n => n.isAutoSpawned());
-
+    vacuum: async function(){
+        const autoNodes = nodes.find(n => n.isAutoSpawned() && n.isOnline());
+        if (!autoNodes) return;
+        
         // Automatically remove autospawned nodes if either:
         // - They have been online for too long (stuck?)
-        // - They have a task that is CANCELED, DELETED or COMPLETED
+        // - They have an empty queue and are past their allowed upload time
 
-        // TODO:
+        const now = new Date().getTime();
+        const cleanNodes = [];
+
+        autoNodes.forEach(n => {
+            if (n.getDockerMachineMaxRuntime() > 0 && (now - n.getDockerMachineCreated()) > n.getDockerMachineMaxRuntime() * 1000){
+                logger.warn(`${n} has exceeded its maximum runtime and will be forcibly deleted!`)
+                cleanNodes.push(n);
+            }else{
+                if (n.getDockerMachineMaxUploadTime() > 0 &&
+                    n.getInfoProperty("taskQueueCount", 0) === 0 && 
+                    (now - n.getDockerMachineCreated()) > n.getDockerMachineMaxUploadTime() * 1000){
+                    logger.warn(`${n} has exceeded its maximum upload time and will be forcibly deleted!`)
+                    cleanNodes.push(n);
+                }
+            }
+        });
+
+        cleanNodes.forEach(n => {
+            netutils.removeAndCleanupNode(n);
+        });
     }
 }

@@ -218,7 +218,7 @@ module.exports = {
                 const { valid, limits } = await cloudProvider.validate(query.token);
                 if (!valid || query._debugUnauthorized){
                     // json(res, {error: "Invalid authentication token"});
-                    res.writeHead(401, "unauthorized")
+                    res.writeHead(401, "unauthorized");
                     res.end();
                     return;
                 }

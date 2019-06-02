@@ -56,6 +56,14 @@ module.exports = class AbstractASRProvider{
         return 3000;
     }
 
+    getMaxRuntime(){
+        return -1;
+    }
+
+    getMaxUploadTime(){
+        return -1;
+    }
+
     validateConfigKeys(keys){
         for (let prop of keys){
             if (this.getConfig(prop) === "CHANGEME!" || this.getConfig(prop, undefined) === undefined) throw new Error(`You need to create a configuration file and set ${prop}.`);
@@ -100,7 +108,7 @@ module.exports = class AbstractASRProvider{
             }
             if (!node.isOnline()) throw new Error("No nodes available (spawned a new node, but the node did not get online).");
     
-            node.setDockerMachineName(hostname);
+            node.setDockerMachine(hostname, this.getMaxRuntime(), this.getMaxUploadTime());
             return node;
         }catch(e){
             try{
@@ -117,7 +125,7 @@ module.exports = class AbstractASRProvider{
             const hostname = node.getDockerMachineName();
             logger.debug(`About to destroy ${hostname} (${node})`);
             const dm = new DockerMachine(node.getDockerMachineName());
-            return dm.rm();
+            return dm.rm(true);
         }else{
             // Should never happen
             logger.warn(`Tried to call destroyNode on a non-autospawned node: ${node}`);
