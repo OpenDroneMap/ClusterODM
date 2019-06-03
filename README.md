@@ -1,6 +1,6 @@
 # ClusterODM
 
-A reverse proxy, load balancer and task tracker with optional cloud autoscaling capabilities for NodeODM API compatible nodes. In a nutshell, it's a program to link together multiple [NodeODM](https://github.com/OpenDroneMap/NodeODM) API compatible nodes under a single network address. The program allows to distribute tasks across multiple nodes while taking in consideration factors such as maximum number of images, queue size and slots availability. It can also automatically spin and teardown nodes based on demand using cloud computing providers (currently only [DigitalOcean](https://m.do.co/c/2977a7634f44)).
+A reverse proxy, load balancer and task tracker with optional cloud autoscaling capabilities for NodeODM API compatible nodes. In a nutshell, it's a program to link together multiple [NodeODM](https://github.com/OpenDroneMap/NodeODM) API compatible nodes under a single network address. The program allows to distribute tasks across multiple nodes while taking in consideration factors such as maximum number of images, queue size and slots availability. It can also automatically spin up/down nodes based on demand using cloud computing providers (currently only [DigitalOcean](https://m.do.co/c/2977a7634f44)).
 
 ![image](https://user-images.githubusercontent.com/1951843/57490594-b9828180-7287-11e9-9328-740cc0be8f7e.png)
 
@@ -47,7 +47,7 @@ See `node index.js --help` for all parameter options.
 
 ## Autoscale Setup
 
-ClusterODM can spin and teardown nodes based on demand. This allows users to reduce costs associated with always-on instances as well as being able to scale processing based on demand.
+ClusterODM can spin up/down nodes based on demand. This allows users to reduce costs associated with always-on instances as well as being able to scale processing based on demand.
 
 To setup autoscaling you must:
    * Make sure [docker-machine](https://docs.docker.com/machine/install-machine/) is installed.
