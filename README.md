@@ -114,7 +114,7 @@ info: Can write to S3
 info: Found docker-machine executable
 ```
 
-You should always have at least one NodeODM node attached to ClusterODM, even if you plan to use the autoscaler all the times. If you want all of your nodes to always be spin on demand, you should add a "dummy" NodeODM node and lock it:
+You should always have at least one static NodeODM node attached to ClusterODM, even if you plan to use the autoscaler all the times. If you want all of your nodes to be autoscaled, you should add a "dummy" NodeODM node and lock it:
 
 ```
 telnet localhost 8080
@@ -122,6 +122,7 @@ telnet localhost 8080
 > NODE LOCK 1
 > NODE LIST
 1) localhost:3001 [online] [0/2] <version 1.5.1> [L]
+```
 
 This way all tasks will be automatically forwarded to the autoscaler.
 
