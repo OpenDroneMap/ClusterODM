@@ -270,7 +270,12 @@ module.exports = {
                     logger.warn(`Cannot forward task ${uuid} to processing node ${node}: ${err.message}`);
                 }
                 utils.rmdir(tmpPath);
-                close();
+
+                try{
+                    close();
+                }catch(e){
+                    logger.warn(`Cannot close cURL: ${e.message}`);
+                }
             };
 
             curl.on('end', async function (statusCode, body, headers){
@@ -293,7 +298,18 @@ module.exports = {
             });
             curl.on('error', asyncErrorHandler);
 
-            await tasktable.add(uuid, { taskInfo, abort: close, output: ["Launching... please wait!"] });
+            let aborted = false;
+            let dmHostname = null;
+
+            const abortTask = () => {
+                aborted = true;
+                if (dmHostname && autoscale){
+                    const asr = asrProvider.get();
+                    asr.destroyMachine(dmHostname);
+                } 
+                close();
+            };
+            await tasktable.add(uuid, { taskInfo, abort: abortTask, output: ["Launching... please wait!"] });
 
             // Send back response to user
             utils.json(res, { uuid });
@@ -301,8 +317,10 @@ module.exports = {
             if (autoscale){
                 const asr = asrProvider.get();
                 try{
-                    node = await asr.createNode(req, imagesCount, token);
-                    nodes.add(node);
+                    dmHostname = asr.generateHostname(imagesCount);
+                    node = await asr.createNode(req, imagesCount, token, dmHostname);
+                    if (!aborted) nodes.add(node);
+                    else return;
                 }catch(e){
                     const err = new Error("No nodes available (attempted to autoscale but failed). Try again later.");
                     logger.warn(`Cannot create node via autoscaling: ${e.message}`);

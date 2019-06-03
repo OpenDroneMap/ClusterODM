@@ -17,6 +17,10 @@
  */
 const logger = require('../logger');
 const spawn = require('child_process').spawn;
+const kill = require('tree-kill');
+const async = require('async');
+
+runningProcesses = {};
 
 module.exports = {
     // Raises an exception if docker-machine is not installed
@@ -45,14 +49,25 @@ module.exports = {
 
             return new Promise((resolve, reject) => {
                 const childProcess = spawn("docker-machine", args);
+                runningProcesses[this.machineName] = runningProcesses[this.machineName] || [];
+                runningProcesses[this.machineName].push(childProcess);
+
+                const cleanup = () => {
+                    runningProcesses[this.machineName] = runningProcesses[this.machineName].filter(p => p !== childProcess);
+                    if (runningProcesses[this.machineName].length === 0) delete(runningProcesses[this.machineName]);
+                };
                 const output = [];
 
                 childProcess
                     .on('exit', (code, _) => {
+                        cleanup();
                         if (code === 0) resolve(output.join("\n"));
                         else reject(new Error(`docker-machine exited with code ${code}`));
                     })
-                    .on('error', () => reject(new Error("Docker-machine not found in PATH. Please install docker-machine if you want to use the autoscaler.")));
+                    .on('error', () => {
+                        cleanup();
+                        reject(new Error("Docker-machine not found in PATH. Please install docker-machine if you want to use the autoscaler."))
+                    });
                 
                 const processOutput = chunk => {
                     const line = chunk.toString().trim();

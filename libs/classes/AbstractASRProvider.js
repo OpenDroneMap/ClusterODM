@@ -83,11 +83,11 @@ module.exports = class AbstractASRProvider{
     // @param req {http.ClientRequest} request object from HttpProxy
     // @param imagesCount {Number} number of images this node should be able to process
     // @param token {String} user token
+    // @param hostname {String} docker-machine hostname
     // @return {Node} a new Node instance
-    async createNode(req, imagesCount, token){
+    async createNode(req, imagesCount, token, hostname){
         if (!this.canHandle(imagesCount)) throw new Error(`Cannot handle ${imagesCount} images.`);
 
-        const hostname = this.generateHostname(imagesCount);
         const dm = new DockerMachine(hostname);
         const args = ["--driver", this.getDriverName()]
                         .concat(await this.getCreateArgs(imagesCount));
@@ -122,17 +122,23 @@ module.exports = class AbstractASRProvider{
 
     async destroyNode(node){
         if (node.isAutoSpawned()){
-            const hostname = node.getDockerMachineName();
-            logger.debug(`About to destroy ${hostname} (${node})`);
-            const dm = new DockerMachine(node.getDockerMachineName());
-            return dm.rm(true);
+            logger.debug(`Destroying ${node}`);
+            return this.destroyMachine(node.getDockerMachineName());
         }else{
             // Should never happen
             logger.warn(`Tried to call destroyNode on a non-autospawned node: ${node}`);
         }
     }
+    
+    async destroyMachine(dmHostname){
+        logger.debug(`About to destroy ${dmHostname}`);
+        const dm = new DockerMachine(dmHostname);
+        return dm.rm(true);
+    }
 
     generateHostname(imagesCount){
+        if (imagesCount === undefined) throw new Error("Images count missing");
+        
         return `clusterodm-${imagesCount}-${short.generate()}`;
     }
 
