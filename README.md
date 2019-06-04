@@ -114,7 +114,7 @@ info: Can write to S3
 info: Found docker-machine executable
 ```
 
-You should always have at least one static NodeODM node attached to ClusterODM, even if you plan to use the autoscaler all the times. If you want all of your nodes to be autoscaled, you should add a "dummy" NodeODM node and lock it:
+You should always have at least one static NodeODM node attached to ClusterODM, even if you plan to use the autoscaler for all processing. If you setup auto scaling, you can't have zero nodes and rely 100% on the autoscaler. You need to attach a NodeODM node to act as the "reference node" otherwise ClusterODM will not know how to handle certain requests (for the forwarding the UI, for validating options prior to spinning up an instance, etc.). For this purpose, you should add a "dummy" NodeODM node and lock it:
 
 ```
 telnet localhost 8080
