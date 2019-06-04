@@ -52,6 +52,10 @@ module.exports = class AbstractASRProvider{
         throw new Error("Not implemented");
     }
 
+    getDownloadsBaseUrl(){
+        throw new Error("Not implemented");
+    }
+
     getServicePort(){
         return 3000;
     }
@@ -63,6 +67,7 @@ module.exports = class AbstractASRProvider{
     getMaxUploadTime(){
         return -1;
     }
+
 
     validateConfigKeys(keys){
         for (let prop of keys){

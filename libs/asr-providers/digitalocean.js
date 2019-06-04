@@ -72,6 +72,10 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
     getDriverName(){
         return "digitalocean";
     }
+    
+    getDownloadsBaseUrl(){
+        return `https://${this.getConfig("s3.bucket")}.${this.getConfig("s3.endpoint")}`;
+    }
 
     canHandle(imagesCount){
         return this.getImageSlugFor(imagesCount) !== null;

@@ -63,7 +63,7 @@ Options:
     --log-level <logLevel>	Set log level verbosity (default: info)
     -c, --cloud-provider	Cloud provider to use (default: local)
     --upload-max-speed <number>	Upload to processing nodes speed limit in bytes / second (default: no limit)
-    --downloads-from-s3 <URL>	S3 URL prefix where to redirect /task/<uuid>/download requests. (default: do not use S3, forward download requests to nodes) 
+    --downloads-from-s3 <URL>	Manually set the S3 URL prefix where to redirect /task/<uuid>/download requests. (default: do not use S3, forward download requests to nodes, unless the autoscaler is setup, in which case the autoscaler's S3 configuration is used) 
     --no-splitmerge	By default the program will set itself as being a cluster node for all split/merge tasks. Setting this option disables it. (default: false)
     --public-address <http(s)://host:port>	Should be set to a public URL that nodes can use to reach ClusterODM. (default: match the "host" header from client's HTTP request)
     --debug 	Disable caches and other settings to facilitate debug (default: false)

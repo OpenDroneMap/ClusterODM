@@ -22,6 +22,7 @@ const routetable = require('./routetable');
 const tasktable = require('./tasktable');
 const netutils = require('./netutils');
 const DockerMachine = require('./classes/DockerMachine');
+const config = require('../config');
 
 // The autoscaler provides the ability to automatically spawn
 // new VMs in the cloud to handle workloads when we run out of existing nodes
@@ -71,6 +72,12 @@ module.exports = {
                 this.cleanup(taskId, cleanupDelay);
             }
         }
+    },
+
+    downloadsPath: function(){
+        if (config.downloads_from_s3) return config.downloads_from_s3;
+        else if (asrProvider) return asrProvider.getDownloadsBaseUrl();
+        else return null;
     },
 
     cleanup: async function(taskId, delay = 0){

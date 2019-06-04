@@ -183,8 +183,8 @@ module.exports = {
                         asrProvider.onCommit(taskId, 10 * 1000);
 
                         // Add reference to S3 path if necessary
-                        if (config.downloads_from_s3){
-                            taskInfo.s3Path = config.downloads_from_s3;
+                        if (asrProvider.downloadsPath()){
+                            taskInfo.s3Path = asrProvider.downloadsPath();
                         }
 
                         const token = await routetable.lookupToken(taskId);
@@ -429,7 +429,7 @@ module.exports = {
                         // Special case for /task/<uuid>/download/<asset> if 
                         // we need to redirect to S3. In that case, we rewrite
                         // the URL to fetch from S3.
-                        if (config.downloads_from_s3 && action.indexOf('download') === 0){
+                        if (asrProvider.downloadsPath() && action.indexOf('download') === 0){
                             const assetsMatch = action.match(/^download\/(.+)$/);
                             if (assetsMatch && assetsMatch[1]){
                                 let assetPath = assetsMatch[1];
@@ -437,7 +437,7 @@ module.exports = {
                                 // Special case for orthophoto.tif
                                 if (assetPath === 'orthophoto.tif') assetPath = 'odm_orthophoto/odm_orthophoto.tif';
 
-                                const s3Url = url.parse(config.downloads_from_s3);
+                                const s3Url = url.parse(asrProvider.downloadsPath());
                                 s3Url.pathname = path.join(taskId, assetPath);
                                 res.writeHead(301, {
                                     'Location': url.format(s3Url)
