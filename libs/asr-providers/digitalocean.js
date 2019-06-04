@@ -38,8 +38,8 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
             "monitoring": true,
             "tags": ["clusterodm"],
             
-            "image": "nodeodm-image",
-            "snapshot": true,
+            "image": "ubuntu-16-04-x64",
+            "snapshot": false,
 
             "imageSizeMapping": [
                 {"maxImages": 5, "slug": "s-1vcpu-1gb"},
@@ -81,7 +81,13 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
         // Add swap proportional to the available RAM
         const swapToMemRatio = this.getConfig("addSwap");
         if (swapToMemRatio){
-            await dm.ssh(`bash -c "fallocate -l \\$(expr \\$(awk '/MemTotal/ { printf \\\"%d\\n\\\", \\$2 }' /proc/meminfo) * ${swapToMemRatio}) /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile && free -h"`);
+            const sshOutput = await dm.ssh(`bash -c "echo \\$(awk '/MemTotal/ { printf \\\"%d\\n\\\", \\$2 }' /proc/meminfo)"`)
+            const memory = parseFloat(sshOutput.trim());
+            if (!isNaN(memory)){
+                await dm.ssh(`bash -c "fallocate -l ${Math.ceil(memory * swapToMemRatio * 1024)} /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile && free -h"`)
+            }else{
+                throw new Error(`Failed to allocate swap: ${sshOutput}`);
+            }
         }
 
         const dockerImage = this.getConfig("dockerImage");
