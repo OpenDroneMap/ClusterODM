@@ -61,6 +61,7 @@ module.exports = {
             taskName: "",
             skipPostProcessing: false,
             outputs: null,
+            dateCreated: null,
             error: null,
 
             fileNames: [],
@@ -88,6 +89,10 @@ module.exports = {
 
                 else if (fieldname === 'outputs' && val){
                     params.outputs = val;
+                }
+
+                else if (fieldname === 'dateCreated' && !isNaN(parseInt(val))){
+                    params.dateCreated = parseInt(val);
                 }
             });
         }
@@ -158,7 +163,7 @@ module.exports = {
 
     process: async function(req, res, cloudProvider, uuid, params, token, limits, getLimitedOptions){
         const tmpPath = path.join("tmp", uuid);
-        const { options, taskName, skipPostProcessing, outputs, fileNames, imagesCount} = params;
+        const { options, taskName, skipPostProcessing, outputs, dateCreated, fileNames, imagesCount} = params;
 
         // Estimate image sizes
         const IMAGE_TARGET_SAMPLES = 3;
@@ -225,11 +230,14 @@ module.exports = {
             let taskOptions = odmOptions.filterOptions(this.augmentTaskOptions(req, options, token), 
                                                         await getLimitedOptions(token, limits, node));
 
+            const dateC = dateCreated !== null ? new Date(dateCreated) : new Date();
+            const name = taskName || "Task of " + (dateC).toISOString();
+
             const taskInfo = {
                 uuid,
-                name: taskName || "Unnamed Task",
-                dateCreated: (new Date()).getTime(),
-                processingTime: -1,
+                name,
+                dateCreated: dateC.getTime(),
+                // processingTime: <auto update>,
                 status: {code: statusCodes.RUNNING},
                 options: taskOptions,
                 imagesCount: imagesCount
@@ -243,11 +251,15 @@ module.exports = {
             const multiPartBody = fileNames.map(f => { return { name: 'images', file: path.join(tmpPath, f) } });
             multiPartBody.push({
                 name: 'name',
-                contents: taskName
+                contents: name
             });
             multiPartBody.push({
                 name: 'options',
                 contents: JSON.stringify(taskOptions)
+            });
+            multiPartBody.push({
+                name: 'dateCreated',
+                contents: dateC.getTime().toString()
             });
             if (skipPostProcessing){
                 multiPartBody.push({

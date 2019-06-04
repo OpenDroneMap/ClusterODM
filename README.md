@@ -62,8 +62,8 @@ Example configuration file:
     "s3":{
         "accessKey": "CHANGEME!",
         "secretKey": "CHANGEME!",
-        "endpoint": "CHANGEME!",
-        "bucket": "CHANGEME!"
+        "endpoint": "nyc3.digitaloceanspaces.com",
+        "bucket": "bucketname"
     },
 
     "maxRuntime": -1,

@@ -136,7 +136,7 @@ module.exports = {
                 const node = nodes.referenceNode();
                 
                 json(res, {
-                    version: "1.5.1", // this is the version we speak
+                    version: "1.5.2", // this is the version we speak
                     taskQueueCount: 0,
                     totalMemory: 99999999999, 
                     availableMemory: 99999999999,
@@ -471,6 +471,16 @@ module.exports = {
                                         const line = parseInt(query.with_output) || 0;
                                         const output = taskTableEntry.output || [];
                                         response.output = output.slice(line, output.length);
+                                    }
+
+                                    // Populate processingTime if needed
+                                    if (response.processingTime === undefined){
+                                        response = utils.clone(response);
+                                        if (response.dateCreated && response.status && response.status.code === statusCodes.RUNNING){
+                                            response.processingTime = (new Date().getTime()) - response.dateCreated;
+                                        }else{
+                                            response.processingTime = -1;
+                                        }
                                     }
 
                                     json(res, response);
