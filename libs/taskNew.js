@@ -221,7 +221,7 @@ module.exports = {
         let node = await nodes.findBestAvailableNode(imagesCount, true);
 
         // Do we need to / can we create a new node via autoscaling?
-        const autoscale = (!node || node.availableSlots() === 0) && asrProvider.get();
+        const autoscale = (!node || node.availableSlots() === 0) && asrProvider.isAllowedToCreateNewNodes();
         if (autoscale) node = nodes.referenceNode(); // Use the reference node for task options purposes
 
         if (node){

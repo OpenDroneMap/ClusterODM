@@ -56,9 +56,16 @@ module.exports = {
         return asrProvider;
     },
 
+    isAllowedToCreateNewNodes: function(){
+        if (!asrProvider) return false;
+        if (asrProvider.getMachinesLimit() === -1) return true; // no limit
+        
+        const autoSpawnedNodesCount = nodes.filter(n => n.isAutoSpawned()).length;
+        return (asrProvider.getNodesPendingCreation() + autoSpawnedNodesCount) < asrProvider.getMachinesLimit();
+    },
+
     onCommit: async function(taskId, cleanupDelay = 0){
-        const asr = this.get();
-        if (asr){
+        if (asrProvider){
             const node = await routetable.lookupNode(taskId);
             if (node && node.isAutoSpawned()){
                 // Attempt to retrieve task info and save it in task table before deleting node
@@ -81,8 +88,7 @@ module.exports = {
     },
 
     cleanup: async function(taskId, delay = 0){
-        const asr = this.get();
-        if (asr){
+        if (asrProvider){
             const node = await routetable.lookupNode(taskId);
             if (node && node.isAutoSpawned()){
                 const run = () => {

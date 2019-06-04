@@ -34,6 +34,7 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
 
             "maxRuntime": -1,
             "maxUploadTime": -1,
+            "dropletsLimit": -1,
             "region": "nyc3",
             "monitoring": true,
             "tags": ["clusterodm"],
@@ -71,6 +72,10 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
 
     getDriverName(){
         return "digitalocean";
+    }
+
+    getMachinesLimit(){
+        return this.getConfig("dropletsLimit", -1);
     }
     
     getDownloadsBaseUrl(){

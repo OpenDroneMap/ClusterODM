@@ -38,6 +38,8 @@ module.exports = class AbstractASRProvider{
                 throw new Error(`Invalid configuration file ${userConfigFile}`);
             }
         }
+
+        this.nodesPendingCreation = 0;
     }
 
     getDriverName(){
@@ -60,6 +62,10 @@ module.exports = class AbstractASRProvider{
         return 3000;
     }
 
+    getMachinesLimit(){
+        return -1;
+    }
+
     getMaxRuntime(){
         return -1;
     }
@@ -68,6 +74,9 @@ module.exports = class AbstractASRProvider{
         return -1;
     }
 
+    getNodesPendingCreation(){
+        return this.nodesPendingCreation;
+    }
 
     validateConfigKeys(keys){
         for (let prop of keys){
@@ -99,6 +108,8 @@ module.exports = class AbstractASRProvider{
         const nodeToken = short.generate();
 
         try{
+            this.nodesPendingCreation++;
+
             await dm.create(args);
             await this.setupMachine(req, token, dm, nodeToken);
             
@@ -122,6 +133,8 @@ module.exports = class AbstractASRProvider{
                 logger.warn("Could not remove docker-machine, it's likely that the machine was not created, but double-check!");
             }
             throw e;
+        }finally{
+            this.nodesPendingCreation--;
         }
     }
 
