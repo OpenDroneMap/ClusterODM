@@ -188,16 +188,10 @@ module.exports = {
                         }
 
                         const token = await routetable.lookupToken(taskId);
-                        if (token){
-                            try{
-                                cloudProvider.taskFinished(token, taskInfo);
-                            }catch(e){
-                                logger.error(`cloudProvider.taskFinished: ${e.message}`);
-                            }
-                        }else{
-                            // Something is not right, notify an admin
-                            // as we cannot record this transaction
-                            logger.error(`Cannot record transaction, token is missing: ${JSON.stringify(taskInfo)}`);
+                        try{
+                            cloudProvider.taskFinished(token, taskInfo);
+                        }catch(e){
+                            logger.error(`cloudProvider.taskFinished: ${e.message}`);
                         }
 
                         json(res, {ok: true});

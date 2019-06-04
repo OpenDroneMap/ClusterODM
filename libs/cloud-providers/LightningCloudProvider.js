@@ -82,7 +82,12 @@ module.exports = class LightningCloudProvider extends AbstractCloudProvider{
     }
 
     async taskFinished(token, taskInfo){
-        if (!token) throw new Error("Invalid token");
+        if (!token){
+            // Something is not right, notify an admin
+            // as we cannot record this transaction
+            logger.error(`Cannot record transaction, token is missing: ${JSON.stringify(taskInfo)}`);
+            return;
+        }
         if (!taskInfo) throw new Error("Invalid taskInfo parameter");
 
         try{
