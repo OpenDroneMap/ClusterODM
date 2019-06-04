@@ -20,11 +20,24 @@ const url = require('url');
 const axios = require('axios');
 
 module.exports = class Node{
-    constructor(nodeData){
-        this.nodeData = nodeData;
+    constructor(hostname, port, token = ""){
+        this.nodeData = {
+            hostname,
+            port,
+            token,
+            info: {}
+        };
         this.turn = 0;
 
         this.timeout = 10000;
+    }
+
+    static FromJSON(json){
+        const n = new Node(json.hostname, json.port, json.token);
+        for (let k in json){
+            n.nodeData[k] = json[k];
+        }
+        return n;
     }
 
     async updateInfo(){
@@ -33,17 +46,17 @@ module.exports = class Node{
             if (response.status === 200){
                 if (!response.data.error){
                     this.nodeData.info = response.data;
-                    this.nodeData.last_refreshed = new Date().getTime();
+                    this.nodeData.lastRefreshed = new Date().getTime();
                 }else{
                     throw new Error(`Cannot update info for ${this}, error: ${response.data.error}`);
                 }
             }else{
+                this.nodeData.lastRefreshed = 0;
                 throw new Error(`Cannot update info for ${this}, returned status ${response.status}`);
-                this.nodeData.last_refreshed = 0;
             }
         }catch(e){
             logger.warn(`Cannot update info for ${this}: ${e.message}`);
-            this.nodeData.last_refreshed = 0;
+            this.nodeData.lastRefreshed = 0;
         }
     }
 
@@ -100,25 +113,62 @@ module.exports = class Node{
     }
 
     hostname(){
-        return (this.nodeData || {}).hostname;
+        return this.nodeData.hostname;
     }
 
     port(){
-        return (this.nodeData || {}).port;
+        return this.nodeData.port;
+    }
+
+    isAutoSpawned(){
+        return !!this.getDockerMachineName();
     }
 
     isLocked(){
-        return !!(this.nodeData || {}).locked;
+        return !!this.nodeData.locked;
     }
 
     setLocked(flag){
         this.nodeData.locked = flag;
     }
 
+    // @param name {String} name of docker machine
+    // @param maxRuntime {Number} maximum number of seconds this docker-machine node is allowed to run before getting forcibly terminated.
+    // @param maxUploadTime {Number} maximum number of seconds this docker-machine node is allowed for upload before getting forcibly terminated.
+    setDockerMachine(name, maxRuntime, maxUploadTime){
+        this.nodeData.dockerMachine = {
+            name,
+            created: new Date().getTime(),
+            maxRuntime: maxRuntime,
+            maxUploadTime: maxUploadTime
+        };
+    }
+
+    getDockerMachineName(){
+        return (this.nodeData.dockerMachine || {}).name;
+    }
+
+    getDockerMachineCreated(){
+        return (this.nodeData.dockerMachine || {}).created;
+    }
+
+    getDockerMachineMaxRuntime(){
+        return (this.nodeData.dockerMachine || {}).maxRuntime;
+    }
+    
+    getDockerMachineMaxUploadTime(){
+        return (this.nodeData.dockerMachine || {}).maxUploadTime;
+    }
+
+    availableSlots(){
+        return Math.max(0, this.getInfoProperty('maxParallelTasks', 0) - this.getInfoProperty('taskQueueCount', 0));
+    }
+
     proxyTargetUrl(){
         const { hostname, port } = this.nodeData;
-
-        return `http://${hostname}:${port}`; // TODO: add SSL support
+        const proto = port === 443 ? 'https' : 'http'; 
+        
+        return `${proto}://${hostname}:${port}`;
     }
 
     getToken(){
@@ -139,7 +189,7 @@ module.exports = class Node{
     }
 
     getInfo(){
-        return (this.nodeData || {}).info;
+        return this.nodeData.info;
     }
 
     getInfoProperty(prop, defaultValue){
@@ -168,13 +218,13 @@ module.exports = class Node{
     }
 
     getLastRefreshed(){
-        return this.nodeData.last_refreshed || 0;
+        return this.nodeData.lastRefreshed || 0;
     }
 
     toJSON(){
         let clone = JSON.parse(JSON.stringify(this.nodeData));
         delete(clone.info);
-        delete(clone.last_refreshed);
+        delete(clone.lastRefreshed);
         return clone;
     }
 

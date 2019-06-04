@@ -20,7 +20,8 @@ const net = require('net');
 const package_info = require('./package_info');
 const nodes = require('./libs/nodes');
 const routetable = require('./libs/routetable');
-const async = require('async');
+const netutils = require('./libs/netutils');
+const asrProvider = require('./libs/asrProvider');
 
 module.exports = {
     create: function(options){
@@ -51,7 +52,11 @@ module.exports = {
                 else fail();
             };
             const printNode = (socket, i, node) => {
-                socket.write(`${(i + 1)}) ${node.toString()} ${node.isOnline() ? '[online]' : '[offline]'} [${node.getTaskQueueCount()}/${node.getMaxParallelTasks()}] <version ${node.getVersion()}>${node.isLocked() ? " [L]" : ""}\r\n`);
+                const flags = [];
+                if (node.isLocked()) flags.push("L");
+                if (node.isAutoSpawned()) flags.push("A");
+
+                socket.write(`${(i + 1)}) ${node.toString()} ${node.isOnline() ? '[online]' : '[offline]'} [${node.getTaskQueueCount()}/${node.getMaxParallelTasks()}] <version ${node.getVersion()}>${flags.length ? ` [${flags.join(",")}]` : ""}\r\n`);
             };
             const prettyJson = (json) => {
                 return JSON.stringify(json, null, 2);
@@ -97,7 +102,7 @@ module.exports = {
                     if (command === "HELP"){
                         socket.write("NODE ADD <hostname> <port> [token] - Add new node\r\n");
                         socket.write("NODE DEL <node number> - Remove a node\r\n");
-                        socket.write("NODE INFO <node number> - View JSON info of node\r\n");
+                        socket.write("NODE INFO <node number> - View node info\r\n");
                         socket.write("NODE LIST - List nodes\r\n");
                         socket.write("NODE LOCK <node number> - Stop forwarding tasks to this node\r\n");
                         socket.write("NODE UNLOCK <node number> - Resume forwarding tasks to this node\r\n");
@@ -117,12 +122,12 @@ module.exports = {
 
                         if (subcommand === "ADD" && args.length >= 2){
                             const [ hostname, port, token ] = args;
-                            const node = nodes.add(hostname, port, token);
+                            const node = nodes.addUnique(hostname, port, token);
                             if (node) node.updateInfo();
                             reply(!!node);
                         }else if (subcommand === "DEL" && args.length >= 1){
                             const [ number ] = args;
-                            reply(nodes.remove(nodes.nth(number)));
+                            reply(await netutils.removeAndCleanupNode(nodes.nth(number), asrProvider.get()));
                         }else if (subcommand === "LOCK" && args.length >= 1){
                             const [ number ] = args;
                             reply(nodes.lock(nodes.nth(number)));
@@ -145,7 +150,7 @@ module.exports = {
                             const [ number ] = args;
                             const node = nodes.nth(number);
                             if (node){
-                                jsonResponse(node.getInfo());
+                                jsonResponse(node.nodeData);
                             }else invalid();
                         }else if (subcommand === "BEST" && args.length >= 1){
                             const [ numImages ] = args;
@@ -174,7 +179,7 @@ module.exports = {
                             if (number !== undefined) node = nodes.nth(number);
                             if (number !== undefined && !node) invalid();
                             else{
-                                jsonResponse(await routetable.get(node));
+                                jsonResponse(await routetable.findByNode(node));
                             }
                         }
                     }else if (command === "TASK" && args.length > 0){
@@ -185,21 +190,7 @@ module.exports = {
                             let node = null;
                             if (number !== undefined) node = nodes.nth(number);
                             if (number !== undefined && !node) invalid();
-                            else{
-                                const routes = await routetable.get(node);
-                                const tasks = [];
-
-                                await new Promise((resolve) => {
-                                    async.each(Object.keys(routes), (taskId, cb) => {
-                                        (routes[taskId]).node.taskInfo(taskId).then((taskInfo) => {
-                                            if (!taskInfo.error) tasks.push(taskInfo);
-                                            cb();
-                                        });
-                                    }, resolve);
-                                });
-
-                                jsonResponse(tasks);
-                            }
+                            else jsonResponse(await netutils.findTasksByNode(node));
                         }else if (subcommand === "INFO" && args.length >= 1){
                             const [ taskId ] = args;
                             const route = await routetable.lookup(taskId);

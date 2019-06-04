@@ -132,5 +132,13 @@ module.exports = {
 
     sanitize: function(filePath){
         return filePath.replace(/(\/|\\)/g, "_");
+    },
+
+    sleep: async function(msecs){
+        return new Promise((resolve) => setTimeout(resolve, msecs));
+    },
+
+    clone: function(json){
+        return JSON.parse(JSON.stringify(json));
     }
 };

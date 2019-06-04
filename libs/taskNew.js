@@ -17,6 +17,7 @@
  */
 const Busboy = require('busboy');
 const utils = require('./utils');
+const netutils = require('./netutils');
 const path = require('path');
 const fs = require('fs');
 const config = require('../config');
@@ -27,6 +28,8 @@ const routetable = require('./routetable');
 const nodes = require('./nodes');
 const odmOptions = require('./odmOptions');
 const statusCodes = require('./statusCodes');
+const asrProvider = require('./asrProvider');
+const logger = require('./logger');
 
 module.exports = {
     // @return {object} Context object with methods and variables to use during task/new operations 
@@ -42,6 +45,7 @@ module.exports = {
             die: (err) => {
                 utils.rmdir(tmpPath);
                 utils.json(res, {error: err});
+                asrProvider.cleanup(uuid);
             }
         };
     },
@@ -57,6 +61,7 @@ module.exports = {
             taskName: "",
             skipPostProcessing: false,
             outputs: null,
+            dateCreated: null,
             error: null,
 
             fileNames: [],
@@ -84,6 +89,10 @@ module.exports = {
 
                 else if (fieldname === 'outputs' && val){
                     params.outputs = val;
+                }
+
+                else if (fieldname === 'dateCreated' && !isNaN(parseInt(val))){
+                    params.dateCreated = parseInt(val);
                 }
             });
         }
@@ -121,14 +130,11 @@ module.exports = {
         if (typeof taskOptions === "string") taskOptions = JSON.parse(taskOptions);
         if (!Array.isArray(taskOptions)) taskOptions = [];
 
-        if (!config.no_cluster){
+        if (config.splitmerge){
             // We automatically set the "sm-cluster" parameter
             // to match the address that was used to reach ClusterODM.
             // if "--split" is set.
-            const addr = config.cluster_address ? 
-                        config.cluster_address : 
-                        `${config.use_ssl ? "https" : "http"}://${req.headers.host}`;
-            const clusterUrl = `${addr}/?token=${token}`;
+            const clusterUrl = netutils.publicAddressPath('/', req, token);
 
             let result = [];
             let foundSplit = false, foundSMCluster = false;
@@ -157,7 +163,7 @@ module.exports = {
 
     process: async function(req, res, cloudProvider, uuid, params, token, limits, getLimitedOptions){
         const tmpPath = path.join("tmp", uuid);
-        const { options, taskName, skipPostProcessing, outputs, fileNames, imagesCount} = params;
+        const { options, taskName, skipPostProcessing, outputs, dateCreated, fileNames, imagesCount} = params;
 
         // Estimate image sizes
         const IMAGE_TARGET_SAMPLES = 3;
@@ -169,6 +175,11 @@ module.exports = {
         }
 
         utils.shuffleArray(fileNames);
+
+        // When --no-splitmerge is set, do not allow seed.zip
+        if (!config.splitmerge){
+            if (fileNames.indexOf("seed.zip") !== -1) throw new Error("Cannot use this node as a split-merge cluster.");
+        }
 
         for (let i = 0; i < fileNames.length; i++){
             const fileName = fileNames[i];
@@ -207,24 +218,32 @@ module.exports = {
         const { approved, error } = await cloudProvider.approveNewTask(token, imagesCount, imageDimensions);
         if (!approved) throw new Error(error);
 
-        const node = await nodes.findBestAvailableNode(imagesCount, true);
+        let node = await nodes.findBestAvailableNode(imagesCount, true);
+
+        // Do we need to / can we create a new node via autoscaling?
+        const autoscale = (!node || node.availableSlots() === 0) && asrProvider.get();
+        if (autoscale) node = nodes.referenceNode(); // Use the reference node for task options purposes
+
         if (node){
             // Validate options
             // Will throw an exception on failure
             let taskOptions = odmOptions.filterOptions(this.augmentTaskOptions(req, options, token), 
                                                         await getLimitedOptions(token, limits, node));
 
+            const dateC = dateCreated !== null ? new Date(dateCreated) : new Date();
+            const name = taskName || "Task of " + (dateC).toISOString();
+
             const taskInfo = {
                 uuid,
-                name: taskName || "Unnamed Task",
-                dateCreated: (new Date()).getTime(),
-                processingTime: -1,
+                name,
+                dateCreated: dateC.getTime(),
+                // processingTime: <auto update>,
                 status: {code: statusCodes.RUNNING},
                 options: taskOptions,
                 imagesCount: imagesCount
             };
 
-            // Start forwarding the task to the node
+            // Get read to forward the task to the node
             // (using CURL, because NodeJS libraries are buggy)
             const curl = new Curl(),
                 close = curl.close.bind(curl);
@@ -232,11 +251,15 @@ module.exports = {
             const multiPartBody = fileNames.map(f => { return { name: 'images', file: path.join(tmpPath, f) } });
             multiPartBody.push({
                 name: 'name',
-                contents: taskName
+                contents: name
             });
             multiPartBody.push({
                 name: 'options',
                 contents: JSON.stringify(taskOptions)
+            });
+            multiPartBody.push({
+                name: 'dateCreated',
+                contents: dateC.getTime().toString()
             });
             if (skipPostProcessing){
                 multiPartBody.push({
@@ -251,7 +274,7 @@ module.exports = {
                 });
             }
 
-            const curlErrorHandler = async err => {
+            const asyncErrorHandler = async err => {
                 const taskInfo = (await tasktable.lookup(uuid)).taskInfo;
                 if (taskInfo){
                     taskInfo.status.code = statusCodes.FAILED;
@@ -259,19 +282,13 @@ module.exports = {
                     logger.warn(`Cannot forward task ${uuid} to processing node ${node}: ${err.message}`);
                 }
                 utils.rmdir(tmpPath);
-                close();
-            };
 
-            curl.setOpt(Curl.option.URL, `${node.proxyTargetUrl()}/task/new?token=${node.getToken()}`);
-            if (config.upload_max_speed) curl.setOpt(Curl.option.MAX_SEND_SPEED_LARGE, config.upload_max_speed);
-            // abort if slower than 30 bytes/sec during 1600 seconds */
-            curl.setOpt(Curl.option.LOW_SPEED_TIME, 1600);
-            curl.setOpt(Curl.option.LOW_SPEED_LIMIT, 30);
-            curl.setOpt(Curl.option.HTTPPOST, multiPartBody);
-            curl.setOpt(Curl.option.HTTPHEADER, [
-                'Content-Type: multipart/form-data',
-                `set-uuid: ${uuid}`
-            ]);
+                try{
+                    close();
+                }catch(e){
+                    logger.warn(`Cannot close cURL: ${e.message}`);
+                }
+            };
 
             curl.on('end', async function (statusCode, body, headers){
                 if (statusCode === 200){
@@ -285,18 +302,55 @@ module.exports = {
 
                         utils.rmdir(tmpPath);
                     }catch(e){
-                        curlErrorHandler(e);
+                        asyncErrorHandler(e);
                     }
                 }else{
-                    curlErrorHandler(new Error(`statusCode is ${statusCode}, expected 200`));
+                    asyncErrorHandler(new Error(`statusCode is ${statusCode}, expected 200`));
                 }
             });
-            curl.on('error', curlErrorHandler);
+            curl.on('error', asyncErrorHandler);
 
-            await tasktable.add(uuid, { taskInfo, abort: close, output: [""] });
+            let aborted = false;
+            let dmHostname = null;
+
+            const abortTask = () => {
+                aborted = true;
+                if (dmHostname && autoscale){
+                    const asr = asrProvider.get();
+                    asr.destroyMachine(dmHostname);
+                } 
+                close();
+            };
+            await tasktable.add(uuid, { taskInfo, abort: abortTask, output: ["Launching... please wait!"] });
 
             // Send back response to user
             utils.json(res, { uuid });
+
+            if (autoscale){
+                const asr = asrProvider.get();
+                try{
+                    dmHostname = asr.generateHostname(imagesCount);
+                    node = await asr.createNode(req, imagesCount, token, dmHostname);
+                    if (!aborted) nodes.add(node);
+                    else return;
+                }catch(e){
+                    const err = new Error("No nodes available (attempted to autoscale but failed). Try again later.");
+                    logger.warn(`Cannot create node via autoscaling: ${e.message}`);
+                    asyncErrorHandler(err);
+                    return;
+                }
+            }
+
+            curl.setOpt(Curl.option.URL, `${node.proxyTargetUrl()}/task/new?token=${node.getToken()}`);
+            if (config.upload_max_speed) curl.setOpt(Curl.option.MAX_SEND_SPEED_LARGE, config.upload_max_speed);
+            // abort if slower than 30 bytes/sec during 1600 seconds */
+            curl.setOpt(Curl.option.LOW_SPEED_TIME, 1600);
+            curl.setOpt(Curl.option.LOW_SPEED_LIMIT, 30);
+            curl.setOpt(Curl.option.HTTPPOST, multiPartBody);
+            curl.setOpt(Curl.option.HTTPHEADER, [
+                'Content-Type: multipart/form-data',
+                `set-uuid: ${uuid}`
+            ]);
 
             curl.perform();
         }else{

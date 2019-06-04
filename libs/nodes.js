@@ -18,6 +18,7 @@
 const Node = require('./classes/Node');
 const fs = require('fs');
 const logger = require('./logger');
+
 let nodes = [];
 let initialized = false;
 
@@ -36,22 +37,29 @@ module.exports = {
         initialized = true;
     },
 
-    add: function(hostname, port, token){
+    addUnique: function(hostname, port, token){
         if (!hostname || !port) return false;
 
-        if (!nodes.find(n => n.hostname === hostname && n.port === port)){
-            const node = new Node({hostname, port, token, info: {}});
-            nodes.push(node);
-            this.saveToDisk();
+        if (!nodes.find(n => n.hostname() === hostname && n.port() === port)){
+            const node = new Node(hostname, port, token);
+            this.add(node);
             return node;
         }else{
             return false;
         }
     },
 
+    add: function(node){
+        nodes.push(node);
+        logger.debug(`Added node: ${node}`);
+        this.saveToDisk();
+        return node;
+    },
+
     remove: function(node){
         if (node){
             nodes = nodes.filter(n => n !== node);
+            logger.debug(`Removed node: ${node}`);
             this.saveToDisk();
             return true;
         }else{
@@ -87,6 +95,10 @@ module.exports = {
         return nodes.find(match);
     },
 
+    filter: function(match){
+        return nodes.filter(match);
+    },
+
     nth: function(n){
         n = parseInt(n);
         if (isNaN(n)) return null;
@@ -109,7 +121,7 @@ module.exports = {
     // node information for the proxy (for example,
     // when returning calls to /info or /options)
     referenceNode: function(){
-        return nodes.find(n => n.isOnline() && !n.isLocked());
+        return nodes.find(n => n.isOnline());
     },
 
     maxTurnNumber: function(){
@@ -131,6 +143,7 @@ module.exports = {
 
         const candidates = nodes.filter(n => n.isOnline() && 
                                              !n.isLocked() &&
+                                             !n.isAutoSpawned() &&
                                             (!n.getInfo().maxImages || n.getInfo().maxImages >= numImages));
         if (!candidates.length) return null;
 
@@ -194,7 +207,7 @@ module.exports = {
                             reject(err);
                         }else{
                             const nodesjson = JSON.parse(json);
-                            nodes = nodesjson.map(n => new Node(n));
+                            nodes = nodesjson.map(n => Node.FromJSON(n));
                             resolve();
                         }
                     });

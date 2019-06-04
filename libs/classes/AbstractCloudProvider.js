@@ -19,7 +19,7 @@ const logger = require('../logger');
 
 module.exports = class AbstractCloudProvider{
     constructor(){
-        logger.info(`Using ${this.constructor.name}`);
+        logger.info(`Cloud: ${this.constructor.name}`);
     }
 
     // Providers should override this function to validate a user token

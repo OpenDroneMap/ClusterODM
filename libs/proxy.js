@@ -34,6 +34,7 @@ const statusCodes = require('./statusCodes');
 const taskNew = require('./taskNew');
 const async = require('async');
 const odmOptions = require('./odmOptions');
+const asrProvider = require('./asrProvider');
 
 module.exports = {
 	initialize: async function(cloudProvider){
@@ -85,6 +86,23 @@ module.exports = {
             return optionsCache.set(token, limitedOptions);
         };
 
+        const maxConcurrencyLimitReached = async (maxConcurrentTasks, token) => {
+            if (!maxConcurrentTasks) return false;
+
+            const userRoutes = await routetable.findByToken(token);
+            let runningTasks = 0;
+            await new Promise((resolve) => {
+                async.each(Object.keys(userRoutes), (taskId, cb) => {
+                    (userRoutes[taskId]).node.taskInfo(taskId).then((taskInfo) => {
+                        if (taskInfo.status && [statusCodes.QUEUED, statusCodes.RUNNING].indexOf(taskInfo.status.code) !== -1) runningTasks++;
+                        cb();
+                    });
+                }, resolve);
+            });
+            
+            return runningTasks >= maxConcurrentTasks;
+        };
+
         const getReqBody = async (req) => {
             return new Promise((resolve, reject) => {
                 let body = [];
@@ -118,13 +136,13 @@ module.exports = {
                 const node = nodes.referenceNode();
                 
                 json(res, {
-                    version: "1.5.1", // this is the version we speak
+                    version: "1.5.2", // this is the version we speak
                     taskQueueCount: 0,
                     totalMemory: 99999999999, 
                     availableMemory: 99999999999,
                     cpuCores: 99999999999,
                     maxImages: limits.maxImages || null,
-                    maxParallelTasks: 99999999999,
+                    maxParallelTasks: limits.maxConcurrentTasks !== undefined ? limits.maxConcurrentTasks : 99999999999,
                     engineVersion: node !== undefined ? node.getInfo().engineVersion : '?',
                     engine: node !== undefined ? node.getInfo().engine : '?'
                 });
@@ -162,6 +180,8 @@ module.exports = {
                         const taskInfo = JSON.parse(body);
                         const taskId = taskInfo.uuid;
 
+                        asrProvider.onCommit(taskId, 10 * 1000);
+
                         // Add reference to S3 path if necessary
                         if (config.downloads_from_s3){
                             taskInfo.s3Path = config.downloads_from_s3;
@@ -198,7 +218,7 @@ module.exports = {
                 const { valid, limits } = await cloudProvider.validate(query.token);
                 if (!valid || query._debugUnauthorized){
                     // json(res, {error: "Invalid authentication token"});
-                    res.writeHead(401, "unauthorized")
+                    res.writeHead(401, "unauthorized");
                     res.end();
                     return;
                 }
@@ -226,6 +246,14 @@ module.exports = {
                         const referenceNode = nodes.referenceNode();
                         if (!referenceNode){
                             die("Cannot create task, no nodes are online.");
+                            return;
+                        }
+
+                        if (await maxConcurrencyLimitReached(limits.maxConcurrentTasks, query.token)){
+                            // TODO: A better solution would be to put the task in a queue
+                            // but it's non-trivial to keep such a state, as well as to deal
+                            // with scalability of storage requirements.
+                            die(`Reached maximum number of concurrent tasks: ${limits.maxConcurrentTasks}. Please wait until other tasks have finished, then restart the task.`);
                             return;
                         }
 
@@ -277,7 +305,13 @@ module.exports = {
                         const die = (err) => {
                             utils.rmdir(tmpPath);
                             utils.json(res, {error: err});
+                            asrProvider.cleanup(taskId);
                         };
+
+                        if (await maxConcurrencyLimitReached(limits.maxConcurrentTasks, query.token)){
+                            die(`Reached maximum number of concurrent tasks: ${limits.maxConcurrentTasks}. Please wait until other tasks have finished, then restart the task.`);
+                            return;
+                        }
 
                         async.series([
                             cb => {
@@ -321,6 +355,11 @@ module.exports = {
                     taskNew.formDataParser(req, async function(params) {
                         if (params.error){
                             die(params.error);
+                            return;
+                        }
+
+                        if (await maxConcurrencyLimitReached(limits.maxConcurrentTasks, query.token)){
+                            die(`Reached maximum number of concurrent tasks: ${limits.maxConcurrentTasks}. Please wait until other tasks have finished, then restart the task.`);
                             return;
                         }
 
@@ -422,8 +461,31 @@ module.exports = {
                         }else{
                             const taskTableEntry = await tasktable.lookup(taskId);
                             if (taskTableEntry){
+
+                                // GET: /task/<uuid>/info
                                 if (action === 'info'){
-                                    json(res, taskTableEntry.taskInfo);
+                                    let response = taskTableEntry.taskInfo;
+
+                                    // ?with_output support
+                                    if (query.with_output !== undefined){
+                                        const line = parseInt(query.with_output) || 0;
+                                        const output = taskTableEntry.output || [];
+                                        response.output = output.slice(line, output.length);
+                                    }
+
+                                    // Populate processingTime if needed
+                                    if (response.processingTime === undefined){
+                                        response = utils.clone(response);
+                                        if (response.dateCreated && response.status && response.status.code === statusCodes.RUNNING){
+                                            response.processingTime = (new Date().getTime()) - response.dateCreated;
+                                        }else{
+                                            response.processingTime = -1;
+                                        }
+                                    }
+
+                                    json(res, response);
+
+                                // GET: /task/<uuid>/output
                                 }else if (action === 'output'){
                                     const line = query.line || 0;
                                     const output = taskTableEntry.output || [];
