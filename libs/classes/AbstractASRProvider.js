@@ -123,6 +123,12 @@ module.exports = class AbstractASRProvider{
                     break;
                 }catch(e){
                     logger.warn(`Cannot create machine: ${e}`);
+                    try{
+                        await dm.rm(true); // Make sure to cleanup if something goes wrong!
+                    }catch(e){
+                        // Do nothing
+                    }
+
                     await utils.sleep(10000 * i);
                 }
             }
@@ -145,7 +151,7 @@ module.exports = class AbstractASRProvider{
             return node;
         }catch(e){
             try{
-                dm.rm(); // Make sure to cleanup if something goes wrong!
+                await dm.rm(); // Make sure to cleanup if something goes wrong!
             }catch(e){
                 logger.warn("Could not remove docker-machine, it's likely that the machine was not created, but double-check!");
             }
