@@ -66,6 +66,10 @@ module.exports = class AbstractASRProvider{
         return -1;
     }
 
+    getCreateRetries(){
+        1;
+    }
+
     getMaxRuntime(){
         return -1;
     }
@@ -110,7 +114,20 @@ module.exports = class AbstractASRProvider{
         try{
             this.nodesPendingCreation++;
 
-            await dm.create(args);
+            let created = false;
+            for (let i = 1; i <= this.getCreateRetries(); i++){
+                logger.info(`Trying to create machine... (${i})`);
+                try{
+                    await dm.create(args);
+                    created = true;
+                    break;
+                }catch(e){
+                    logger.warn(`Cannot create machine: ${e}`);
+                    await utils.sleep(10000 * i);
+                }
+            }
+            if (!created) throw new Error(`Cannot create machine (attempted ${this.getCreateRetries()} times)`);
+
             await this.setupMachine(req, token, dm, nodeToken);
             
             const node = new Node(await dm.getIP(), this.getServicePort(), nodeToken);

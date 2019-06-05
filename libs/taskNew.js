@@ -317,7 +317,11 @@ module.exports = {
                 aborted = true;
                 if (dmHostname && autoscale){
                     const asr = asrProvider.get();
-                    asr.destroyMachine(dmHostname);
+                    try{
+                        asr.destroyMachine(dmHostname);
+                    }catch(e){
+                        logger.warn(`Could not destroy machine ${dmHostname}: ${e}`);
+                    }
                 } 
                 close();
             };

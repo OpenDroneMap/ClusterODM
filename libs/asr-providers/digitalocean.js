@@ -35,6 +35,7 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
             "maxRuntime": -1,
             "maxUploadTime": -1,
             "dropletsLimit": -1,
+            "createRetries": 1,
             "region": "nyc3",
             "monitoring": true,
             "tags": ["clusterodm"],
@@ -76,6 +77,10 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
 
     getMachinesLimit(){
         return this.getConfig("dropletsLimit", -1);
+    }
+
+    getCreateRetries(){
+        return this.getConfig("createRetries", 1);
     }
     
     getDownloadsBaseUrl(){
