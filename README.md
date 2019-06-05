@@ -58,6 +58,8 @@ Example configuration file:
 
 ```json
 {
+    "provider": "digitalocean",
+    
     "accessToken": "CHANGEME!",
     "s3":{
         "accessKey": "CHANGEME!",
