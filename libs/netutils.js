@@ -27,8 +27,10 @@ module.exports = {
         const addrBase = config.public_address ? 
                     config.public_address : 
                     `${config.use_ssl ? "https" : "http"}://${req.headers.host}`;
-        const url = new URL(urlPath, addrBase)
-        url.search = `token=${token}`;
+        const url = new URL(urlPath, addrBase);
+        if (token){
+            url.search = `token=${token}`;
+        }
         return url.toString();
     },
 
