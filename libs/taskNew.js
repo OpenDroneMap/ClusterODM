@@ -190,7 +190,9 @@ module.exports = {
 
             let dims = {};
             try{
-                dims = await probeImageSize(fs.createReadStream(filePath));
+                const imgStream = fs.createReadStream(filePath);
+                dims = await probeImageSize(imgStream);
+                imgStream.close();
             }catch(e){
                 // Some drones (ex. YUNEEC) produce images that don't seem
                 // to follow proper image standards. In this case, we
