@@ -20,6 +20,7 @@ const netutils = require('../netutils');
 const S3 = require('../S3');
 const axios = require('axios');
 const logger = require('../logger');
+const fs = require('fs');
 
 module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
     constructor(userConfig){
@@ -42,6 +43,11 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
             
             "image": "ubuntu-16-04-x64",
             "snapshot": false,
+
+            "sshKey":{
+                "fingerprint": "",
+                "path": "",
+            },
 
             "imageSizeMapping": [
                 {"maxImages": 5, "slug": "s-1vcpu-1gb"},
@@ -69,6 +75,14 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
             else if (a['maxImages'] > b['maxImages']) return 1;
             else return 0;
         });
+
+        // Validate key path
+        const sshKeyPath = this.getConfig("sshKey.path", "");
+        if (sshKeyPath){
+            logger.info("Using existing SSH key");
+            const exists = await new Promise((resolve) => fs.exists(this.getConfig("sshKey.path"), resolve));
+            if (!exists) throw new Error("Invalid config key sshKey.path: file does not exist");
+        }
     }
 
     getDriverName(){
@@ -201,6 +215,16 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
         if (this.getConfig("tags", []).length > 0){
             args.push("--digitalocean-tags");
             args.push(this.getConfig("tags").join(","));
+        }
+
+        if (this.getConfig("sshKey.fingerprint", "")){
+            args.push("--digitalocean-ssh-key-fingerprint");
+            args.push(this.getConfig("sshKey.fingerprint"));
+        }
+
+        if (this.getConfig("sshKey.path", "")){
+            args.push("--digitalocean-ssh-key-path");
+            args.push(this.getConfig("sshKey.path"));
         }
 
         return args;
