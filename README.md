@@ -43,6 +43,8 @@ telnet localhost 8080
 
 Finally, use a web browser to connect to `http://localhost:3000`. A normal [NodeODM](https://github.com/OpenDroneMap/NodeODM) UI should appear. This means the application is working, as web requests are being properly forwarded to nodes.
 
+You can also check the status of nodes via a web interface available at `http://localhost:10000`.
+
 See `node index.js --help` for all parameter options.
 
 ## Autoscale Setup
@@ -130,6 +132,12 @@ telnet localhost 8080
 ```
 
 This way all tasks will be automatically forwarded to the autoscaler.
+
+A docker-compose file is available to automatically setup both ClusterODM and NodeODM on the same machine by issuing:
+
+```
+docker-compose up
+```
 
 ## Roadmap
 

@@ -1,0 +1,20 @@
+version: '2.1'
+services:
+  nodeodm-1:
+    image: opendronemap/nodeodm
+    container_name: nodeodm-1
+    ports:
+      - "3000"
+    restart: on-failure:10
+  clusterodm:
+    image: opendronemap/clusterodm
+    container_name: clusterodm
+    ports:
+      - "4000:3000"
+      - "8080:8080"
+      - "10000:10000"
+    volumes:
+      - ./docker/data:/var/www/data
+    restart: on-failure:10
+    depends_on:
+      - nodeodm-1
