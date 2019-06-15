@@ -108,7 +108,25 @@ module.exports = {
                     params.fileNames.push(name);
         
                     const saveTo = path.join(options.saveFilesToDir, name);
-                    file.pipe(fs.createWriteStream(saveTo));
+                    let saveStream = null;
+
+                    // Detect if a connection is aborted/interrupted
+                    // and cleanup any open streams to avoid fd leaks
+                    const handleClose = () => {
+                        if (saveStream){
+                            saveStream.close();
+                            saveStream = null;
+                        }
+                    };
+                    req.on('close', handleClose);
+
+                    file.on('end', () => {
+                        req.removeListener('close', handleClose);
+                        saveStream = null;
+                    });
+
+                    saveStream = fs.createWriteStream(saveTo)
+                    file.pipe(saveStream);
                     params.imagesCount++;
                 }
             });
