@@ -144,9 +144,10 @@ module.exports = {
         }else return null;
     },
 
-    augmentTaskOptions: function(req, taskOptions, token){
+    augmentTaskOptions: function(req, taskOptions, limits, token){
         if (typeof taskOptions === "string") taskOptions = JSON.parse(taskOptions);
         if (!Array.isArray(taskOptions)) taskOptions = [];
+        let odmOptions = [];
 
         if (config.splitmerge){
             // We automatically set the "sm-cluster" parameter
@@ -154,29 +155,51 @@ module.exports = {
             // if "--split" is set.
             const clusterUrl = netutils.publicAddressPath('/', req, token);
 
-            let result = [];
             let foundSplit = false, foundSMCluster = false;
             taskOptions.forEach(to => {
                 if (to.name === 'split'){
                     foundSplit = true;
-                    result.push({name: to.name, value: to.value});
+                    odmOptions.push({name: to.name, value: to.value});
                 }else if (to.name === 'sm-cluster'){
                     foundSMCluster = true;
-                    result.push({name: to.name, value: clusterUrl});
+                    odmOptions.push({name: to.name, value: clusterUrl});
                 }else{
-                    result.push({name: to.name, value: to.value});
+                    odmOptions.push({name: to.name, value: to.value});
                 }
             });
 
             if (foundSplit && !foundSMCluster){
-                result.push({name: 'sm-cluster', value: clusterUrl });
+                odmOptions.push({name: 'sm-cluster', value: clusterUrl });
             }
-
-            return result;
         }else{
             // Make sure the "sm-cluster" parameter is removed
-            return taskOptions.filter(to => to.name !== 'sm-cluster');
+            odmOptions = utils.clone(taskOptions.filter(to => to.name !== 'sm-cluster'));
         }
+
+        // Check limits
+        if (limits.options){
+            const limitOptions = limits.options;
+            for (let i in odmOptions){
+                let odmOption = odmOptions[i];
+    
+                if (limitOptions[odmOption.name] !== undefined){
+                    let lo = limitOptions[odmOption.name];
+        
+                    // Modify value if between range rules command so
+                    if (lo.between !== undefined){
+                        if (lo.between.max_if_equal_to !== undefined && lo.between.max !== undefined &&
+                            odmOption.value == lo.between.max_if_equal_to){
+                            odmOption.value = lo.between.max;
+                        }
+                        if (lo.between.max !== undefined && lo.between.min !== undefined){
+                            odmOption.value = Math.max(lo.between.min, Math.min(lo.between.max, odmOption.value));
+                        }
+                    }
+                }
+            }
+        }
+
+        return odmOptions;
     },
 
     process: async function(req, res, cloudProvider, uuid, params, token, limits, getLimitedOptions){
@@ -247,7 +270,7 @@ module.exports = {
         if (node){
             // Validate options
             // Will throw an exception on failure
-            let taskOptions = odmOptions.filterOptions(this.augmentTaskOptions(req, options, token), 
+            let taskOptions = odmOptions.filterOptions(this.augmentTaskOptions(req, options, limits, token), 
                                                         await getLimitedOptions(token, limits, node));
 
             const dateC = dateCreated !== null ? new Date(dateCreated) : new Date();
