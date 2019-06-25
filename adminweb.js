@@ -97,6 +97,18 @@ module.exports = {
         }).join("")}
     </tbody>
 </table>
+<script>
+var field = 'autorefresh';
+var url = window.location.href;
+if(url.indexOf('?' + field + '=') != -1 || url.indexOf('&' + field + '=') != -1){
+    setTimeout(function(){
+        location.reload(true);
+    }, 5000);
+    document.write("<input type='button' value='Disable Auto Refresh' onclick=\\"location.href='/'\\">");
+}else{
+    document.write("<input type='button' value='Enable Auto Refresh' onclick=\\"location.href='/?autorefresh=1'\\">");
+}
+</script>
             ${htmlFoot}`);
         });
         
