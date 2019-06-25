@@ -136,7 +136,7 @@ module.exports = {
                 const node = nodes.referenceNode();
                 
                 json(res, {
-                    version: "1.5.2", // this is the version we speak
+                    version: "1.5.3", // this is the version we speak
                     taskQueueCount: 0,
                     totalMemory: 99999999999, 
                     availableMemory: 99999999999,
