@@ -28,7 +28,7 @@ module.exports = class LightningCloudProvider extends AbstractCloudProvider{
         this.validateCache = new ValueCache({expires: 5 * 60 * 1000});
 
         this.urlBase = "https://webodm.net/r";
-        this.timeout = 10000;
+        this.timeout = 15000;
     }
 
     urlFor(url){
