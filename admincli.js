@@ -115,6 +115,7 @@ module.exports = {
                         socket.write("TASK OUTPUT <taskId> [lines] - View task output\r\n");
                         socket.write("TASK CANCEL <taskId> - Cancel task\r\n");
                         socket.write("TASK REMOVE <taskId> - Remove task\r\n");
+                        socket.write("ASR VIEWCMD <number of images> - View command used to create a machine\r\n");
                         socket.write("!! - Repeat last command\r\n");
                     }else if (command === "NODE" && args.length > 0){
                         const subcommand = args[0].toLocaleUpperCase();
@@ -220,6 +221,22 @@ module.exports = {
 
                             if (!route) invalid();
                             jsonResponse(await (route.node[func])(taskId));                            
+                        }
+                    }else if (command === "ASR" && args.length > 0){
+                        const asr = asrProvider.get();
+                        if (!asr){
+                            invalid();
+                            return;
+                        }
+
+                        const subcommand = args[0].toLocaleUpperCase();
+                        args = args.slice(1, args.length);
+                        if (subcommand === "VIEWCMD"){
+                            const [ numImages ] = args;
+                            const cmd = await asr.debugCreateDockerMachineCmd(numImages);
+                            socket.write(`${cmd}\r\n`);
+                        }else{
+                            invalid();
                         }
                     }else{
                         invalid();

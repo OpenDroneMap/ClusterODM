@@ -97,6 +97,12 @@ module.exports = class AbstractASRProvider{
         // Override
     }
 
+    // Helper function for debugging
+    async debugCreateDockerMachineCmd(imagesCount){
+        const args = await this.getCreateArgs(imagesCount);
+        return `docker-machine create --driver ${this.getDriverName()} ${args.join(" ")} debug-machine`;
+    }
+
     // Spawn new nodes
     // @param req {http.ClientRequest} request object from HttpProxy
     // @param imagesCount {Number} number of images this node should be able to process
