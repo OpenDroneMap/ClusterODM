@@ -18,6 +18,7 @@
 const AbstractCloudProvider = require('../classes/AbstractCloudProvider');
 const logger = require('../logger');
 const axios = require('axios');
+const utils = require('../utils');
 const ValueCache = require('../classes/ValueCache');
 
 module.exports = class LightningCloudProvider extends AbstractCloudProvider{
@@ -90,22 +91,29 @@ module.exports = class LightningCloudProvider extends AbstractCloudProvider{
         }
         if (!taskInfo) throw new Error("Invalid taskInfo parameter");
 
-        try{
-            let response = await axios.post(this.urlFor('/tasks/finished'), { 
-                    token,
-                    taskInfo: JSON.stringify(taskInfo)
-                }, { timeout: this.timeout });
-
-            if (response.status === 200){
-                const { error, credits_used } = response.data;
-                if (error){
-                    logger.error(`/tasks/finished returned: ${error}`);
+        const MAX_RETRIES = 10;
+        for (let i = 0; i < MAX_RETRIES; i++){
+            try{
+                let response = await axios.post(this.urlFor('/tasks/finished'), { 
+                        token,
+                        taskInfo: JSON.stringify(taskInfo)
+                    }, { timeout: this.timeout });
+    
+                if (response.status === 200){
+                    const { error, credits_used } = response.data;
+                    if (!error){
+                        break; // Done!
+                    }else{
+                        logger.error(`/tasks/finished returned: ${error}, attempt (${i})`);
+                    }
+                }else{
+                    logger.error(`Cannot call /tasks/finished for ${taskInfo.uuid}, ${token}, returned status ${response.status}, attempt (${i})`);
                 }
-            }else{
-                logger.error(`Cannot call /tasks/finished with ${JSON.stringify(taskInfo)}, ${token}, returned status ${response.status}`);
+            }catch(e){
+                logger.error(`Cannot call /tasks/finished for ${taskInfo.uuid}, ${token}: ${e.message}, attempt (${i})`);
             }
-        }catch(e){
-            logger.error(`Cannot call /tasks/finished with ${JSON.stringify(taskInfo)}, ${token}: ${e.message}`);
+
+            await utils.sleep(10000 * i);
         }
     }
 
