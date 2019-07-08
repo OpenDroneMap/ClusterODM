@@ -37,7 +37,7 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
             "instanceLimit": -1,
             "createRetries": 1,
             "region": "us-west-2",
-            "monitoring": true,
+            "monitoring": false,
             "tags": ["clusterodm"],
             "ami": "ami-07b4f3c02c7f83d59",
             "spot": false,
@@ -159,6 +159,10 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
             "--amazonec2-root-size", image_props["storage"],
             "--amazonec2-security-group", this.getConfig("securityGroup")
         ];
+
+        if (this.getConfig("monitoring", false)) {
+            args.push("--amazonec2-monitoring");
+        }
 
         if (this.getConfig("spot", false)) {
             args.push("--amazonec2-request-spot-instance");

@@ -14,6 +14,7 @@ Example configuration file:
     },
     "securityGroup": "CHANGEME!",
 
+    "monitoring": false,
     "maxRuntime": -1,
     "maxUploadTime": -1,
     "region": "us-west-2",
@@ -42,6 +43,7 @@ Example configuration file:
 | createRetries            | Number of attempts to create a droplet before giving up. Defaults to 1.
 | maxRuntime               | Maximum number of seconds an instance is allowed to run ever. Set to -1 for no limit.                                                                                                                                                                                                                               |
 | maxUploadTime            | Maximum number of seconds an instance is allowed to receive file uploads. Set to -1 for no limit.                                                                                                                                                                                                                   |
+| monitoring               | Set to true to enable detailed Cloudwatch monitoring on the instance.                                                                                                                                                                                                                                                                  |
 | region                   | Region identifier where the instances should be created.                                                                                                                                                                                                                                                           |
 | tags                     | Comma-separated list of key,value tags to associate to the instance.                                                                                                                                                                                                                                                                         |
 | image                    | AMI identifier                                                                                                                                                                                                  |
