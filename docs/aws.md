@@ -1,7 +1,25 @@
 # Provider Configuration for Amazon Web Services
 
-Example configuration file:
+In order to use ClusterODM with AWS:
 
+* Create an Amazon Web Services Account
+* Select a region to run your instances in - `us-east-2` typically has the cheapest instance costs.
+* Create a security group in this region which allows inbound access from your ClusterODM master instance on TCP port 3000.
+* Create an S3 bucket in this region to handle results. Don't configure this bucket to block public access.
+* Select an AMI (machine image) to run - Ubuntu has a [handy AMI finder](https://cloud-images.ubuntu.com/locator/ec2/).
+* Create an IAM account for ClusterODM to use, which has EC2 and S3 permissions.
+* Create a ClusterODM configuration json file as below.
+
+To optimise transfer speeds in large jobs, it's worth running ClusterODM in the same AWS region as your worker nodes.
+
+## Using Spot Instances
+
+This provider supports requesting [EC2 spot instances](https://aws.amazon.com/ec2/spot/). Spot instances can save up to 90% of costs compared to
+normal on-demand instance costs which makes AWS very competitive with other cloud providers. Spot instances are reliable enough
+for long-running ODM jobs if the spot bid price is set high enough. It's common to request a bid price the same as
+the on-demand instance cost - you'll always pay the current market price, not your bid price.
+
+## Configuration File
 ```json
 {
     "provider": "aws",
@@ -33,22 +51,35 @@ Example configuration file:
 }
 ```
 
-| Field                    | Description                                                                                                                                                                                                                                                                                                       |
-|--------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| accessKey              | AWS Access Key                                                                                                                                                                                                                                                                                     |
-| secretKey              | AWS Secret Key                                                                                                                                                                                                                                                                                     |
-| s3                       | S3 bucket configuration. Note that the bucket should *not* be configured to block public access.                                                                                                                                                                                                                                                                                  |
+| Field            | Description                                                                                                                                                |
+|------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| accessKey        | AWS Access Key                                                                                                                                             |
+| secretKey        | AWS Secret Key                                                                                                                                             |
+| s3               | S3 bucket configuration. Note that the bucket should *not* be configured to block public access.                                                           |
+| securityGroup    | AWS Security Group name (not ID). Must exist and allow incoming connections from your ClusterODM host on port TCP/3000.                                    |
+| createRetries    | Number of attempts to create a droplet before giving up. Defaults to 1.
+| maxRuntime       | Maximum number of seconds an instance is allowed to run ever. Set to -1 for no limit.                                                                      |
+| maxUploadTime    | Maximum number of seconds an instance is allowed to receive file uploads. Set to -1 for no limit.                                                          |
+| monitoring       | Set to true to enable detailed Cloudwatch monitoring for the instance.                                                                                     |
+| region           | Region identifier where the instances should be created.                                                                                                   |
+| ami              | The AMI (machine image) to launch this instance from.                                                                                                      |
+| tags             | Comma-separated list of key,value tags to associate to the instance.                                                                                       |
+| image            | AMI identifier                                                                                                                                             |
+| spot             | Whether to request spot instances. If this is true, a `spotPrice` needs to be provided in the `imageSizeMapping`.                                          |
+| imageSizeMapping | Max images count to instance size mapping. (See below.)                                                                                                    |
+| addSwap          | Optionally add this much swap space to the instance as a factor of total RAM (`RAM * addSwap`). A value of `1` sets a swapfile equal to the available RAM. |
+| dockerImage      | Docker image to launch                                                                                                                                     |
 
-| securityGroup            | AWS Security Group name (not ID). Must exist and allow incoming connections on port TCP/3000                                                                                                                                                                                                                                                                                     |
-| createRetries            | Number of attempts to create a droplet before giving up. Defaults to 1.
-| maxRuntime               | Maximum number of seconds an instance is allowed to run ever. Set to -1 for no limit.                                                                                                                                                                                                                               |
-| maxUploadTime            | Maximum number of seconds an instance is allowed to receive file uploads. Set to -1 for no limit.                                                                                                                                                                                                                   |
-| monitoring               | Set to true to enable detailed Cloudwatch monitoring on the instance.                                                                                                                                                                                                                                                                  |
-| region                   | Region identifier where the instances should be created.                                                                                                                                                                                                                                                           |
-| tags                     | Comma-separated list of key,value tags to associate to the instance.                                                                                                                                                                                                                                                                         |
-| image                    | AMI identifier                                                                                                                                                                                                  |
-| spot                     | Whether to request spot instances. If this is true, a `spotPrice` needs to be provided in the `imageSizeMapping`.                                                                                                                                                                                                  |
-| imageSizeMapping         | Max images count to instance size mapping. The autoscaler will pick an instance size based on the number of images of the incoming task. Use this to control what size of instance should correspond to which image count. The least powerful instance able to process a certain number of images is always selected. |
-| addSwap                  | Optionally add this much swap space to the instance as a factor of total RAM (`RAM * addSwap`). A value of `1` sets a swapfile equal to the available RAM.                                                                                                                                                         |
-| dockerImage              | Docker image to launch
-                                                                                                                                                                                    |
+## Image Size Mapping
+
+The `imageSizeMapping` dictionary dictates the instance parameters which will be requested by ClusterODM based on the number of images in the incoming task. The least powerful
+instance able to process the requested number of images is always selected.
+
+[EC2Instances.info](https://www.ec2instances.info) is a useful resource to help in selecting the appropriate instance type.
+
+| Field     | Description                                                                                       |
+|-----------|---------------------------------------------------------------------------------------------------|
+| maxImages | The maximum number of images this instance size can handle.                                       |
+| slug      | EC2 instance type to request (for example, `t3.medium`).                                          |
+| storage   | Amount of storage to allocate to this instance's EBS root volume, in GB.                          |
+| spotPrice | The maximum hourly price you're willing to bid for this instance (if spot instances are enabled). |
