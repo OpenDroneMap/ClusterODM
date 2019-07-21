@@ -318,11 +318,14 @@ module.exports = {
             }
 
             const asyncErrorHandler = async err => {
-                const taskInfo = (await tasktable.lookup(uuid)).taskInfo;
-                if (taskInfo){
-                    taskInfo.status.code = statusCodes.FAILED;
-                    await tasktable.add(uuid, { taskInfo, output: [err.message] });
-                    logger.warn(`Cannot forward task ${uuid} to processing node ${node}: ${err.message}`);
+                const taskTableEntry = await tasktable.lookup(uuid);
+                if (taskTableEntry){
+                    const taskInfo = taskTableEntry.taskInfo;
+                    if (taskInfo){
+                        taskInfo.status.code = statusCodes.FAILED;
+                        await tasktable.add(uuid, { taskInfo, output: [err.message] });
+                        logger.warn(`Cannot forward task ${uuid} to processing node ${node}: ${err.message}`);
+                    }
                 }
                 utils.rmdir(tmpPath);
 
@@ -352,12 +355,14 @@ module.exports = {
                 }
             });
             curl.on('error', asyncErrorHandler);
-
-            let aborted = false;
+            
+            let status = {
+                aborted: false
+            };
             let dmHostname = null;
 
             const abortTask = () => {
-                aborted = true;
+                status.aborted = true;
                 if (dmHostname && autoscale){
                     const asr = asrProvider.get();
                     try{
@@ -377,8 +382,8 @@ module.exports = {
                 const asr = asrProvider.get();
                 try{
                     dmHostname = asr.generateHostname(imagesCount);
-                    node = await asr.createNode(req, imagesCount, token, dmHostname);
-                    if (!aborted) nodes.add(node);
+                    node = await asr.createNode(req, imagesCount, token, dmHostname, status);
+                    if (!status.aborted) nodes.add(node);
                     else return;
                 }catch(e){
                     const err = new Error("No nodes available (attempted to autoscale but failed). Try again later.");

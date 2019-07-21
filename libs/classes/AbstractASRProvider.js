@@ -108,8 +108,9 @@ module.exports = class AbstractASRProvider{
     // @param imagesCount {Number} number of images this node should be able to process
     // @param token {String} user token
     // @param hostname {String} docker-machine hostname
+    // @param status {Object} status information about the task being created
     // @return {Node} a new Node instance
-    async createNode(req, imagesCount, token, hostname){
+    async createNode(req, imagesCount, token, hostname, status){
         if (!this.canHandle(imagesCount)) throw new Error(`Cannot handle ${imagesCount} images.`);
 
         const dm = new DockerMachine(hostname);
@@ -122,6 +123,8 @@ module.exports = class AbstractASRProvider{
 
             let created = false;
             for (let i = 1; i <= this.getCreateRetries(); i++){
+                if (status.aborted) throw new Error("Aborted");
+
                 logger.info(`Trying to create machine... (${i})`);
                 try{
                     await dm.create(args);
@@ -139,13 +142,15 @@ module.exports = class AbstractASRProvider{
                 }
             }
             if (!created) throw new Error(`Cannot create machine (attempted ${this.getCreateRetries()} times)`);
-
+            if (status.aborted) throw new Error("Aborted");
+            
             await this.setupMachine(req, token, dm, nodeToken);
             
             const node = new Node(await dm.getIP(), this.getServicePort(), nodeToken);
     
             // Wait for the node to get online
             for (let i = 1; i <= 5; i++){
+                if (status.aborted) throw new Error("Aborted");
                 await node.updateInfo();
                 if (node.isOnline()) break;
                 logger.info(`Waiting for ${node} to get online... (${i})`);
