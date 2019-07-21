@@ -388,7 +388,7 @@ module.exports = {
                                 const taskTableEntry = await tasktable.lookup(taskId);
                                 if (taskTableEntry && taskTableEntry.taskInfo){
                                     if (pathname === '/task/cancel' || pathname === '/task/remove'){
-                                        if (taskTableEntry.abort){ 
+                                        if (taskTableEntry.abort){
                                             taskTableEntry.abort();
                                             taskTableEntry.abort = null;
                                             logger.info(`Task ${taskId} aborted via ${pathname}`);

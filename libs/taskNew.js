@@ -368,7 +368,7 @@ module.exports = {
                 } 
                 close();
             };
-            await tasktable.add(uuid, { taskInfo, abort: abortTask, output: ["Launching... please wait!"] });
+            await tasktable.add(uuid, { taskInfo, abort: abortTask, output: ["Launching... please wait! This can take a few minutes."] });
 
             // Send back response to user
             utils.json(res, { uuid });
