@@ -354,12 +354,34 @@ module.exports = {
                     asyncErrorHandler(new Error(`statusCode is ${statusCode}, expected 200`));
                 }
             });
-            curl.on('error', asyncErrorHandler);
             
+            const MAX_UPLOAD_RETRIES = 5;
             let status = {
-                aborted: false
+                aborted: false,
+                retries: 0
             };
             let dmHostname = null;
+
+            curl.on('error', async err => {
+                // Attempt to retry
+                if (status.retries < MAX_UPLOAD_RETRIES){
+                    status.retries++;
+                    logger.warn(`Attempted to forward task ${uuid} to processing node ${node} but failed with: ${err.message}, attempting again (retry: ${status.retries})`);
+                    await utils.sleep(1000 * 5 * status.retries);
+
+                    // If autoscale is enabled, simply retry on same node
+                    // otherwise switch to another node
+                    if (!autoscale){
+                        node = await nodes.findBestAvailableNode(imagesCount, true);
+                        logger.warn(`Switched ${uuid} to ${node}`);
+                        curl.setOpt(Curl.option.URL, `${node.proxyTargetUrl()}/task/new?token=${node.getToken()}`);
+                    }
+
+                    curl.perform();
+                }else{
+                    asyncErrorHandler(err);
+                }
+            });
 
             const abortTask = () => {
                 status.aborted = true;
