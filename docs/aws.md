@@ -38,7 +38,7 @@ the on-demand instance cost - you'll always pay the current market price, not yo
     "region": "us-west-2",
     "tags": ["type,clusterodm"],
     
-    "image": "ami-07b4f3c02c7f83d59",
+    "ami": "ami-07b4f3c02c7f83d59",
 
     "spot": true,
     "imageSizeMapping": [
@@ -63,8 +63,7 @@ the on-demand instance cost - you'll always pay the current market price, not yo
 | monitoring       | Set to true to enable detailed Cloudwatch monitoring for the instance.                                                                                     |
 | region           | Region identifier where the instances should be created.                                                                                                   |
 | ami              | The AMI (machine image) to launch this instance from.                                                                                                      |
-| tags             | Comma-separated list of key,value tags to associate to the instance.                                                                                       |
-| image            | AMI identifier                                                                                                                                             |
+| tags             | Comma-separated list of key,value tags to associate to the instance.                                                                                      |
 | spot             | Whether to request spot instances. If this is true, a `spotPrice` needs to be provided in the `imageSizeMapping`.                                          |
 | imageSizeMapping | Max images count to instance size mapping. (See below.)                                                                                                    |
 | addSwap          | Optionally add this much swap space to the instance as a factor of total RAM (`RAM * addSwap`). A value of `1` sets a swapfile equal to the available RAM. |
