@@ -5,30 +5,35 @@ Example configuration file:
 ```json
 {
     "provider": "digitalocean",
-    
-    "accessToken": "CHANGEME!",
-    "s3":{
-        "accessKey": "CHANGEME!",
-        "secretKey": "CHANGEME!",
-        "endpoint": "nyc3.digitaloceanspaces.com",
-        "bucket": "bucketname"
+    "accessToken": "CHANGEME",
+    "s3": {
+        "accessKey": "CHANGEME",
+        "secretKey": "CHANGEME",
+        "endpoint" :"sfo2.digitaloceanspaces.com",
+        "bucket": "CHANGEME"
     },
 
+    "createRetries": 10,
     "maxRuntime": -1,
     "maxUploadTime": -1,
-    "region": "nyc3",
-    "monitoring": true,
-    "tags": ["clusterodm"],
-    
-    "image": "ubuntu-16-04-x64",
+    "dropletsLimit": 30,
+    "region": "sfo2",
+
+    "tags": ["lightning-node"],
+
     "snapshot": false,
 
     "imageSizeMapping": [
-        {"maxImages": 20, "slug": "s-1vcpu-1gb"},
-        {"maxImages": 100, "slug": "s-4vcpu-8gb"}
+        {"maxImages": 40, "slug": "s-2vcpu-2gb"},
+        {"maxImages": 250, "slug": "s-4vcpu-8gb"},
+        {"maxImages": 500, "slug": "s-6vcpu-16gb"},
+        {"maxImages": 1500, "slug": "s-8vcpu-32gb"},
+        {"maxImages": 2500, "slug": "s-16vcpu-64gb"},
+        {"maxImages": 3500, "slug": "s-20vcpu-96gb"},
+        {"maxImages": 5000, "slug": "s-24vcpu-128gb"}
     ],
 
-    "addSwap": 1,
+    "addSwap": 1.5,
     "dockerImage": "opendronemap/nodeodm"
 }
 ```
