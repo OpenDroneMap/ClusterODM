@@ -18,8 +18,9 @@ Example configuration file:
     "maxUploadTime": -1,
     "dropletsLimit": 30,
     "region": "sfo2",
-
-    "tags": ["lightning-node"],
+    
+    "image": "ubuntu-16-04-x64",
+    "tags": ["clusterodm"],
 
     "snapshot": false,
 
@@ -33,7 +34,7 @@ Example configuration file:
         {"maxImages": 5000, "slug": "s-24vcpu-128gb"}
     ],
 
-    "addSwap": 1.5,
+    "addSwap": 1,
     "dockerImage": "opendronemap/nodeodm"
 }
 ```
