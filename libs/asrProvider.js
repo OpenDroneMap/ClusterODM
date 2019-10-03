@@ -64,6 +64,11 @@ module.exports = {
         return (asrProvider.getNodesPendingCreation() + autoSpawnedNodesCount) < asrProvider.getMachinesLimit();
     },
 
+    canHandle: function(imagesCount){
+        if (!asrProvider) return false;
+        return asrProvider.canHandle(imagesCount);
+    },
+
     onCommit: async function(taskId, cleanupDelay = 0){
         if (asrProvider){
             const node = await routetable.lookupNode(taskId);

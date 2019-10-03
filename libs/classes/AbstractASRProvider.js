@@ -66,6 +66,10 @@ module.exports = class AbstractASRProvider{
         return -1;
     }
 
+    getMaximumImages(){
+        return -1;
+    }
+
     getCreateRetries(){
         1;
     }
