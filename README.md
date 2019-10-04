@@ -94,4 +94,6 @@ We have [plenty of goals](https://github.com/OpenDroneMap/ClusterODM/issues?q=is
 
 ## License
 
-ClusterODM is licensed under the AGPL. [Contact us](https://www.masseranolabs.com/contact/) for other licensing options.
+ClusterODM is licensed under the [AGPL](https://github.com/OpenDroneMap/ClusterODM/blob/master/LICENSE), which is not the same as other OpenDroneMap software. You are free to use, modify and redistribute the software, but you must publish any changes you make to it if you make the software accessible over a public network. Read the [license](https://github.com/OpenDroneMap/ClusterODM/blob/master/LICENSE) for details.
+
+[Contact us](https://www.masseranolabs.com/contact/) for other licensing options.
