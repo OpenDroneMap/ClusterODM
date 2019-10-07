@@ -53,6 +53,7 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
                 {"maxImages": 5, "slug": "s-1vcpu-1gb"},
                 {"maxImages": 50, "slug": "s-4vcpu-8gb"}
             ],
+            "minImages": -1,
 
             "addSwap": 1,
             "dockerImage": "opendronemap/nodeodm"
@@ -102,7 +103,10 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
     }
 
     canHandle(imagesCount){
-        return this.getImageSlugFor(imagesCount) !== null;
+        const minImages = this.getConfig("minImages", -1);
+
+        return this.getImageSlugFor(imagesCount) !== null && 
+               (minImages === -1 || imagesCount >= minImages);
     }
 
     async setupMachine(req, token, dm, nodeToken){

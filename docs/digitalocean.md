@@ -33,6 +33,7 @@ Example configuration file:
         {"maxImages": 3500, "slug": "s-20vcpu-96gb"},
         {"maxImages": 5000, "slug": "s-24vcpu-128gb"}
     ],
+    "minImages": -1,
 
     "addSwap": 1,
     "dockerImage": "opendronemap/nodeodm"
@@ -54,6 +55,7 @@ Example configuration file:
 | snapshot                 | When set to `true`, `image` refers to a snapshot in the user account instead of an image name. Useful to speed up boot time if you already have a droplet with the docker image preloaded.                                                                                                                        |
 | sshKey                   | Optionally specify an existing DigitalOcean SSH `fingerprint` and private key `path` instead of generating new keys.
 | imageSizeMapping         | Max images count to droplet size mapping. The autoscaler will pick a droplet size based on the number of images of the incoming task. Use this to control what size of droplet should correspond to which image count. The least powerful droplet able to process a certain number of images is always selected. Valid slug identifiers are available from [Digital Ocean's API list all sizes](https://developers.digitalocean.com/documentation/v2/#list-all-sizes) |
+| minImages                | Minimum number of images that a dataset needs to have for the autoscaler to be used (-1 = no minimum).                                                                                                                                                                                                              |
 | addSwap                  | Optionally add this much swap space to the droplet as a factor of total RAM (`RAM * addSwap`). A value of `1` sets a swapfile equal to the available RAM.                                                                                                                                                         |
 | dockerImage              | Docker image to launch                                                                                                        
                                                                                                                                                                                     |
