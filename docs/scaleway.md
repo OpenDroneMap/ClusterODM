@@ -43,6 +43,7 @@ Example configuration file:
         {"maxImages": 5, "slug": "GP1-XS"},
         {"maxImages": 50, "slug": "GP1-S"}
     ],
+    "minImages": -1,
 
     "addSwap": 1,
     "dockerImage": "opendronemap/nodeodm"
@@ -61,6 +62,7 @@ Example configuration file:
 | region                   | Region identifier where the machines should be created.                                                                                                                                                                                                                                                           |
 | image                    | Image identifier or snapshot identifier                                                                                                                                                                                                                                                                           |
 | imageSizeMapping         | Max images count to machine size mapping. The autoscaler will pick a machine size based on the number of images of the incoming task. Use this to control what size of machine should correspond to which image count. The least powerful machine able to process a certain number of images is always selected.) |
+| minImages                | Minimum number of images that a dataset needs to have for the autoscaler to be used (-1 = no minimum).                                                                                                                                                                                                              |
 | addSwap                  | Optionally add this much swap space to the machine as a factor of total RAM (`RAM * addSwap`). A value of `1` sets a swapfile equal to the available RAM.                                                                                                                                                         |
 | dockerImage              | Docker image to launch                                                                                                                                                                                                                                                                                            |
 

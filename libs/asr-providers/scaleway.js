@@ -44,6 +44,7 @@ module.exports = class ScalewayAsrProvider extends AbstractASRProvider{
                 {"maxImages": 5, "slug": "GP1-XS"},
                 {"maxImages": 50, "slug": "GP1-S"}
             ],
+            "minImages": -1,
 
             "addSwap": 1,
             "dockerImage": "opendronemap/nodeodm"
@@ -85,7 +86,10 @@ module.exports = class ScalewayAsrProvider extends AbstractASRProvider{
     }
 
     canHandle(imagesCount){
-        return this.getImageSlugFor(imagesCount) !== null;
+        const minImages = this.getConfig("minImages", -1);
+
+        return this.getImageSlugFor(imagesCount) !== null && 
+               (minImages === -1 || imagesCount >= minImages);
     }
 
     async setupMachine(req, token, dm, nodeToken){
