@@ -54,7 +54,7 @@ ClusterODM can spin up/down nodes based on demand. This allows users to reduce c
 To setup autoscaling you must:
    * Make sure [docker-machine](https://docs.docker.com/machine/install-machine/) is installed.
    * Setup a S3-compatible bucket for storing results.
-   * Create a configuration file for [DigitalOcean](./docs/digitalocean.md)  [Scaleway](./docs/scaleway.md), or [Amazon Web Services](./docs/aws.md) (click links to see examples)
+   * Create a configuration file for [DigitalOcean](./docs/digitalocean.md), [Scaleway](./docs/scaleway.md), or [Amazon Web Services](./docs/aws.md) (click links to see examples)
 
 You can then launch ClusterODM with:
 
