@@ -36,9 +36,8 @@ module.exports = class AbstractCloudProvider{
 
     // @param token {String} a token passed to the proxy to authenticate a request
     // @param imagesCount {Number} number of images the user wants to process.
-    // @param imageDimensions {Object} {width: N, height: N}. Average resolution of the images. These values are estimates.
     // @return {Object} See LocalCloudProvider for an example.
-    async approveNewTask(token, imagesCount, imageDimensions){
+    async approveNewTask(token, imagesCount){
         throw new Error("Not Implemented");
     }
 

@@ -21,7 +21,6 @@ const netutils = require('./netutils');
 const path = require('path');
 const fs = require('fs');
 const config = require('../config');
-const probeImageSize = require('probe-image-size');
 const Curl = require('node-libcurl').Curl;
 const tasktable = require('./tasktable');
 const routetable = require('./routetable');
@@ -206,59 +205,18 @@ module.exports = {
         const tmpPath = path.join("tmp", uuid);
         const { options, taskName, skipPostProcessing, outputs, dateCreated, fileNames, imagesCount} = params;
 
-        // Estimate image sizes
-        const IMAGE_TARGET_SAMPLES = 3;
-        let imageDimensions = {width: 0, height: 0},
-            imgSamplesCount = 0;
-
         if (fileNames.length < 2){
             throw new Error(`Not enough images (${fileNames.length} files uploaded)`);
         }
-
-        utils.shuffleArray(fileNames);
 
         // When --no-splitmerge is set, do not allow seed.zip
         if (!config.splitmerge){
             if (fileNames.indexOf("seed.zip") !== -1) throw new Error("Cannot use this node as a split-merge cluster.");
         }
 
-        for (let i = 0; i < fileNames.length; i++){
-            const fileName = fileNames[i];
-            const filePath = path.join(tmpPath, fileName);
-
-            // Skip .txt,.zip files
-            if (/.(txt|zip)$/i.test(filePath)) continue;
-
-            let dims = {};
-            try{
-                const imgStream = fs.createReadStream(filePath);
-                dims = await probeImageSize(imgStream);
-                imgStream.close();
-            }catch(e){
-                // Some drones (ex. YUNEEC) produce images that don't seem
-                // to follow proper image standards. In this case, we
-                // simply make a higher range estimate
-                dims = {width: 5000, height: 3750};
-                console.warn(`${uuid}: cannot read image dimensions for ${filePath}`);
-            }
-
-            if (dims.width > 16 && dims.height > 16){
-                imageDimensions.width += dims.width;
-                imageDimensions.height += dims.height;
-                if (++imgSamplesCount === IMAGE_TARGET_SAMPLES) break;
-            }
-        }
-
-        if (imgSamplesCount === 0){
-            throw new Error(`Not enough images. You need at least 2 images.`);
-        }
-
-        imageDimensions.width /= imgSamplesCount;
-        imageDimensions.height /= imgSamplesCount;
-
         // Check with provider if we're allowed to process these many images
         // at this resolution
-        const { approved, error } = await cloudProvider.approveNewTask(token, imagesCount, imageDimensions);
+        const { approved, error } = await cloudProvider.approveNewTask(token, imagesCount);
         if (!approved) throw new Error(error);
 
         let node = await nodes.findBestAvailableNode(imagesCount, true);

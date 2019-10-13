@@ -59,15 +59,14 @@ module.exports = class LightningCloudProvider extends AbstractCloudProvider{
         }
     }
 
-    async approveNewTask(token, imagesCount, imageDimensions){
+    async approveNewTask(token, imagesCount){
         if (!token) return {error: "Invalid token"};
         if (!imagesCount) return {error: "Invalid images count"};
 
         try{
             let response = await axios.post(this.urlFor('/tasks/approve'), { 
                     token,
-                    imagesCount,
-                    imageDimensions: JSON.stringify(imageDimensions)
+                    imagesCount
                 }, { timeout: this.timeout });
 
             if (response.status === 200){
