@@ -261,7 +261,6 @@ module.exports = {
                 const tryClose = () => {
                     try{
                         close();
-                        logger.info(`Closing CURL ${url}`);
                     }catch(e){
                         logger.warn(`Cannot close cURL: ${e.message}`);
                     }
