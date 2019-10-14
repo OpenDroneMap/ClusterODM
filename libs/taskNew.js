@@ -29,6 +29,7 @@ const odmOptions = require('./odmOptions');
 const statusCodes = require('./statusCodes');
 const asrProvider = require('./asrProvider');
 const logger = require('./logger');
+const events = require('events');
 
 module.exports = {
     // @return {object} Context object with methods and variables to use during task/new operations 
@@ -247,38 +248,173 @@ module.exports = {
                 imagesCount: imagesCount
             };
 
-            // Get read to forward the task to the node
-            // (using CURL, because NodeJS libraries are buggy)
-            const curl = new Curl(),
-                close = curl.close.bind(curl);
+            const MAX_PARALLEL_UPLOADS = 5;
 
-            const multiPartBody = fileNames.map(f => { return { name: 'images', file: path.join(tmpPath, f) } });
-            multiPartBody.push({
-                name: 'name',
-                contents: name
-            });
-            multiPartBody.push({
-                name: 'options',
-                contents: JSON.stringify(taskOptions)
-            });
-            multiPartBody.push({
-                name: 'dateCreated',
-                contents: dateC.getTime().toString()
-            });
-            if (skipPostProcessing){
-                multiPartBody.push({
-                    name: 'skipPostProcessing',
-                    contents: "true"
-                });
-            }
-            if (outputs){
-                multiPartBody.push({
-                    name: 'outputs',
-                    contents: outputs
-                });
-            }
+            const eventEmitter = new events.EventEmitter();
+            eventEmitter.setMaxListeners(2 * (2 + MAX_PARALLEL_UPLOADS + 1));
 
-            const asyncErrorHandler = async err => {
+            const curlInstance = (done, onError, url, body, validate) => {
+                // We use CURL, because NodeJS libraries are buggy
+                const curl = new Curl(),
+                      close = curl.close.bind(curl);
+                
+                const tryClose = () => {
+                    try{
+                        close();
+                        logger.info(`Closing CURL ${url}`);
+                    }catch(e){
+                        logger.warn(`Cannot close cURL: ${e.message}`);
+                    }
+                    eventEmitter.removeListener('abort', tryClose);
+                    eventEmitter.removeListener('close', tryClose);
+                };
+
+                eventEmitter.on('abort', tryClose);
+                eventEmitter.on('close', tryClose);
+
+                curl.on('end', async (statusCode, body, headers) => {
+                    try{
+                        if (statusCode === 200){
+                            body = JSON.parse(body);
+                            if (body.error) throw new Error(body.error);
+                            if (validate !== undefined) validate(body);
+
+                            done();
+                        }else{
+                            throw new Error(`POST ${url} statusCode is ${statusCode}, expected 200`);
+                        }
+                    }catch(e){
+                        onError(e);
+                    }
+                });
+
+                curl.on('error', onError);
+
+                // logger.info(`Curl URL: ${url}`);
+                // logger.info(`Curl Body: ${JSON.stringify(body)}`);
+
+                curl.setOpt(Curl.option.URL, url);
+                curl.setOpt(Curl.option.HTTPPOST, body || []);
+                if (config.upload_max_speed) curl.setOpt(Curl.option.MAX_SEND_SPEED_LARGE, config.upload_max_speed);
+                // abort if slower than 30 bytes/sec during 1600 seconds */
+                curl.setOpt(Curl.option.LOW_SPEED_TIME, 1600);
+                curl.setOpt(Curl.option.LOW_SPEED_LIMIT, 30);
+                curl.setOpt(Curl.option.HTTPHEADER, [
+                    'Content-Type: multipart/form-data'
+                ]);
+
+                return curl;
+            };
+
+            const taskNewInit = async () => {
+                return new Promise((resolve, reject) => {
+                    const body = [];
+                    body.push({
+                        name: 'name',
+                        contents: name
+                    });
+                    body.push({
+                        name: 'options',
+                        contents: JSON.stringify(taskOptions)
+                    });
+                    body.push({
+                        name: 'dateCreated',
+                        contents: dateC.getTime().toString()
+                    });
+                    if (skipPostProcessing){
+                        body.push({
+                            name: 'skipPostProcessing',
+                            contents: "true"
+                        });
+                    }
+                    if (outputs){
+                        body.push({
+                            name: 'outputs',
+                            contents: outputs
+                        });
+                    }
+
+                    const curl = curlInstance(resolve, reject, 
+                        `${node.proxyTargetUrl()}/task/new/init?token=${node.getToken()}`,
+                        body,
+                        (res) => {
+                            if (res.uuid !== uuid) throw new Error(`set-uuid did not match, ${res.uuid} !== ${uuid}`);
+                        });
+                    
+                    curl.setOpt(Curl.option.HTTPHEADER, [
+                        'Content-Type: multipart/form-data',
+                        `set-uuid: ${uuid}`
+                    ]);
+                    curl.perform();
+                });
+            };
+
+            const taskNewUpload = async () => {
+                return new Promise((resolve, reject) => {
+                    const MAX_RETRIES = 5;
+
+                    const chunks = utils.chunkArray(fileNames, Math.ceil(fileNames.length / MAX_PARALLEL_UPLOADS));
+                    let completed = 0;
+                    const done = () => {
+                        if (++completed >= chunks.length) resolve();
+                    };
+                    
+                    chunks.forEach(fileNames => {
+                        let retries = 0;
+                        const body = fileNames.map(f => { return { name: 'images', file: path.join(tmpPath, f) } });
+                        
+                        const curl = curlInstance(done, async (err) => {
+                                if (status.aborted) return; // Ignore if this was aborted by other code
+
+                                if (retries < MAX_RETRIES){
+                                    retries++;
+                                    logger.warn(`File upload to ${node} failed, retrying... (${retries})`);
+                                    await utils.sleep(2000);
+                                    curl.perform();
+                                }else{
+                                    reject(new Error(`${err.message}: maximum upload retries (${MAX_RETRIES}) exceeded`));
+                                }
+                            },
+                            `${node.proxyTargetUrl()}/task/new/upload/${uuid}?token=${node.getToken()}`,
+                            body,
+                            (res) => {
+                                if (!res.success) throw new Error(`no success flag in task upload response`);
+                            });
+
+                        curl.perform();
+                    });
+                });
+            };
+
+            const taskNewCommit = async () => {
+                return new Promise((resolve, reject) => {
+                    const curl = curlInstance(resolve, reject, `${node.proxyTargetUrl()}/task/new/commit/${uuid}?token=${node.getToken()}`);
+                    curl.perform();
+                });
+            };
+
+            let retries = 0;
+            let status = {
+                aborted: false
+            };
+            let dmHostname = null;
+            eventEmitter.on('abort', () => {
+                status.aborted = true;
+            });
+
+            const abortTask = () => {
+                eventEmitter.emit('abort');
+                if (dmHostname && autoscale){
+                    const asr = asrProvider.get();
+                    try{
+                        asr.destroyMachine(dmHostname);
+                    }catch(e){
+                        logger.warn(`Could not destroy machine ${dmHostname}: ${e}`);
+                    }
+                }
+            };
+
+            const handleError = async (err) => {
                 const taskTableEntry = await tasktable.lookup(uuid);
                 if (taskTableEntry){
                     const taskInfo = taskTableEntry.taskInfo;
@@ -289,76 +425,42 @@ module.exports = {
                     }
                 }
                 utils.rmdir(tmpPath);
+                eventEmitter.emit('close');
+            };
+
+            const doUpload = async () => {
+                const MAX_UPLOAD_RETRIES = 5;
+                eventEmitter.emit('close');
 
                 try{
-                    close();
+                    await taskNewInit();
+                    await taskNewUpload();
+                    await taskNewCommit();
                 }catch(e){
-                    logger.warn(`Cannot close cURL: ${e.message}`);
-                }
-            };
+                    // Attempt to retry
+                    if (retries < MAX_UPLOAD_RETRIES){
+                        retries++;
+                        logger.warn(`Attempted to forward task ${uuid} to processing node ${node} but failed with: ${e.message}, attempting again (retry: ${retries})`);
+                        await utils.sleep(1000 * 5 * retries);
 
-            curl.on('end', async function (statusCode, body, headers){
-                if (statusCode === 200){
-                    try{
-                        body = JSON.parse(body);
-                        if (body.error) throw new Error(body.error);
-                        if (body.uuid !== uuid) throw new Error(`set-uuid did not match, ${body.uuid} !== ${uuid}`);
-                    
-                        await routetable.add(uuid, node, token);
-                        await tasktable.delete(uuid);
+                        // If autoscale is enabled, simply retry on same node
+                        // otherwise switch to another node
+                        if (!autoscale){
+                            node = await nodes.findBestAvailableNode(imagesCount, true);
+                            logger.warn(`Switched ${uuid} to ${node}`);
+                        }
 
-                        utils.rmdir(tmpPath);
-                    }catch(e){
-                        asyncErrorHandler(e);
+                        await doUpload();
+                    }else{
+                        throw new Error(`Failed to forward task to processing node after ${retries} attempts. Try again later.`);
                     }
-                }else{
-                    asyncErrorHandler(new Error(`statusCode is ${statusCode}, expected 200`));
                 }
-            });
-            
-            const MAX_UPLOAD_RETRIES = 5;
-            let status = {
-                aborted: false,
-                retries: 0
-            };
-            let dmHostname = null;
+            };  
 
-            curl.on('error', async err => {
-                // Attempt to retry
-                if (status.retries < MAX_UPLOAD_RETRIES){
-                    status.retries++;
-                    logger.warn(`Attempted to forward task ${uuid} to processing node ${node} but failed with: ${err.message}, attempting again (retry: ${status.retries})`);
-                    await utils.sleep(1000 * 5 * status.retries);
-
-                    // If autoscale is enabled, simply retry on same node
-                    // otherwise switch to another node
-                    if (!autoscale){
-                        node = await nodes.findBestAvailableNode(imagesCount, true);
-                        logger.warn(`Switched ${uuid} to ${node}`);
-                        curl.setOpt(Curl.option.URL, `${node.proxyTargetUrl()}/task/new?token=${node.getToken()}`);
-                    }
-
-                    curl.perform();
-                }else{
-                    asyncErrorHandler(err);
-                }
-            });
-
-            const abortTask = () => {
-                status.aborted = true;
-                if (dmHostname && autoscale){
-                    const asr = asrProvider.get();
-                    try{
-                        asr.destroyMachine(dmHostname);
-                    }catch(e){
-                        logger.warn(`Could not destroy machine ${dmHostname}: ${e}`);
-                    }
-                } 
-                close();
-            };
+            // Add item to task table
             await tasktable.add(uuid, { taskInfo, abort: abortTask, output: ["Launching... please wait! This can take a few minutes."] });
 
-            // Send back response to user
+            // Send back response to user right away
             utils.json(res, { uuid });
 
             if (autoscale){
@@ -371,23 +473,22 @@ module.exports = {
                 }catch(e){
                     const err = new Error("No nodes available (attempted to autoscale but failed). Try again later.");
                     logger.warn(`Cannot create node via autoscaling: ${e.message}`);
-                    asyncErrorHandler(err);
+                    handleError(err);
                     return;
                 }
             }
 
-            curl.setOpt(Curl.option.URL, `${node.proxyTargetUrl()}/task/new?token=${node.getToken()}`);
-            if (config.upload_max_speed) curl.setOpt(Curl.option.MAX_SEND_SPEED_LARGE, config.upload_max_speed);
-            // abort if slower than 30 bytes/sec during 1600 seconds */
-            curl.setOpt(Curl.option.LOW_SPEED_TIME, 1600);
-            curl.setOpt(Curl.option.LOW_SPEED_LIMIT, 30);
-            curl.setOpt(Curl.option.HTTPPOST, multiPartBody);
-            curl.setOpt(Curl.option.HTTPHEADER, [
-                'Content-Type: multipart/form-data',
-                `set-uuid: ${uuid}`
-            ]);
+            try{
+                await doUpload();
+                eventEmitter.emit('close');
 
-            curl.perform();
+                await routetable.add(uuid, node, token);
+                await tasktable.delete(uuid);
+
+                utils.rmdir(tmpPath);
+            }catch(e){
+                handleError(e);
+            }
         }else{
             throw new Error("No nodes available");
         }
