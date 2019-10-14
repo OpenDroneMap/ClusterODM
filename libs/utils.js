@@ -140,5 +140,18 @@ module.exports = {
 
     clone: function(json){
         return JSON.parse(JSON.stringify(json));
+    },
+
+    chunkArray: function(arr, chunk_size){
+        var index = 0;
+        var arrayLength = arr.length;
+        var tempArray = [];
+        
+        for (index = 0; index < arrayLength; index += chunk_size) {
+            let myChunk = arr.slice(index, index+chunk_size);
+            tempArray.push(myChunk);
+        }
+    
+        return tempArray;
     }
 };
