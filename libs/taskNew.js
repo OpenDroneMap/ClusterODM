@@ -248,10 +248,10 @@ module.exports = {
                 imagesCount: imagesCount
             };
 
-            const MAX_PARALLEL_UPLOADS = 5;
+            const PARALLEL_UPLOADS = 20;
 
             const eventEmitter = new events.EventEmitter();
-            eventEmitter.setMaxListeners(2 * (2 + MAX_PARALLEL_UPLOADS + 1));
+            eventEmitter.setMaxListeners(2 * (2 + PARALLEL_UPLOADS + 1));
 
             const curlInstance = (done, onError, url, body, validate) => {
                 // We use CURL, because NodeJS libraries are buggy
@@ -353,7 +353,7 @@ module.exports = {
                 return new Promise((resolve, reject) => {
                     const MAX_RETRIES = 5;
 
-                    const chunks = utils.chunkArray(fileNames, Math.ceil(fileNames.length / MAX_PARALLEL_UPLOADS));
+                    const chunks = utils.chunkArray(fileNames, Math.ceil(fileNames.length / PARALLEL_UPLOADS));
                     let completed = 0;
                     const done = () => {
                         if (++completed >= chunks.length) resolve();
