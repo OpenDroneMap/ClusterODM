@@ -179,11 +179,20 @@ module.exports = {
         // Check limits
         if (limits.options){
             const limitOptions = limits.options;
+            const assureOptions = {};
+
+            for (let name in limitOptions){
+                let lo = limitOptions[name];
+                if (lo.assure && lo.value !== undefined) assureOptions[name] = {name, value: lo.value};
+            }
+
             for (let i in odmOptions){
                 let odmOption = odmOptions[i];
-    
+
                 if (limitOptions[odmOption.name] !== undefined){
                     let lo = limitOptions[odmOption.name];
+
+                    if (assureOptions[odmOption.name]) delete(assureOptions[odmOption.name]);
         
                     // Modify value if between range rules command so
                     if (lo.between !== undefined){
@@ -196,6 +205,10 @@ module.exports = {
                         }
                     }
                 }
+            }
+
+            for (let i in assureOptions){
+                odmOptions.push(assureOptions[i]);
             }
         }
 
