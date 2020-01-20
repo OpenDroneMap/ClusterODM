@@ -16,6 +16,7 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 const fs = require('fs');
+const async = require("async");
 const logger = require('./logger');
 const nodes = require('./nodes');
 
@@ -95,14 +96,27 @@ module.exports = {
         }
     },
 
-    findByToken: async function(token){
+    findByToken: async function(token, activeOnly = false){
         const result = {};
         for (let taskId in routes){
             if (routes[taskId].token === token){
                 result[taskId] = routes[taskId];
             }
         }
-        return result;
+        if (!activeOnly) return result;
+
+        // Actually ping the node for these tasks and filter out
+        // inactive / deleted / stale ones
+        return new Promise((resolve) => {
+            async.each(Object.keys(result), (taskId, cb) => {
+                (routes[taskId]).node.taskInfo(taskId).then((taskInfo) => {
+                    if (taskInfo.error) delete(result[taskId]);
+                    cb();
+                });
+            }, () => {
+                resolve(result);
+            });
+        });
     },
 
     lookupNode: async function(taskId){
