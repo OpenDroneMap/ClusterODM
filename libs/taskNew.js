@@ -31,6 +31,25 @@ const asrProvider = require('./asrProvider');
 const logger = require('./logger');
 const events = require('events');
 
+const assureUniqueFilename = (dstPath, filename) => {
+    return new Promise((resolve, _) => {
+        const dstFile = path.join(dstPath, filename);
+        fs.exists(dstFile, async exists => {
+            if (!exists) resolve(filename);
+            else{
+                const parts = filename.split(".");
+                if (parts.length > 1){
+                    resolve(await assureUniqueFilename(dstPath, 
+                        `${parts.slice(0, parts.length - 1).join(".")}_.${parts[parts.length - 1]}`));
+                }else{
+                    // Filename without extension? Strange..
+                    resolve(await assureUniqueFilename(dstPath, filename + "_"));
+                }
+            }
+        });
+    });
+};
+
 module.exports = {
     // @return {object} Context object with methods and variables to use during task/new operations 
     createContext: function(req, res){
@@ -97,12 +116,14 @@ module.exports = {
             });
         }
         if (options.saveFilesToDir){
-            busboy.on('file', function(fieldname, file, filename, encoding, mimetype) {
+            busboy.on('file', async function(fieldname, file, filename, encoding, mimetype) {
                 if (fieldname === 'images'){
                     filename = utils.sanitize(filename);
                     
                     // Special case
                     if (filename === 'body.json') filename = '_body.json';
+
+                    filename = await assureUniqueFilename(options.saveFilesToDir, filename);
 
                     const name = path.basename(filename);
                     params.fileNames.push(name);
