@@ -402,7 +402,7 @@ module.exports = {
 
                                         if (pathname === '/task/cancel'){
                                             taskTableEntry.taskInfo.status.code = statusCodes.CANCELED;
-                                            await tasktable.add(taskId, taskTableEntry);
+                                            await tasktable.add(taskId, taskTableEntry, query.token);
                                         }
 
                                         json(res, { success: true });
@@ -419,6 +419,19 @@ module.exports = {
                     });
 
                     utils.stringToStream(body).pipe(busboy);
+                }else if (req.method === 'GET' && pathname === '/task/list') {
+                    const taskIds = {};
+                    const taskTableEntries = await tasktable.findByToken(query.token);
+                    for (let taskId in taskTableEntries){
+                        taskIds[taskId] = true;
+                    }
+
+                    const routeTableEntries = await routetable.findByToken(query.token, true);
+                    for (let taskId in routeTableEntries){
+                        taskIds[taskId] = true;
+                    }
+                    
+                    json(res, Object.keys(taskIds).map(uuid => { return { uuid } }));
                 }else{
                     // Lookup task id
                     const matches = pathname.match(/^\/task\/([\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+)\/(.+)$/);

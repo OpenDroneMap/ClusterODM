@@ -76,7 +76,12 @@ module.exports = {
                 // Attempt to retrieve task info and save it in task table before deleting node
                 // so that users can continue to access this information.
                 try{
-                    await tasktable.add(taskId, {taskInfo: await node.taskInfo(taskId)});
+                    const route = await routetable.lookup(taskId);
+                    if (route){
+                        await tasktable.add(taskId, {taskInfo: await node.taskInfo(taskId)}, route.token);
+                    }else{
+                        logger.warn(`Cannot add task table entry for ${taskId} (route missing)`);
+                    }
                 }catch(e){
                     logger.warn(`Cannot add task table entry for ${taskId} from ${node}`);
                 }

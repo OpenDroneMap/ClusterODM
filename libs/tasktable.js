@@ -43,15 +43,16 @@ module.exports = {
         setInterval(cleanup, 1000 * 60 * 60);
     },
 
-    add: async function(taskId, obj){
+    add: async function(taskId, obj, token){
         if (!taskId) throw new Error("taskId is not valid");
         if (!obj) throw new Error("obj is not valid");
 
         logger.debug(`Added ${taskId} --> ${JSON.stringify(obj)} in task table`);
 
         tasks[taskId] = {
-            obj: obj,
-            accessed: new Date().getTime()
+            obj,
+            token,
+            accessed: new Date().getTime(),
         };
     },
 
@@ -67,5 +68,15 @@ module.exports = {
         }
 
         return null;
+    },
+
+    findByToken: async function(token){
+        const result = {};
+        for (let taskId in tasks){
+            if (tasks[taskId].token === token){
+                result[taskId] = tasks[taskId].obj;
+            }
+        }
+        return result;
     }
 };

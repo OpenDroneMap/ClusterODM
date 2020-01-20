@@ -453,7 +453,7 @@ module.exports = {
                     const taskInfo = taskTableEntry.taskInfo;
                     if (taskInfo){
                         taskInfo.status.code = statusCodes.FAILED;
-                        await tasktable.add(uuid, { taskInfo, output: [err.message] });
+                        await tasktable.add(uuid, { taskInfo, output: [err.message] }, token);
                         logger.warn(`Cannot forward task ${uuid} to processing node ${node}: ${err.message}`);
                     }
                 }
@@ -491,7 +491,7 @@ module.exports = {
             };  
 
             // Add item to task table
-            await tasktable.add(uuid, { taskInfo, abort: abortTask, output: ["Launching... please wait! This can take a few minutes."] });
+            await tasktable.add(uuid, { taskInfo, abort: abortTask, output: ["Launching... please wait! This can take a few minutes."] }, token);
 
             // Send back response to user right away
             utils.json(res, { uuid });
