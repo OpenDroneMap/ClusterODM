@@ -22,14 +22,17 @@ module.exports = class LocalCloudProvider extends AbstractCloudProvider{
         super();
     }
 
-    // Always return OK
+    // Validate token
     async validate(token){
-        return {
-            valid: true,
-            limits: [] // No limits
-        };
+        if (!token) return {error: "Invalid token"
+        }else{
+            return {
+                valid: true,
+                limits: [] // No limits
+            };
+        }        
     }
-
+    
     // Always approve
     async approveNewTask(token, imagesCount){
         return {approved: true, error: ""};
