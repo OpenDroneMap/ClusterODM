@@ -19,19 +19,21 @@ const AbstractCloudProvider = require('../classes/AbstractCloudProvider');
 
 module.exports = class LocalCloudProvider extends AbstractCloudProvider{
     constructor(){
-        super();
+        super(token);
+	
+	this.token = token;
     }
 
     // Validate token
     async validate(token){
-        if (!token) return {error: "Invalid token"
-        }else{
-            return {
-                valid: true,
-                limits: [] // No limits
-            };
-        }        
-    }
+         if (this.token === token){
+	     return cb(null, true);
+	 }else{
+	     cb(new Error("token does not match."), false);
+	 }
+    	
+    }        
+};
     
     // Always approve
     async approveNewTask(token, imagesCount){
