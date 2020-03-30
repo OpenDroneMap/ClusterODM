@@ -225,6 +225,11 @@ module.exports = {
                             odmOption.value = Math.max(lo.between.min, Math.min(lo.between.max, odmOption.value));
                         }
                     }
+
+                    // Handle booleans
+                    if (lo.value === 'true'){
+                        odmOption.value = true;
+                    }
                 }
             }
 
