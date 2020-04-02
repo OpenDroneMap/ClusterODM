@@ -16,18 +16,22 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 const AbstractCloudProvider = require('../classes/AbstractCloudProvider');
+const config = require('../../config');
 
 module.exports = class LocalCloudProvider extends AbstractCloudProvider{
     constructor(){
         super();
     }
 
-    // Always return OK
     async validate(token){
-        return {
+        const ok = {
             valid: true,
             limits: [] // No limits
         };
+        
+        if (config.token === "") return ok; // No token required?
+        else if (config.token === token) return ok; // Token matches
+        else return { valid: false }; // Token does not match
     }
 
     // Always approve
