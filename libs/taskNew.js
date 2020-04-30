@@ -82,6 +82,7 @@ module.exports = {
             outputs: null,
             dateCreated: null,
             error: null,
+            webhook: "",
 
             fileNames: [],
             imagesCount: 0
@@ -112,6 +113,10 @@ module.exports = {
 
                 else if (fieldname === 'dateCreated' && !isNaN(parseInt(val))){
                     params.dateCreated = parseInt(val);
+                }
+
+                else if (fieldname === 'webhook' && val){
+                    params.webhook = val;
                 }
             });
         }
@@ -243,7 +248,7 @@ module.exports = {
 
     process: async function(req, res, cloudProvider, uuid, params, token, limits, getLimitedOptions){
         const tmpPath = path.join("tmp", uuid);
-        const { options, taskName, skipPostProcessing, outputs, dateCreated, fileNames, imagesCount} = params;
+        const { options, taskName, skipPostProcessing, outputs, dateCreated, fileNames, imagesCount, webhook } = params;
 
         if (fileNames.length < 2){
             throw new Error(`Not enough images (${fileNames.length} files uploaded)`);
@@ -363,6 +368,12 @@ module.exports = {
                         body.push({
                             name: 'skipPostProcessing',
                             contents: "true"
+                        });
+                    }
+                    if (webhook){
+                        body.push({
+                            name: 'webhook',
+                            contents: webhook
                         });
                     }
                     if (outputs){
