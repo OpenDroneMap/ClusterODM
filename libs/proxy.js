@@ -442,23 +442,23 @@ module.exports = {
                         // Special case for /task/<uuid>/download/<asset> if 
                         // we need to redirect to S3. In that case, we rewrite
                         // the URL to fetch from S3.
-                        if (asrProvider.downloadsPath() && action.indexOf('download') === 0){
-                            const assetsMatch = action.match(/^download\/(.+)$/);
-                            if (assetsMatch && assetsMatch[1]){
-                                let assetPath = assetsMatch[1];
-
-                                // Special case for orthophoto.tif
-                                if (assetPath === 'orthophoto.tif') assetPath = 'odm_orthophoto/odm_orthophoto.tif';
-
-                                const s3Url = url.parse(asrProvider.downloadsPath());
-                                s3Url.pathname = path.join(taskId, assetPath);
-                                res.writeHead(301, {
-                                    'Location': url.format(s3Url)
-                                });
-                                res.end();
-                                return;
-                            }
-                        }
+//                        if (asrProvider.downloadsPath() && action.indexOf('download') === 0){
+//                            const assetsMatch = action.match(/^download\/(.+)$/);
+//                            if (assetsMatch && assetsMatch[1]){
+//                                let assetPath = assetsMatch[1];
+//
+//                                // Special case for orthophoto.tif
+//                                if (assetPath === 'orthophoto.tif') assetPath = 'odm_orthophoto/odm_orthophoto.tif';
+//
+//                                const s3Url = url.parse(asrProvider.downloadsPath());
+//                                s3Url.pathname = path.join(taskId, assetPath);
+//                                res.writeHead(301, {
+//                                    'Location': url.format(s3Url)
+//                                });
+//                                res.end();
+//                                return;
+//                            }
+//                        }
 
                         const node = await routetable.lookupNode(taskId);
 

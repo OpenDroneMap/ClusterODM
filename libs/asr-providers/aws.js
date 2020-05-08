@@ -52,11 +52,11 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
     }
 
     async initialize(){
-        this.validateConfigKeys(["accessKey", "secretKey", "s3.endpoint", "s3.bucket", "securityGroup"]);
+        this.validateConfigKeys(["accessKey", "secretKey", "securityGroup"]);
 
         // Test S3
-        const { endpoint, bucket } = this.getConfig("s3");
-        await S3.testBucket(this.getConfig("accessKey"), this.getConfig("secretKey"), endpoint, bucket);
+        //const { endpoint, bucket } = this.getConfig("s3");
+        //await S3.testBucket(this.getConfig("accessKey"), this.getConfig("secretKey"), endpoint, bucket);
         
         const im = this.getConfig("imageSizeMapping", []);
         if (!Array.isArray(im)) throw new Error("Invalid config key imageSizeMapping (array expected)");
@@ -115,12 +115,18 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
         const secretKey = this.getConfig("secretKey");
         const s3 = this.getConfig("s3");
         const webhook = netutils.publicAddressPath("/commit", req, token);
+        
+        const preCmd = this.getConfig("additionalMachineSetupCmd");
+        if (preCmd != null && preCmd.length > 0)
+        {
+          await dm.ssh(preCmd);
+        }
 
         await dm.ssh([`sudo docker run -d -p 3000:3000 ${dockerImage} -q 1`,
-                     `--s3_access_key ${accessKey}`,
-                     `--s3_secret_key ${secretKey}`,
-                     `--s3_endpoint ${s3.endpoint}`,
-                     `--s3_bucket ${s3.bucket}`,
+//                     `--s3_access_key ${accessKey}`,
+//                     `--s3_secret_key ${secretKey}`,
+//                     `--s3_endpoint ${s3.endpoint}`,
+//                     `--s3_bucket ${s3.bucket}`,
                      `--webhook ${webhook}`,
                      `--token ${nodeToken}`].join(" "));
     }
