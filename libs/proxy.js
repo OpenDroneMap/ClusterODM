@@ -180,7 +180,7 @@ module.exports = {
                         const taskInfo = JSON.parse(body);
                         const taskId = taskInfo.uuid;
 
-                        asrProvider.onCommit(taskId, 10 * 1000);
+                        asrProvider.onCommit(taskId, 60 * 1000);
 
                         // Add reference to S3 path if necessary
                         if (asrProvider.downloadsPath()){
