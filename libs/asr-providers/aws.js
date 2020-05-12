@@ -180,6 +180,16 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
             args.push("--amazonec2-tags");
             args.push(this.getConfig("tags").join(","));
         }
+        
+        if (this.getConfig("subnetId", false)) {
+        	args.push("--amazonec2-subnet-id");
+        	args.push(this.getConfig("subnetId"));
+        }
+        
+        if (this.getConfig("vpcId", false)) {
+        	args.push("--amazonec2-vpc-id");
+        	args.push(this.getConfig("vpcId"));
+        }
 
         return args;
     }
