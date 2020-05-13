@@ -190,6 +190,10 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
         	args.push("--amazonec2-vpc-id");
         	args.push(this.getConfig("vpcId"));
         }
+        
+        if (this.getConfig("privateAddressOnly", false)) {
+        	args.push("--amazonec2-private-address-only");
+        }
 
         return args;
     }
