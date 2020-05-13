@@ -182,17 +182,21 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
         }
         
         if (this.getConfig("subnetId", false)) {
-        	args.push("--amazonec2-subnet-id");
-        	args.push(this.getConfig("subnetId"));
+            args.push("--amazonec2-subnet-id");
+            args.push(this.getConfig("subnetId"));
         }
         
         if (this.getConfig("vpcId", false)) {
-        	args.push("--amazonec2-vpc-id");
-        	args.push(this.getConfig("vpcId"));
+            args.push("--amazonec2-vpc-id");
+            args.push(this.getConfig("vpcId"));
         }
         
-        if (this.getConfig("privateAddressOnly", false)) {
-        	args.push("--amazonec2-use-private-address");
+        if (this.getConfig("usePrivateAddress", false)) {
+            args.push("--amazonec2-use-private-address");
+        }
+
+	if (this.getConfig("privateAddressOnly", false)) {
+            args.push("--amazonec2-private-address-only");
         }
 
         return args;
