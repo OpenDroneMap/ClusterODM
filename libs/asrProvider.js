@@ -113,24 +113,33 @@ module.exports = {
     },
 
     vacuum: async function(){
-        const autoNodes = nodes.filter(n => n.isAutoSpawned() && n.isOnline());
+        const autoNodes = nodes.filter(n => n.isAutoSpawned());
 
         // Automatically remove autospawned nodes if either:
         // - They have been online for too long (stuck?)
-        // - They have an empty queue and are past their allowed upload time
-
+        // - They are online and have an empty queue and are past their allowed upload time
+        // - They are offline and have been offline for too long (past the maximum allowed upload time)
         const now = new Date().getTime();
         const cleanNodes = [];
 
         autoNodes.forEach(n => {
-            if (n.getDockerMachineMaxRuntime() > 0 && (now - n.getDockerMachineCreated()) > n.getDockerMachineMaxRuntime() * 1000){
-                logger.warn(`${n} has exceeded its maximum runtime and will be forcibly deleted!`)
-                cleanNodes.push(n);
+            if (n.isOnline()){
+                if (n.getDockerMachineMaxRuntime() > 0 && (now - n.getDockerMachineCreated()) > n.getDockerMachineMaxRuntime() * 1000){
+                    logger.warn(`${n} has exceeded its maximum runtime and will be forcibly deleted!`)
+                    cleanNodes.push(n);
+                }else{
+                    if (n.getDockerMachineMaxUploadTime() > 0 &&
+                        n.getInfoProperty("taskQueueCount", 0) === 0 && 
+                        (now - n.getDockerMachineCreated()) > n.getDockerMachineMaxUploadTime() * 1000){
+                        logger.warn(`${n} has exceeded its maximum upload time and will be forcibly deleted!`)
+                        cleanNodes.push(n);
+                    }
+                }
             }else{
+                // Offline
                 if (n.getDockerMachineMaxUploadTime() > 0 &&
-                    n.getInfoProperty("taskQueueCount", 0) === 0 && 
-                    (now - n.getDockerMachineCreated()) > n.getDockerMachineMaxUploadTime() * 1000){
-                    logger.warn(`${n} has exceeded its maximum upload time and will be forcibly deleted!`)
+                    (now - n.getLastRefreshed()) > n.getDockerMachineMaxUploadTime() * 1000){
+                    logger.warn(`${n} has been offline for too long and will be forcibly deleted!`)
                     cleanNodes.push(n);
                 }
             }
