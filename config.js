@@ -45,7 +45,7 @@ let argDefs = {
     default: defaultConfig,
 
     int: ['port', 'admin-cli-port', 'admin-web-port', 
-          'secure-port', 'upload-max-speed'] // for cast only, not used by minimist
+          'secure-port', 'upload-max-speed', 'flood-limit'] // for cast only, not used by minimist
 };
 let argv = require('minimist')(process.argv.slice(2), argDefs);
 
@@ -66,6 +66,7 @@ Options:
     --downloads-from-s3 <URL>	Manually set the S3 URL prefix where to redirect /task/<uuid>/download requests. (default: do not use S3, forward download requests to nodes, unless the autoscaler is setup, in which case the autoscaler's S3 configuration is used) 
     --no-splitmerge	By default the program will set itself as being a cluster node for all split/merge tasks. Setting this option disables it. (default: false)
     --public-address <http(s)://host:port>	Should be set to a public URL that nodes can use to reach ClusterODM. (default: match the "host" header from client's HTTP request)
+    --flood-limit <number>	Limit the number of simultaneous task uploads that a user can initiate concurrently (default: no limit)
     --token <token> Sets a token that needs to be passed for every request. This can be used to limit access to the node only to token holders. (default: none)
     --debug 	Disable caches and other settings to facilitate debug (default: false)
     --ssl-key <file>	Path to .pem SSL key file

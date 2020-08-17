@@ -12,6 +12,7 @@
     "debug": false,
     "log-level": "info",
     "upload-max-speed": 0,
+    "flood-limit": 0,
     "ssl-key": "",
     "ssl-cert": "",
     "asr-provider": "",
