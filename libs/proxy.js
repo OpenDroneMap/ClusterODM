@@ -35,6 +35,7 @@ const taskNew = require('./taskNew');
 const async = require('async');
 const odmOptions = require('./odmOptions');
 const asrProvider = require('./asrProvider');
+const floodMonitor = require('./floodMonitor');
 
 module.exports = {
 	initialize: async function(cloudProvider){
@@ -259,6 +260,13 @@ module.exports = {
                             return;
                         }
 
+                        floodMonitor.recordTaskInit(query.token);
+                        
+                        if (floodMonitor.isFlooding(query.token)){
+                            die(`Uuh, slow down! It seems like you are sending a lot of tasks. Check that your connection is not dropping, or wait ${floodMonitor.FORGIVE_TIME} minutes and try again.`);
+                            return;
+                        }
+
                         // Save
                         fs.writeFile(path.join(tmpPath, "body.json"),
                                     JSON.stringify(params), {encoding: 'utf8'}, err => {
@@ -306,6 +314,8 @@ module.exports = {
                             die(`Reached maximum number of concurrent tasks: ${limits.maxConcurrentTasks}. Please wait until other tasks have finished, then restart the task.`);
                             return;
                         }
+
+                        floodMonitor.recordTaskCommit(query.token);
 
                         async.series([
                             cb => {
