@@ -127,7 +127,7 @@ module.exports = {
 
                     const name = path.basename(filename);
                     params.fileNames.push(name);
-        
+                    
                     const saveTo = path.join(options.saveFilesToDir, name);
                     let saveStream = null;
 
@@ -148,12 +148,53 @@ module.exports = {
 
                     saveStream = fs.createWriteStream(saveTo)
                     file.pipe(saveStream);
-                    params.imagesCount++;
+                    
+                    if (!filename.endsWith(".zip"))
+                    {
+                      params.imagesCount++;
+                    }
                 }
             });
         }
         busboy.on('finish', function(){
-            onFinish(params);
+        	try
+        	{
+	        	if (params.imagesCount === 0 && params.options != null)
+	            {
+	              var joOptions = JSON.parse(params.options);
+	        	
+	        	  var imagesIndex = -1;
+	        	  
+	              for (var i = 0; i < joOptions.length; ++i)
+	              {
+	                if (joOptions[i].name === "imagesCount")
+	                {
+	                  params.imagesCount = joOptions[i].value;
+	                  imagesIndex = i;
+	                  break;
+	                }
+	              }
+	              
+	              if (imagesIndex != -1)
+	              {
+	                joOptions.splice(imagesIndex, 1);
+	                params.options = JSON.stringify(joOptions);
+	              }
+	            }
+        	}
+        	catch(e)
+        	{
+              logger.warn("Error encountered while getting imagesCount ${e}. Setting imagesCount to 1500");
+              params.imagesCount = 1500;
+        	}
+        	
+        	if (params.imagesCount === 0)
+            {
+              logger.warn("Imagescount is zero? This makes no sense. Setting imagesCount to 1500");
+              params.imagesCount = 1500;
+            }
+        	
+        	onFinish(params);
         });
         req.pipe(busboy);
     },
