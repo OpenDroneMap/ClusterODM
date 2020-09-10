@@ -495,8 +495,14 @@ module.exports = {
                         // If autoscale is enabled, simply retry on same node
                         // otherwise switch to another node
                         if (!autoscale){
-                            node = await nodes.findBestAvailableNode(imagesCount, true);
-                            logger.warn(`Switched ${uuid} to ${node}`);
+                            const newNode = await nodes.findBestAvailableNode(imagesCount, true);
+                            if (newNode){
+                                node = newNode;
+                                logger.warn(`Switched ${uuid} to ${node}`);
+                            }else{
+                                // No nodes available
+                                logger.warn(`No other nodes available to process ${uuid}, we'll retry the same one.`);
+                            }
                         }
 
                         await doUpload();
