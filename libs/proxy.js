@@ -180,7 +180,15 @@ module.exports = {
                         const taskInfo = JSON.parse(body);
                         const taskId = taskInfo.uuid;
 
-                        asrProvider.onCommit(taskId, 60 * 1000);
+                        // This node delete delay timeout originally was 10 seconds.
+                        // We have increased it here to 10 minutes because we're not
+                        // using the S3 upload functionality. Instead, we're downloading
+                        // the file using the taskDownload REST API, which requires the
+                        // node to be running (if it's not running, the download times
+                        // out. This should be redone at some point to use their native
+                        // S3 API and then refactor IDM to fetch from S3 (instead of
+                        // using taskDownload).
+                        asrProvider.onCommit(taskId, 600 * 1000);
 
                         // Add reference to S3 path if necessary
                         if (asrProvider.downloadsPath()){
