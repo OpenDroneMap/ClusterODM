@@ -76,7 +76,8 @@ module.exports = {
                 <th>Node</th>
                 <th>Status</th>
                 <th>Queue</th>
-                <th>Version</th>
+                <th>Engine</th>
+                <th>API</th>
                 <th>Flags</th>
             <tr>
     </thead>
@@ -91,6 +92,7 @@ module.exports = {
                 <td>${node}</td>
                 <td>${node.isOnline() ? "Online" : "<span class='offline'>Offline</span>"}</td>
                 <td>${node.getTaskQueueCount()}/${node.getMaxParallelTasks()}</td>
+                <td>${node.getEngineInfo()}</td>
                 <td>${node.getVersion()}</td>
                 <td>${flags.join(",")}</td>
             </tr>`;
