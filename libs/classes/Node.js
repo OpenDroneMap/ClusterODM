@@ -205,6 +205,14 @@ module.exports = class Node{
         return this.getInfoProperty('version', '?');
     }
 
+    getEngineInfo(){
+        const engine = this.getInfoProperty('engine', '?');
+        const engineVersion = this.getInfoProperty('engineVersion', '?');
+        if (engine !== '?'){
+            return `${engine} ${engineVersion}`;
+        }else return '?';
+    }
+
     getMaxParallelTasks(){
         return this.getInfoProperty('maxParallelTasks', '?');
     }
