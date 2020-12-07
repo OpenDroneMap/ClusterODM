@@ -92,8 +92,3 @@ docker-compose up
 
 We have [plenty of goals](https://github.com/OpenDroneMap/ClusterODM/issues?q=is%3Aopen+is%3Aissue+label%3Aenhancement). If you want to help, or need help getting started contributing, get in touch on the [OpenDroneMap community forum](https://community.opendronemap.org).
 
-## License
-
-ClusterODM is licensed under the [AGPL](https://github.com/OpenDroneMap/ClusterODM/blob/master/LICENSE), which is not the same as other OpenDroneMap software. You are free to use, modify and redistribute the software, but you must publish any changes you make to it if you make the software accessible over a public network. Read the [license](https://github.com/OpenDroneMap/ClusterODM/blob/master/LICENSE) for details.
-
-[Contact us](https://www.masseranolabs.com/contact/) for other licensing options.
