@@ -150,6 +150,11 @@ module.exports = class ScalewayAsrProvider extends AbstractASRProvider{
             "--scaleway-commercial-type", this.getImageSlugFor(imagesCount)
         ];
 
+        if (this.getConfig("engineInstallUrl")){
+            args.push("--engine-install-url")
+            args.push(this.getConfig("engineInstallUrl"));
+        }
+
         return args;
     }
 };

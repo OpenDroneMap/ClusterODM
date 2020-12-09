@@ -175,6 +175,11 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
             args.push(this.getConfig("tags").join(","));
         }
 
+        if (this.getConfig("engineInstallUrl")){
+            args.push("--engine-install-url")
+            args.push(this.getConfig("engineInstallUrl"));
+        }
+
         return args;
     }
 };
