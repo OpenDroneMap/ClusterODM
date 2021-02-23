@@ -72,6 +72,7 @@ module.exports = {
     formDataParser: function(req, onFinish, options = {}){
         if (options.saveFilesToDir === undefined) options.saveFilesToDir = false;
         if (options.parseFields === undefined) options.parseFields = true;
+        if (options.limits === undefined) options.limits = {};
         
         const busboy = new Busboy({ headers: req.headers });
 
@@ -123,6 +124,12 @@ module.exports = {
         if (options.saveFilesToDir){
             busboy.on('file', async function(fieldname, file, filename, encoding, mimetype) {
                 if (fieldname === 'images'){
+                    if (options.limits.maxImages && params.imagesCount > options.limits.maxImages){
+                        params.error = "Max images count exceeded.";
+                        file.resume();
+                        return;
+                    }
+                    
                     filename = utils.sanitize(filename);
                     
                     // Special case

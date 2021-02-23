@@ -391,7 +391,7 @@ module.exports = {
                             die(e.message);
                             return;
                         }
-                    }, { saveFilesToDir: tmpPath });
+                    }, { saveFilesToDir: tmpPath, limits });
                 }else if (req.method === 'POST' && ['/task/restart', '/task/cancel', '/task/remove'].indexOf(pathname) !== -1){
                     // Lookup task id from body
                     let taskId = null;
