@@ -164,34 +164,7 @@ module.exports = {
             json(res, {error: `Proxy redirect error: ${err.message}`});
         });
 
-        var enableCors = function(req, res) {
-          if (req.headers['access-control-request-method']) {
-              res.setHeader('access-control-allow-methods', req.headers['access-control-request-method']);
-          }
-
-          if (req.headers['access-control-request-headers']) {
-              res.setHeader('access-control-allow-headers', req.headers['access-control-request-headers']);
-          }
-
-          if (req.headers.origin) {
-              res.setHeader('access-control-allow-origin', req.headers.origin);
-              res.setHeader('access-control-allow-credentials', 'true');
-          }
-        };
-
-        proxy.on("proxyRes", function(proxyRes, req, res) {
-          console.log("Enable CORS?")
-          enableCors(req, res);
-        });
-
         const requestListener = async function (req, res) {
-            if (req.method === 'OPTIONS') {
-                enableCors(req, res);
-                res.writeHead(200);
-                res.end();
-                return;
-            }
-
             try{
                 const urlParts = url.parse(req.url, true);
                 const { query, pathname } = urlParts;
@@ -202,7 +175,6 @@ module.exports = {
                 }
 
                 if (req.method === 'POST' && pathname === '/commit'){
-                    enableCors(req, res);
                     const body = await getReqBody(req);
                     try{
                         const taskInfo = JSON.parse(body);
@@ -232,7 +204,6 @@ module.exports = {
                 }
 
                 if (pathname === '/auth/info'){
-                    enableCors(req, res);
                     cloudProvider.handleAuthInfo(req, res);
                     return;
                 }
@@ -257,7 +228,6 @@ module.exports = {
                 }
 
                 if (req.method === 'POST' && pathname === '/task/new/init'){
-                    enableCors(req, res);
                     const { uuid, tmpPath, die } = taskNew.createContext(req, res);
 
                     taskNew.formDataParser(req, async function(params){
@@ -307,7 +277,6 @@ module.exports = {
                         });
                     });
                 }else if (req.method === 'POST' && pathname.indexOf('/task/new/upload') === 0){
-                    enableCors(req, res);
                     const taskId = taskNew.getTaskIdFromPath(pathname);
                     if (taskId){
                         const saveFilesToDir = path.join('tmp', taskId);
@@ -348,7 +317,6 @@ module.exports = {
                         });
                     }else json(res, { error: `No uuid found in ${pathname}`});
                 }else if (req.method === 'POST' && pathname.indexOf('/task/new/commit') === 0){
-                    enableCors(req, res);
                     const taskId = taskNew.getTaskIdFromPath(pathname);
                     if (taskId){
                         const tmpPath = path.join('tmp', taskId);
@@ -403,7 +371,6 @@ module.exports = {
                         });
                     }else json(res, { error: `No uuid found in ${pathname}`});
                 }else if (req.method === 'POST' && pathname === '/task/new') {
-                    enableCors(req, res);
                     const { uuid, tmpPath, die } = taskNew.createContext(req, res);
 
                     taskNew.formDataParser(req, async function(params) {
@@ -425,7 +392,6 @@ module.exports = {
                         }
                     }, { saveFilesToDir: tmpPath, limits });
                 }else if (req.method === 'POST' && ['/task/restart', '/task/cancel', '/task/remove'].indexOf(pathname) !== -1){
-                    enableCors(req, res);
                     // Lookup task id from body
                     let taskId = null;
                     let body = await getReqBody(req);
@@ -481,7 +447,6 @@ module.exports = {
 
                     utils.stringToStream(body).pipe(busboy);
                 }else if (req.method === 'GET' && pathname === '/task/list') {
-                    enableCors(req, res);
                     const taskIds = {};
                     const taskTableEntries = await tasktable.findByToken(query.token);
                     for (let taskId in taskTableEntries){
@@ -495,7 +460,6 @@ module.exports = {
                     
                     json(res, Object.keys(taskIds).map(uuid => { return { uuid } }));
                 }else{
-                    enableCors(req, res);
                     // Lookup task id
                     const matches = pathname.match(/^\/task\/([\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+)\/(.+)$/);
                     if (matches && matches[1]){

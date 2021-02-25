@@ -172,6 +172,7 @@ module.exports = {
 
     getTaskIdFromPath: function(pathname){
         const matches = pathname.match(/\/([\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+)$/);
+
         if (matches && matches[1]){
             return matches[1];        
         }else return null;
