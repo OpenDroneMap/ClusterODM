@@ -164,7 +164,25 @@ module.exports = {
             json(res, {error: `Proxy redirect error: ${err.message}`});
         });
 
+        // Added for CORS support
+        var enableCors = function(req, res) {
+          if (req.headers['access-control-request-method']) {
+              res.setHeader('access-control-allow-methods', req.headers['access-control-request-method']);
+          }
+
+          if (req.headers['access-control-request-headers']) {
+              res.setHeader('access-control-allow-headers', req.headers['access-control-request-headers']);
+          }
+
+          if (req.headers.origin) {
+              res.setHeader('access-control-allow-origin', req.headers.origin);
+              res.setHeader('access-control-allow-credentials', 'true');
+          }
+        };
+
         const requestListener = async function (req, res) {
+            enableCors(req, res);
+
             try{
                 const urlParts = url.parse(req.url, true);
                 const { query, pathname } = urlParts;

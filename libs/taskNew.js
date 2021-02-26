@@ -53,7 +53,12 @@ const assureUniqueFilename = (dstPath, filename) => {
 module.exports = {
     // @return {object} Context object with methods and variables to use during task/new operations 
     createContext: function(req, res){
-        const uuid = utils.uuidv4(); // TODO: add support for set-uuid header parameter
+        let uuid = utils.uuidv4();
+
+        if (req.headers['set-uuid']) {
+            uuid = req.headers['set-uuid']
+        }
+
         const tmpPath = path.join('tmp', uuid);
 
         if (!fs.existsSync(tmpPath)) fs.mkdirSync(tmpPath);
@@ -84,7 +89,6 @@ module.exports = {
             dateCreated: null,
             error: null,
             webhook: "",
-
             fileNames: [],
             imagesCount: 0
         };
