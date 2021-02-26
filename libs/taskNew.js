@@ -50,10 +50,33 @@ const assureUniqueFilename = (dstPath, filename) => {
     });
 };
 
+const getUuid = async (req) => {
+    if (req.headers['set-uuid']){
+        const userUuid = req.headers['set-uuid'];
+        
+        // Valid UUID and no other task with same UUID?
+        console.log(userUuid);
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userUuid)){
+            if (await tasktable.lookup(userUuid)){
+                throw new Error(`Invalid set-uuid: ${userUuid}`);
+            }else if (await routetable.lookup(userUuid)){
+                throw new Error(`Invalid set-uuid: ${userUuid}`);
+            }else{
+                return userUuid;
+            }
+        }else{
+            throw new Error(`Invalid set-uuid: ${userUuid}`);
+        }
+    }
+
+    return utils.uuidv4();
+};
+
 module.exports = {
     // @return {object} Context object with methods and variables to use during task/new operations 
-    createContext: function(req, res){
-        const uuid = utils.uuidv4(); // TODO: add support for set-uuid header parameter
+    createContext: async function(req, res){
+        let uuid = await getUuid(req);
+
         const tmpPath = path.join('tmp', uuid);
 
         if (!fs.existsSync(tmpPath)) fs.mkdirSync(tmpPath);
@@ -84,7 +107,6 @@ module.exports = {
             dateCreated: null,
             error: null,
             webhook: "",
-
             fileNames: [],
             imagesCount: 0
         };
@@ -172,6 +194,7 @@ module.exports = {
 
     getTaskIdFromPath: function(pathname){
         const matches = pathname.match(/\/([\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+)$/);
+
         if (matches && matches[1]){
             return matches[1];        
         }else return null;
@@ -517,7 +540,7 @@ module.exports = {
                         throw new Error(`Failed to forward task to processing node after ${retries} attempts. Try again later.`);
                     }
                 }
-            };  
+            };
 
             // Add item to task table
             await tasktable.add(uuid, { taskInfo, abort: abortTask, output: ["Launching... please wait! This can take a few minutes."] }, token);

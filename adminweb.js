@@ -20,15 +20,18 @@ const express = require('express');
 const basicAuth = require('express-basic-auth');
 const nodes = require('./libs/nodes');
 const package_info = require('./package_info');
+const cors = require('cors')
 
 module.exports = {
-    create: function(options){
+    create: function(options) {
         logger.info("Starting admin web interface on " + options.port);
-        const app = express();
 
-        if (!options.password){
+        const app = express();
+        app.use(cors())
+
+        if (!options.password) {
             logger.warn(`No admin password specified, make sure port ${options.port} is secured`);
-        }else{
+        } else {
             app.use(basicAuth({
                 users: { 'admin': options.password },
                 challenge: true,
@@ -36,84 +39,88 @@ module.exports = {
             }));
         }
 
-
         // TODO: UI (let's work on improving this soon!)
-
         const htmlHead = `<!DOCTYPE html>
         <html lang="en">
         <head>
-            <meta charset="UTF-8">
-            <title>ClusterODM</title>
-            <link rel="stylesheet" href="/pure-min.css">
-            <style type="text/css">
-            body{
-                text-align: center;
-            }
-            table{
-                margin-left: auto;
-                margin-right: auto;
-                min-width: 360px;
-                text-align: left;
-                margin-bottom: 2em;
-            }
-            .offline{
-                color: red;
-            }
-            </style>
+          <meta charset="UTF-8">
+          <title>ClusterODM</title>
+          <link href="/bootstrap.min.css" rel="stylesheet">
         </head>
         <body>`;
-        
-        const htmlFoot = `</body>
+
+        const htmlFoot = `
+        </body>
         </html>`;
 
         app.get('/', (req, res) => {
             res.send(`${htmlHead}
-<h1>ClusterODM ${package_info.version}</h1>
-<table class="pure-table pure-table-bordered">
-    <thead>
-            <tr>
-                <th>#</th>
-                <th>Node</th>
-                <th>Status</th>
-                <th>Queue</th>
-                <th>Engine</th>
-                <th>API</th>
-                <th>Flags</th>
-            <tr>
-    </thead>
-    <tbody>
-        ${nodes.all().map((node, idx) => {
-            const flags = [];
-            if (node.isLocked()) flags.push("L");
-            if (node.isAutoSpawned()) flags.push("A");
+              <div class="container">
+                <h1 class="text-center mt-2 mb-2">ClusterODM ${package_info.version}</h1>
+                <table class="table table-hover table-striped">
+                  <thead>
+                    <tr class="text-white bg-primary">
+                      <th>#</th>
+                      <th>Node</th>
+                      <th>Status</th>
+                      <th>Queue</th>
+                      <th>Engine</th>
+                      <th>API</th>
+                      <th>Flags</th>
+                    <tr>
+                  </thead>
+                  <tbody>
+                    ${nodes.all().map((node, idx) => {
+                      const flags = [];
+                      if (node.isLocked()) flags.push("L");
+                      if (node.isAutoSpawned()) flags.push("A");
+            
+                      return `<tr>
+                      <td>${idx + 1}</td>
+                      <td>${node}</td>
+                      <td>${node.isOnline() ? '<span class="badge bg-success">Online</span>' : '<span class="badge bg-danger">Offline</span>'}</td>
+                      <td>${node.getTaskQueueCount()}/${node.getMaxParallelTasks()}</td>
+                      <td>${node.getEngineInfo()}</td>
+                      <td>${node.getVersion()}</td>
+                      <td>${flags.join(",")}</td>
+                      </tr>`;
+                    }).join("")}
+                  </tbody>
+                </table>
+                
+                <div id="btn-refresh" class="text-end"></div>
+              </div>
+              <script>
+                let field = 'autorefresh';
+                let url = window.location.href;
 
-            return `<tr>
-                <td>${idx + 1}</td>
-                <td>${node}</td>
-                <td>${node.isOnline() ? "Online" : "<span class='offline'>Offline</span>"}</td>
-                <td>${node.getTaskQueueCount()}/${node.getMaxParallelTasks()}</td>
-                <td>${node.getEngineInfo()}</td>
-                <td>${node.getVersion()}</td>
-                <td>${flags.join(",")}</td>
-            </tr>`;
-        }).join("")}
-    </tbody>
-</table>
-<script>
-var field = 'autorefresh';
-var url = window.location.href;
-if(url.indexOf('?' + field + '=') != -1 || url.indexOf('&' + field + '=') != -1){
-    setTimeout(function(){
-        location.reload(true);
-    }, 5000);
-    document.write("<input type='button' value='Disable Auto Refresh' onclick=\\"location.href='/'\\">");
-}else{
-    document.write("<input type='button' value='Enable Auto Refresh' onclick=\\"location.href='/?autorefresh=1'\\">");
-}
-</script>
+                if (url.indexOf('?' + field + '=') != -1 || url.indexOf('&' + field + '=') != -1) {
+                  setTimeout(function() {
+                    location.reload(true);
+                  }, 5000);
+
+                  let button = document.createElement('button')
+                  button.classList.add('btn', 'btn-danger')
+                  button.innerHTML = "Disable Auto Refresh"
+                  button.onclick = function() {
+                    location.href='/'
+                  }
+                  
+                  document.getElementById('btn-refresh').appendChild(button)
+                } else {
+                  let button = document.createElement('button')
+                  button.classList.add('btn', 'btn-success')
+                  button.innerHTML = "Enable Auto Refresh"
+                  button.onclick = function() {
+                    location.href='/?autorefresh=1'
+                  }
+
+                  document.getElementById('btn-refresh').appendChild(button)
+                }
+              </script>
             ${htmlFoot}`);
         });
-        
+
         app.use(express.static('public'));
         app.use(express.json());
 
@@ -121,10 +128,11 @@ if(url.indexOf('?' + field + '=') != -1 || url.indexOf('&' + field + '=') != -1)
         app.post('/r/node/add', (req, res) => {
             const { hostname, port, token } = req.body;
             const node = nodes.addUnique(hostname, port, token);
+
             if (node) {
                 node.updateInfo();
                 res.send({success: true});
-            }else{
+            } else {
                 res.send({error: "Invalid"});
             }
         });
@@ -132,4 +140,3 @@ if(url.indexOf('?' + field + '=') != -1 || url.indexOf('&' + field + '=') != -1)
         app.listen(options.port);
     }
 }
-
