@@ -246,7 +246,15 @@ module.exports = {
                 }
 
                 if (req.method === 'POST' && pathname === '/task/new/init'){
-                    const { uuid, tmpPath, die } = taskNew.createContext(req, res);
+                    let ctx = null;
+                    try{
+                        ctx = await taskNew.createContext(req, res);
+                    }catch(e){
+                        json(res, {error: e.message});
+                        return;
+                    }
+
+                    const { uuid, tmpPath, die } = ctx;
 
                     taskNew.formDataParser(req, async function(params){
                         const { options } = params;
@@ -389,8 +397,16 @@ module.exports = {
                         });
                     }else json(res, { error: `No uuid found in ${pathname}`});
                 }else if (req.method === 'POST' && pathname === '/task/new') {
-                    const { uuid, tmpPath, die } = taskNew.createContext(req, res);
+                    let ctx = null;
+                    try{
+                        ctx = await taskNew.createContext(req, res);
+                    }catch(e){
+                        json(res, {error: e.message});
+                        return;
+                    }
 
+                    const { uuid, tmpPath, die } = ctx;
+                    
                     taskNew.formDataParser(req, async function(params) {
                         if (params.error){
                             die(params.error);
