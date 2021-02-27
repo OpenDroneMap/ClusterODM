@@ -314,27 +314,29 @@ module.exports = {
                                 });
                             },
                             cb => {
-                                taskNew.formDataParser(req, async function(params){
-                                    if (!params.imagesCount) cb(new Error("No files uploaded."));
-                                    else{
-                                        if (limits && limits.maxImages){
-                                            // Check if we've exceeding image limits
-                                            fs.readdir(saveFilesToDir, (err, files) => {
-                                                if (err){
-                                                    logger.warn(`Failed to read files from ${saveFilesToDir}`);
-                                                    cb();
-                                                }else if (files.length - 1 > limits.maxImages){
-                                                    // -1 accounts for _body.json
-                                                    cb(new Error("Max images count exceeded."));
-                                                }else{
-                                                    cb();
-                                                }
-                                            });
+                                if (limits && limits.maxImages){
+                                    // Check if we've exceeding image limits
+                                    fs.readdir(saveFilesToDir, (err, files) => {
+                                        if (err){
+                                            logger.warn(`Failed to read files from ${saveFilesToDir}`);
+                                            cb();
+                                        }else if (files.length - 1 > limits.maxImages){
+                                            // -1 accounts for _body.json
+                                            cb(new Error("Max images count exceeded."));
                                         }else{
-                                            // No limits
                                             cb();
                                         }
-                                    }
+                                    });
+                                }else{
+                                    // No limits
+                                    cb();
+                                }
+                            },
+                            cb => {
+                                taskNew.formDataParser(req, function(params){
+                                    if (!params.imagesCount) cb(new Error("No files uploaded."));
+                                    else if (params.error) cb(new Error(params.error));
+                                    else cb();
                                 }, { saveFilesToDir, parseFields: false});
                             }
                         ], err => {
@@ -406,7 +408,7 @@ module.exports = {
                     }
 
                     const { uuid, tmpPath, die } = ctx;
-                    
+
                     taskNew.formDataParser(req, async function(params) {
                         if (params.error){
                             die(params.error);
