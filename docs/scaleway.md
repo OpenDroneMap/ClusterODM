@@ -38,7 +38,8 @@ Example configuration file:
     "region": "par1",
     
     "image": "ubuntu-xenial",
-
+    "engineInstallUrl": "https://releases.rancher.com/install-docker/19.03.9.sh",
+    
     "imageSizeMapping": [
         {"maxImages": 5, "slug": "GP1-XS"},
         {"maxImages": 50, "slug": "GP1-S"}
