@@ -37,7 +37,8 @@ Example configuration file:
     
     "image": "ubuntu-18.04",
     "snapshot": false,
-
+    "engineInstallUrl": "\"https://releases.rancher.com/install-docker/19.03.9.sh\"",
+    
     "sshKey":{
         "fingerprint": "",
         "path": "",
