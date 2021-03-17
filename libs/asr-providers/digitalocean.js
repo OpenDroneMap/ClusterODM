@@ -233,7 +233,7 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
 
         if (this.getConfig("engineInstallUrl")){
             args.push("--engine-install-url")
-            args.push(this.getConfig("engineInstallUrl));
+            args.push(this.getConfig("engineInstallUrl"));
         }
 
         return args;
