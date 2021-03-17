@@ -37,7 +37,7 @@ the on-demand instance cost - you'll always pay the current market price, not yo
     "maxUploadTime": -1,
     "region": "us-west-2",
     "tags": ["type,clusterodm"],
-    
+    "engineInstallUrl": "https://releases.rancher.com/install-docker/19.03.9.sh",
     "ami": "ami-07b4f3c02c7f83d59",
 
     "spot": true,

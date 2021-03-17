@@ -18,7 +18,7 @@ Example configuration file:
     "maxUploadTime": -1,
     "dropletsLimit": 30,
     "region": "sfo2",
-    
+    "engineInstallUrl": "https://releases.rancher.com/install-docker/19.03.9.sh",
     "image": "ubuntu-16-04-x64",
     "tags": ["clusterodm"],
 
