@@ -17,7 +17,11 @@ To optimise transfer speeds in large jobs, it's worth running ClusterODM in the 
 This provider supports requesting [EC2 spot instances](https://aws.amazon.com/ec2/spot/). Spot instances can save up to 90% of costs compared to
 normal on-demand instance costs which makes AWS very competitive with other cloud providers. Spot instances are reliable enough
 for long-running ODM jobs if the spot bid price is set high enough. It's common to request a bid price the same as
-the on-demand instance cost - you'll always pay the current market price, not your bid price.
+the on-demand instance cost - you'll always pay the current market price, not your bid price. Must set 'spotFleet' to false.
+
+## Using Spot Fleets
+
+Fleet configuation files allow you to increase the chance your spot request will be fulfilled in a timely manner. Refer to the AWS docs for a walkthrough on file generation (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-fleet.html) & (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-fleet-examples.html). Add your spot fleet config path to 'spotFleetConfig'. Must set 'spot' to false.
 
 ## Configuration File
 ```json
@@ -42,6 +46,8 @@ the on-demand instance cost - you'll always pay the current market price, not yo
     "engineInstallUrl": "\"https://releases.rancher.com/install-docker/19.03.9.sh\"",
     
     "spot": true,
+    "spotFleet": false,
+    "spotFleetConfig": "path/to/config.json",
     "imageSizeMapping": [
         {"maxImages": 40, "slug": "t3a.small", "spotPrice": 0.02, "storage": 60},
         {"maxImages": 80, "slug": "t3a.medium", "spotPrice": 0.04, "storage": 100},
@@ -64,14 +70,16 @@ the on-demand instance cost - you'll always pay the current market price, not yo
 | secretKey        | AWS Secret Key                                                                                                                                             |
 | s3               | S3 bucket configuration. Note that the bucket should *not* be configured to block public access.                                                           |
 | securityGroup    | AWS Security Group name (not ID). Must exist and allow incoming connections from your ClusterODM host on port TCP/3000.                                    |
-| createRetries    | Number of attempts to create a droplet before giving up. Defaults to 1.
+| createRetries    | Number of attempts to create a droplet before giving up. Defaults to 1.                                                                                    |
 | maxRuntime       | Maximum number of seconds an instance is allowed to run ever. Set to -1 for no limit.                                                                      |
 | maxUploadTime    | Maximum number of seconds an instance is allowed to receive file uploads. Set to -1 for no limit.                                                          |
 | monitoring       | Set to true to enable detailed Cloudwatch monitoring for the instance.                                                                                     |
 | region           | Region identifier where the instances should be created.                                                                                                   |
 | ami              | The AMI (machine image) to launch this instance from.                                                                                                      |
-| tags             | Comma-separated list of key,value tags to associate to the instance.                                                                                      |
-| spot             | Whether to request spot instances. If this is true, a `spotPrice` needs to be provided in the `imageSizeMapping`.                                          |
+| tags             | Comma-separated list of key,value tags to associate to the instance.                                                                                       |
+| spot             | Whether to request spot instances. If this is true, a `spotPrice` needs to be provided in the `imageSizeMapping` and `spotFleet` must be set to false.     |
+| spotFleet        | Whether to use a spot fleet config file. If this is true, add your spot fleet config path to `spotFleetConfig` and `spotFleet` must be set to false.       |
+| spotFleetConfig  | Path to spot fleet config File.                                                                                                                            |
 | imageSizeMapping | Max images count to instance size mapping. (See below.)                                                                                                    |
 | addSwap          | Optionally add this much swap space to the instance as a factor of total RAM (`RAM * addSwap`). A value of `1` sets a swapfile equal to the available RAM. |
 | dockerImage      | Docker image to launch                                                                                                                                     |
