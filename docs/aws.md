@@ -88,7 +88,7 @@ Fleet configuation files allow you to increase the chance your spot request will
 | ami              | The AMI (machine image) to launch this instance from.                                                                                                      |
 | tags             | Comma-separated list of key,value tags to associate to the instance.                                                                                       |
 | spot             | Whether to request spot instances. If this is true, a `spotPrice` needs to be provided in the `imageSizeMapping` and `spotFleet` must be set to false.     |
-| spotFleet        | Whether to use a spot fleet config file. If this is true, add your spot fleet config path to `spotFleetConfig` and `spotFleet` must be set to false.       |
+| spotFleet        | Whether to use a spot fleet config file. If this is true, add your spot fleet config path to `spotFleetConfig` and `spot` must be set to false.            |
 | spotFleetConfigMapping  | Paths to spot fleet config file for each image range.                                                                                               |
 | imageSizeMapping | Max images count to instance size mapping. (See below.)                                                                                                    |
 | addSwap          | Optionally add this much swap space to the instance as a factor of total RAM (`RAM * addSwap`). A value of `1` sets a swapfile equal to the available RAM. |
