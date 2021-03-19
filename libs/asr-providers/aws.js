@@ -128,7 +128,13 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
     }
 
     getImagePropertiesFor(imagesCount){
+        
         const im = this.getConfig("imageSizeMapping");
+        
+        if (this.getConfig("spotFleet")){
+            im = this.getConfig("spotFleetConfigMapping");
+        }
+        
 
         let props = null;
         for (var k in im){
@@ -177,10 +183,10 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
 
         if (this.getConfig("spotFleet", false)) {
             // Validate spotFleetConfig path
-            const spotFleetConfigPath = this.getConfig("spotFleetConfig", "");
+            const spotFleetConfigPath = image_props["spotFleetConfigFile"];
             if (spotFleetConfigPath){
                 logger.info("Using Spot Fleet Config File");
-                const exists = await new Promise((resolve) => fs.exists(this.getConfig("spotFleetConfig"), resolve));
+                const exists = await new Promise((resolve) => fs.exists(spotFleetConfigPath, resolve));
             if (!exists) throw new Error("Invalid Spot File Config spotFleetConfig: file does not exist");
             }
             else {

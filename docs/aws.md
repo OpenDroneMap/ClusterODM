@@ -46,8 +46,6 @@ Fleet configuation files allow you to increase the chance your spot request will
     "engineInstallUrl": "\"https://releases.rancher.com/install-docker/19.03.9.sh\"",
     
     "spot": true,
-    "spotFleet": false,
-    "spotFleetConfig": "path/to/config.json",
     "imageSizeMapping": [
         {"maxImages": 40, "slug": "t3a.small", "spotPrice": 0.02, "storage": 60},
         {"maxImages": 80, "slug": "t3a.medium", "spotPrice": 0.04, "storage": 100},
@@ -57,6 +55,18 @@ Fleet configuation files allow you to increase the chance your spot request will
 		{"maxImages": 2500, "slug": "r5.2xlarge", "spotPrice": 0.6, "storage": 1200},
 		{"maxImages": 3500, "slug": "r5.4xlarge", "spotPrice": 1.1, "storage": 2000},
 		{"maxImages": 5000, "slug": "r5.4xlarge", "spotPrice": 1.1, "storage": 2500}
+    ],
+
+    "spotFleet": false,
+    "spotFleetConfigMapping": [
+        {"maxImages": 40, "spotFleetConfigFile": "./path/to/config40.json"},
+        {"maxImages": 80, "spotFleetConfigFile": "./path/to/config80.json"},
+        {"maxImages": 250, "spotFleetConfigFile": "./path/to/config250.json"},
+        {"maxImages": 500, "spotFleetConfigFile": "./path/to/config500.json"},
+        {"maxImages": 1500, "spotFleetConfigFile": "./path/to/config1500.json"},
+        {"maxImages": 2500, "spotFleetConfigFile": "./path/to/config2500.json"},
+        {"maxImages": 3500, "spotFleetConfigFile": "./path/to/config3500.json"},
+        {"maxImages": 5000, "spotFleetConfigFile": "./path/to/config5000.json"}
     ],
 
     "addSwap": 1,
@@ -79,7 +89,7 @@ Fleet configuation files allow you to increase the chance your spot request will
 | tags             | Comma-separated list of key,value tags to associate to the instance.                                                                                       |
 | spot             | Whether to request spot instances. If this is true, a `spotPrice` needs to be provided in the `imageSizeMapping` and `spotFleet` must be set to false.     |
 | spotFleet        | Whether to use a spot fleet config file. If this is true, add your spot fleet config path to `spotFleetConfig` and `spotFleet` must be set to false.       |
-| spotFleetConfig  | Path to spot fleet config File.                                                                                                                            |
+| spotFleetConfigMapping  | Paths to spot fleet config file for each image range.                                                                                               |
 | imageSizeMapping | Max images count to instance size mapping. (See below.)                                                                                                    |
 | addSwap          | Optionally add this much swap space to the instance as a factor of total RAM (`RAM * addSwap`). A value of `1` sets a swapfile equal to the available RAM. |
 | dockerImage      | Docker image to launch                                                                                                                                     |
