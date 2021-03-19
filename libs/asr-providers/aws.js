@@ -192,11 +192,13 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
             if (spotFleetConfigPath){
                 logger.info("Using Spot Fleet Config File");
                 const exists = await new Promise((resolve) => fs.exists(spotFleetConfigPath, resolve));
-            if (!exists) throw new Error("Invalid Spot File Config spotFleetConfig: file does not exist");
-            }
-            else {
-                args.push("--spot-fleet-request-config");
-                args.push(spotFleetConfigPath);
+                if (!exists) {
+                   throw new Error("Invalid Spot File Config spotFleetConfig: file does not exist");
+                   logger.info(spotFleetConfigPath + " does not exist");
+                }
+                else {
+                    args.push("--spot-fleet-request-config file://" + spotFleetConfigPath);
+                }
             }
         }
 
