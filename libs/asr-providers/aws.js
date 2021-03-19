@@ -163,10 +163,26 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
 
     async getCreateArgs(imagesCount){
         const image_props = this.getImagePropertiesFor(imagesCount);
-        const args = [
-            "--amazonec2-access-key", this.getConfig("accessKey"),
-            "--amazonec2-secret-key", this.getConfig("secretKey")
-        ];
+        const args = [];
+        
+        if (this.getConfig("spotFleet")) {
+            // Validate spotFleetConfig path
+            const spotFleetConfigPath = image_props["spotFleetConfigFile"];
+            if (spotFleetConfigPath){
+                logger.info("Using Spot Fleet Config File");
+                const exists = await new Promise((resolve) => fs.exists(spotFleetConfigPath, resolve));
+                if (!exists) {
+                   throw new Error("Invalid Spot File Config spotFleetConfig: file does not exist");
+                   logger.info(spotFleetConfigPath + " does not exist");
+                }
+                else {
+                    args.push("request-spot-fleet --spot-fleet-request-config file://" + spotFleetConfigPath);
+                }
+            }
+        }
+
+        args.push("--amazonec2-access-key", this.getConfig("accessKey"));
+        args.push("--amazonec2-secret-key", this.getConfig("secretKey"));
 
         if (!this.getConfig("spotFleet")) {
             args.push("--amazonec2-region", this.getConfig("region"));
@@ -184,22 +200,6 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
             args.push("--amazonec2-request-spot-instance");
             args.push("--amazonec2-spot-price");
             args.push(image_props["spotPrice"]);
-        }
-
-        if (this.getConfig("spotFleet")) {
-            // Validate spotFleetConfig path
-            const spotFleetConfigPath = image_props["spotFleetConfigFile"];
-            if (spotFleetConfigPath){
-                logger.info("Using Spot Fleet Config File");
-                const exists = await new Promise((resolve) => fs.exists(spotFleetConfigPath, resolve));
-                if (!exists) {
-                   throw new Error("Invalid Spot File Config spotFleetConfig: file does not exist");
-                   logger.info(spotFleetConfigPath + " does not exist");
-                }
-                else {
-                    args.push("--spot-fleet-request-config file://" + spotFleetConfigPath);
-                }
-            }
         }
 
         if (this.getConfig("tags", []).length > 0){
