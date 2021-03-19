@@ -21,7 +21,7 @@ the on-demand instance cost - you'll always pay the current market price, not yo
 
 ## Using Spot Fleets
 
-Fleet configuation files allow you to increase the chance your spot request will be fulfilled in a timely manner. Refer to the AWS docs for a walkthrough on file generation (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-fleet.html) & (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-fleet-examples.html). Add your spot fleet config path to 'spotFleetConfig'. Must set 'spot' to false.
+Fleet configuation files allow you to increase the chance your spot request will be fulfilled in a timely manner. Refer to the AWS docs for a walkthrough on file generation (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-fleet.html) & (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-fleet-examples.html). Add your spot fleet config paths to 'spotFleetConfigMapping' for each image range (you may use the same file for multiple ranges). Must set 'spot' to false.
 
 ## Configuration File
 ```json
