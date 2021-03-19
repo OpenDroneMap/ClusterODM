@@ -168,7 +168,7 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
             "--amazonec2-secret-key", this.getConfig("secretKey")
         ];
 
-        if (this.getConfig("spotFleet")) {
+        if (!this.getConfig("spotFleet")) {
             args.push("--amazonec2-region", this.getConfig("region"));
             args.push("--amazonec2-ami", this.getConfig("ami"));
             args.push("--amazonec2-instance-type", image_props["slug"]);
