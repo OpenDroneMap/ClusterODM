@@ -160,11 +160,11 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
             "--amazonec2-security-group", this.getConfig("securityGroup")
         ];
 
-        if (this.getConfig("monitoring", false)) {
+        if (this.getConfig("monitoring")) {
             args.push("--amazonec2-monitoring");
         }
 
-        if (this.getConfig("spot", false)) {
+        if (this.getConfig("spot")) {
             args.push("--amazonec2-request-spot-instance");
             args.push("--amazonec2-spot-price");
             args.push(image_props["spotPrice"]);
