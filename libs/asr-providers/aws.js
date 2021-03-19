@@ -46,6 +46,8 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
                 {"maxImages": 50, "slug": "t2.medium", "spotPrice": 0.1, "storage": 100}
             ],
 
+            "spotFleet": false,
+
             "addSwap": 1,
             "dockerImage": "opendronemap/nodeodm"
         }, userConfig);
