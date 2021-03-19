@@ -129,9 +129,12 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
 
     getImagePropertiesFor(imagesCount){
         
-        const im = this.getConfig("imageSizeMapping");
-        
-        if (this.getConfig("spotFleet")){
+        var im = [];
+
+        if (!this.getConfig("spotFleet")){
+            im = this.getConfig("imageSizeMapping");
+        }
+        else {
             im = this.getConfig("spotFleetConfigMapping");
         }
         
