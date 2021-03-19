@@ -168,7 +168,7 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
             "--amazonec2-secret-key", this.getConfig("secretKey")
         ];
 
-        if (this.getConfig("spotFleet"), false) {
+        if (this.getConfig("spotFleet")) {
             args.push("--amazonec2-region", this.getConfig("region"));
             args.push("--amazonec2-ami", this.getConfig("ami"));
             args.push("--amazonec2-instance-type", image_props["slug"]);
@@ -176,17 +176,17 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
             args.push("--amazonec2-security-group", this.getConfig("securityGroup"));
         }
 
-        if (this.getConfig("monitoring", false)) {
+        if (this.getConfig("monitoring")) {
             args.push("--amazonec2-monitoring");
         }
 
-        if (this.getConfig("spot", false)) {
+        if (this.getConfig("spot")) {
             args.push("--amazonec2-request-spot-instance");
             args.push("--amazonec2-spot-price");
             args.push(image_props["spotPrice"]);
         }
 
-        if (this.getConfig("spotFleet", false)) {
+        if (this.getConfig("spotFleet")) {
             // Validate spotFleetConfig path
             const spotFleetConfigPath = image_props["spotFleetConfigFile"];
             if (spotFleetConfigPath){
