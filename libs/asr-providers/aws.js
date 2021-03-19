@@ -46,8 +46,6 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
                 {"maxImages": 50, "slug": "t2.medium", "spotPrice": 0.1, "storage": 100}
             ],
 
-            "spotFleet": false,
-
             "addSwap": 1,
             "dockerImage": "opendronemap/nodeodm"
         }, userConfig);
@@ -77,8 +75,6 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
             const exists = await new Promise((resolve) => fs.exists(this.getConfig("sshKey.path"), resolve));
             if (!exists) throw new Error("Invalid config key sshKey.path: file does not exist");
         }
-
-        
     }
 
     getDriverName(){
@@ -130,16 +126,7 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
     }
 
     getImagePropertiesFor(imagesCount){
-        
-        var im = [];
-
-        if (!this.getConfig("spotFleet")){
-            im = this.getConfig("imageSizeMapping");
-        }
-        else {
-            im = this.getConfig("spotFleetConfigMapping");
-        }
-        
+        const im = this.getConfig("imageSizeMapping");
 
         let props = null;
         for (var k in im){
@@ -163,34 +150,15 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
 
     async getCreateArgs(imagesCount){
         const image_props = this.getImagePropertiesFor(imagesCount);
-        const args = [];
-        
-        if (this.getConfig("spotFleet")) {
-            // Validate spotFleetConfig path
-            const spotFleetConfigPath = image_props["spotFleetConfigFile"];
-            if (spotFleetConfigPath){
-                logger.info("Using Spot Fleet Config File");
-                const exists = await new Promise((resolve) => fs.exists(spotFleetConfigPath, resolve));
-                if (!exists) {
-                   throw new Error("Invalid Spot File Config spotFleetConfig: file does not exist");
-                   logger.info(spotFleetConfigPath + " does not exist");
-                }
-                else {
-                    args.push("request-spot-fleet --spot-fleet-request-config file://" + spotFleetConfigPath);
-                }
-            }
-        }
-
-        args.push("--amazonec2-access-key", this.getConfig("accessKey"));
-        args.push("--amazonec2-secret-key", this.getConfig("secretKey"));
-
-        if (!this.getConfig("spotFleet")) {
-            args.push("--amazonec2-region", this.getConfig("region"));
-            args.push("--amazonec2-ami", this.getConfig("ami"));
-            args.push("--amazonec2-instance-type", image_props["slug"]);
-            args.push("--amazonec2-root-size", image_props["storage"]);
-            args.push("--amazonec2-security-group", this.getConfig("securityGroup"));
-        }
+        const args = [
+            "--amazonec2-access-key", this.getConfig("accessKey"),
+            "--amazonec2-secret-key", this.getConfig("secretKey"),
+            "--amazonec2-region", this.getConfig("region"),
+            "--amazonec2-ami", this.getConfig("ami"),
+            "--amazonec2-instance-type", image_props["slug"],
+            "--amazonec2-root-size", image_props["storage"],
+            "--amazonec2-security-group", this.getConfig("securityGroup")
+        ];
 
         if (this.getConfig("monitoring")) {
             args.push("--amazonec2-monitoring");
