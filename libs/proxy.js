@@ -39,13 +39,13 @@ const floodMonitor = require('./floodMonitor');
 
 module.exports = {
 	initialize: async function(cloudProvider){
-        utils.cleanupTemporaryDirectory();
+        utils.cleanupTemporaryDirectory(config.stale_uploads_timeout);
         await routetable.initialize();
         await tasktable.initialize();
 
         setInterval(() => {
-            utils.cleanupTemporaryDirectory();
-        }, 1000 * 60 * 60 * 4);
+            utils.cleanupTemporaryDirectory(config.stale_uploads_timeout);
+        }, 1000 * 60 * 30);
 
         // Allow index, .css and .js files to be retrieved from nodes
         // without authentication
@@ -309,7 +309,7 @@ module.exports = {
                         async.series([
                             cb => {
                                 fs.exists(saveFilesToDir, exists => {
-                                    if (!exists) cb(new Error("Invalid taskId (dir not found)"));
+                                    if (!exists) cb(new Error("Invalid taskId: the task no longer exists."));
                                     else cb();
                                 });
                             },
@@ -361,6 +361,7 @@ module.exports = {
                         }
 
                         floodMonitor.recordTaskCommit(query.token);
+                        utils.markTaskAsCommitted(taskId);
 
                         async.series([
                             cb => {

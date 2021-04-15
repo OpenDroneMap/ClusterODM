@@ -25,6 +25,9 @@ const Readable = require('stream').Readable;
 const rimraf = require('rimraf');
 const child_process = require('child_process');
 const os = require('os');
+const path = require('path');
+
+const tmpUploadsMap = {}; // tmp dir entries --> number of files
 
 module.exports = {
 	get: function(scope, prop, defaultValue){
@@ -43,7 +46,7 @@ module.exports = {
     },
     
     temporaryFilePath: function(){
-        return `tmp/${uuidv4()}`;
+        return path.join('tmp', uuidv4());
     },
 
     uuidv4: function(){
@@ -57,38 +60,88 @@ module.exports = {
         }
     },
 
-    cleanupTemporaryDirectory: async function(wipeAll = false){
+    cleanupTemporaryDirectory: async function(staleUploadsTimeout = 0){
         const self = this;
 
         return new Promise((resolve, reject) => {
-            fs.readdir('tmp', (err, entries) => {
+            fs.readdir('tmp', async (err, entries) => {
                 if (err) reject(err);
                 else{
-                    async.eachSeries(entries, (entry, cb) => {
-                        if (entry === '.gitignore'){ 
-                            cb(); // skip .gitignore
-                            return;
-                        }
+                    for (let entry of entries){
+                        if (entry === '.gitignore') continue;
 
-                        fs.stat(`tmp/${entry}`, function(err, stats){
-                            if (err) cb(err);
+                        let stale = false;
+                        let tmpPath = path.join('tmp', entry);
+
+                        if (staleUploadsTimeout > 0){
+                            try{
+                                const fileCount = await self.filesCount(tmpPath);
+    
+                                if (tmpUploadsMap[entry] === undefined){
+                                    tmpUploadsMap[entry] = {
+                                        fileCount, 
+                                        lastUpdated: new Date().getTime(),
+                                        committed: false
+                                    };
+                                }else{
+                                    const prevFileCount = tmpUploadsMap[entry].fileCount;
+                                    stale = !tmpUploadsMap[entry].committed && 
+                                            prevFileCount === fileCount && 
+                                            (new Date().getTime() - tmpUploadsMap[entry].lastUpdated > 1000 * 60 * 60 * staleUploadsTimeout);
+                                            
+                                    // Update if the count has changed
+                                    if (prevFileCount !== fileCount){
+                                        tmpUploadsMap[entry].fileCount = fileCount;
+                                        tmpUploadsMap[entry].lastUpdated = new Date().getTime();
+                                    }
+                                }
+                            }catch(e){
+                                logger.error(e);
+                            }
+                        }
+    
+                        fs.stat(tmpPath, function(err, stats){
+                            if (err) logger.error(err);
                             else{
                                 const mtime = new Date(stats.mtime);
-                                if (wipeAll || (new Date().getTime() - mtime.getTime() > 1000 * 60 * 60 * 48)){
-                                    logger.info("Cleaning up " + entry);
-                                    self.rmfr(`tmp/${entry}`, cb);
-                                }else{
-                                    cb();
+                                if (stale || (new Date().getTime() - mtime.getTime() > 1000 * 60 * 60 * 48)){
+                                    logger.info("Cleaning up " + entry + " " + (stale ? "[stale]" : ""));
+                                    self.rmfr(tmpPath);
+                                    delete (tmpUploadsMap[entry]);
                                 }
                             }
                         });
-                    }, err => {
-                        if (err) reject();
-                        else resolve();
-                    });
+                    }
+                    
+                    // Remove entries in the upload map that aren't in tmp dir
+                    // to avoid memory leaks
+                    for (let entry of Object.keys(tmpUploadsMap)){
+                        if (entries.indexOf(entry) === -1){
+                            delete (tmpUploadsMap[entry]);
+                        }
+                    }
+
+                    resolve();
                 }
             });
         })
+    },
+
+    markTaskAsCommitted: function(taskId){
+        // Avoid mistakely deleting a task's
+        // files while they are being uploaded to a node
+        if (tmpUploadsMap[taskId] !== undefined){
+            tmpUploadsMap[taskId].committed = true;
+        }
+    },
+
+    filesCount: async function(dir){
+        return new Promise((resolve, reject) => {
+            fs.readdir(dir, (err, files) => {
+                if (err) reject(err);
+                else resolve(files.length);
+            });
+        });
     },
 
     stringToStream: function(str){
@@ -115,7 +168,7 @@ module.exports = {
     },
 
     // rm -fr implementation. dir is not checked, so this could wipe out your system.
-    rmfr: function(dir, cb){
+    rmfr: function(dir, cb = () => {}){
         if (['darwin', 'linux', 'freebsd'].indexOf(os.platform()) !== -1){
             // Rimraf leaks on Linux, use faster/better rm -fr
             return child_process.exec(`rm -rf ${dir}`, cb);
