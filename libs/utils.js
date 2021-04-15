@@ -88,7 +88,7 @@ module.exports = {
                                     stale = !tmpUploadsMap[entry].committed && 
                                             prevFileCount === fileCount && 
                                             (new Date().getTime() - tmpUploadsMap[entry].lastUpdated > 1000 * 60 * 60 * staleUploadsTimeout);
-                                            
+
                                     // Update if the count has changed
                                     if (prevFileCount !== fileCount){
                                         tmpUploadsMap[entry].fileCount = fileCount;
@@ -99,14 +99,17 @@ module.exports = {
                                 logger.error(e);
                             }
                         }
-    
+                        
+                        // This is async, it will not block!
                         fs.stat(tmpPath, function(err, stats){
                             if (err) logger.error(err);
                             else{
                                 const mtime = new Date(stats.mtime);
                                 if (stale || (new Date().getTime() - mtime.getTime() > 1000 * 60 * 60 * 48)){
                                     logger.info("Cleaning up " + entry + " " + (stale ? "[stale]" : ""));
-                                    self.rmfr(tmpPath);
+                                    self.rmfr(tmpPath, err => {
+                                        if (err) logger.error(err);
+                                    });
                                     delete (tmpUploadsMap[entry]);
                                 }
                             }
@@ -168,7 +171,7 @@ module.exports = {
     },
 
     // rm -fr implementation. dir is not checked, so this could wipe out your system.
-    rmfr: function(dir, cb = () => {}){
+    rmfr: function(dir, cb){
         if (['darwin', 'linux', 'freebsd'].indexOf(os.platform()) !== -1){
             // Rimraf leaks on Linux, use faster/better rm -fr
             return child_process.exec(`rm -rf ${dir}`, cb);
