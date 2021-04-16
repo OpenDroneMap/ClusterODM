@@ -303,6 +303,11 @@ module.exports = {
                         });
                     });
                 }else if (req.method === 'POST' && pathname.indexOf('/task/new/upload') === 0){
+                    // Destroy sockets after 30s of inactivity
+                    req.setTimeout(30000, () => {
+                        req.destroy();
+                    });
+
                     const taskId = taskNew.getTaskIdFromPath(pathname);
                     if (taskId){
                         const saveFilesToDir = path.join('tmp', taskId);
