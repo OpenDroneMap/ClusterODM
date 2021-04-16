@@ -172,11 +172,18 @@ module.exports = {
                             saveStream.close();
                             saveStream = null;
                         }
+                        if (fs.exists(saveTo, exists => {
+                            fs.unlink(saveTo, err => {
+                                if (err) logger.error(err);
+                            });
+                        }));
                     };
                     req.on('close', handleClose);
+                    req.on('abort', handleClose);
 
                     file.on('end', () => {
                         req.removeListener('close', handleClose);
+                        req.removeListener('abort', handleClose);
                         saveStream = null;
                     });
 
