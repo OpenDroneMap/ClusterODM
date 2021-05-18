@@ -56,7 +56,7 @@ module.exports = {
                 if (node.isLocked()) flags.push("L");
                 if (node.isAutoSpawned()) flags.push("A");
 
-                socket.write(`${(i + 1)}) ${node.toString()} ${node.isOnline() ? '[online]' : '[offline]'} [${node.getTaskQueueCount()}/${node.getMaxParallelTasks()}] <version ${node.getVersion()}>${flags.length ? ` [${flags.join(",")}]` : ""}\r\n`);
+                socket.write(`${(i + 1)}) ${node.toString()} ${node.isOnline() ? '[online]' : '[offline]'} [${node.getTaskQueueCount()}/${node.getMaxParallelTasks()}] <engine: ${node.getEngineInfo()}> <API: ${node.getVersion()}>${flags.length ? ` [${flags.join(",")}]` : ""}\r\n`);
             };
             const prettyJson = (json) => {
                 return JSON.stringify(json, null, 2);

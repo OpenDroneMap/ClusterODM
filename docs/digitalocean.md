@@ -23,6 +23,7 @@ Example configuration file:
     "tags": ["clusterodm"],
 
     "snapshot": false,
+    "engineInstallUrl": "\"https://releases.rancher.com/install-docker/19.03.9.sh\"",
 
     "imageSizeMapping": [
         {"maxImages": 40, "slug": "s-2vcpu-2gb"},

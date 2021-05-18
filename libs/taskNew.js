@@ -50,10 +50,33 @@ const assureUniqueFilename = (dstPath, filename) => {
     });
 };
 
+const getUuid = async (req) => {
+    if (req.headers['set-uuid']){
+        const userUuid = req.headers['set-uuid'];
+        
+        // Valid UUID and no other task with same UUID?
+        console.log(userUuid);
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userUuid)){
+            if (await tasktable.lookup(userUuid)){
+                throw new Error(`Invalid set-uuid: ${userUuid}`);
+            }else if (await routetable.lookup(userUuid)){
+                throw new Error(`Invalid set-uuid: ${userUuid}`);
+            }else{
+                return userUuid;
+            }
+        }else{
+            throw new Error(`Invalid set-uuid: ${userUuid}`);
+        }
+    }
+
+    return utils.uuidv4();
+};
+
 module.exports = {
     // @return {object} Context object with methods and variables to use during task/new operations 
-    createContext: function(req, res){
-        const uuid = utils.uuidv4(); // TODO: add support for set-uuid header parameter
+    createContext: async function(req, res){
+        let uuid = await getUuid(req);
+
         const tmpPath = path.join('tmp', uuid);
 
         if (!fs.existsSync(tmpPath)) fs.mkdirSync(tmpPath);
@@ -72,6 +95,7 @@ module.exports = {
     formDataParser: function(req, onFinish, options = {}){
         if (options.saveFilesToDir === undefined) options.saveFilesToDir = false;
         if (options.parseFields === undefined) options.parseFields = true;
+        if (options.limits === undefined) options.limits = {};
         
         const busboy = new Busboy({ headers: req.headers });
 
@@ -82,7 +106,7 @@ module.exports = {
             outputs: null,
             dateCreated: null,
             error: null,
-
+            webhook: "",
             fileNames: [],
             imagesCount: 0
         };
@@ -113,11 +137,21 @@ module.exports = {
                 else if (fieldname === 'dateCreated' && !isNaN(parseInt(val))){
                     params.dateCreated = parseInt(val);
                 }
+
+                else if (fieldname === 'webhook' && val){
+                    params.webhook = val;
+                }
             });
         }
         if (options.saveFilesToDir){
             busboy.on('file', async function(fieldname, file, filename, encoding, mimetype) {
                 if (fieldname === 'images'){
+                    if (options.limits.maxImages && params.imagesCount > options.limits.maxImages){
+                        params.error = "Max images count exceeded.";
+                        file.resume();
+                        return;
+                    }
+                    
                     filename = utils.sanitize(filename);
                     
                     // Special case
@@ -127,7 +161,7 @@ module.exports = {
 
                     const name = path.basename(filename);
                     params.fileNames.push(name);
-                    
+        
                     const saveTo = path.join(options.saveFilesToDir, name);
                     let saveStream = null;
 
@@ -138,69 +172,36 @@ module.exports = {
                             saveStream.close();
                             saveStream = null;
                         }
+                        if (fs.exists(saveTo, exists => {
+                            fs.unlink(saveTo, err => {
+                                if (err) logger.error(err);
+                            });
+                        }));
                     };
                     req.on('close', handleClose);
+                    req.on('abort', handleClose);
 
                     file.on('end', () => {
                         req.removeListener('close', handleClose);
+                        req.removeListener('abort', handleClose);
                         saveStream = null;
                     });
 
                     saveStream = fs.createWriteStream(saveTo)
                     file.pipe(saveStream);
-                    
-                    if (!filename.endsWith(".zip"))
-                    {
-                      params.imagesCount++;
-                    }
+                    params.imagesCount++;
                 }
             });
         }
         busboy.on('finish', function(){
-        	try
-        	{
-	        	if (params.imagesCount === 0 && params.options != null)
-	            {
-	              var joOptions = JSON.parse(params.options);
-	        	
-	        	  var imagesIndex = -1;
-	        	  
-	              for (var i = 0; i < joOptions.length; ++i)
-	              {
-	                if (joOptions[i].name === "imagesCount")
-	                {
-	                  params.imagesCount = joOptions[i].value;
-	                  imagesIndex = i;
-	                  break;
-	                }
-	              }
-	              
-	              if (imagesIndex != -1)
-	              {
-	                joOptions.splice(imagesIndex, 1);
-	                params.options = JSON.stringify(joOptions);
-	              }
-	            }
-        	}
-        	catch(e)
-        	{
-              logger.warn("Error encountered while getting imagesCount ${e}. Setting imagesCount to 1500");
-              params.imagesCount = 1500;
-        	}
-        	
-        	if (params.imagesCount === 0)
-            {
-              logger.warn("Imagescount is zero? This makes no sense. Setting imagesCount to 1500");
-              params.imagesCount = 1500;
-            }
-        	
-        	onFinish(params);
+            onFinish(params);
         });
         req.pipe(busboy);
     },
 
     getTaskIdFromPath: function(pathname){
         const matches = pathname.match(/\/([\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+)$/);
+
         if (matches && matches[1]){
             return matches[1];        
         }else return null;
@@ -284,11 +285,11 @@ module.exports = {
 
     process: async function(req, res, cloudProvider, uuid, params, token, limits, getLimitedOptions){
         const tmpPath = path.join("tmp", uuid);
-        const { options, taskName, skipPostProcessing, outputs, dateCreated, fileNames, imagesCount} = params;
+        const { options, taskName, skipPostProcessing, outputs, dateCreated, fileNames, imagesCount, webhook } = params;
 
-//        if (fileNames.length < 2){
-//            throw new Error(`Not enough images (${fileNames.length} files uploaded)`);
-//        }
+        if (fileNames.length < 2){
+            throw new Error(`Not enough images (${fileNames.length} files uploaded)`);
+        }
 
         // When --no-splitmerge is set, do not allow seed.zip
         if (!config.splitmerge){
@@ -328,105 +329,167 @@ module.exports = {
                 imagesCount: imagesCount
             };
 
-            // Get read to forward the task to the node
-            // (using CURL, because NodeJS libraries are buggy)
-            const curl = new Curl(),
-                close = curl.close.bind(curl);
+            const PARALLEL_UPLOADS = 20;
 
-            const multiPartBody = fileNames.map(f => { return { name: 'images', file: path.join(tmpPath, f) } });
-            multiPartBody.push({
-                name: 'name',
-                contents: name
-            });
-            multiPartBody.push({
-                name: 'options',
-                contents: JSON.stringify(taskOptions)
-            });
-            multiPartBody.push({
-                name: 'dateCreated',
-                contents: dateC.getTime().toString()
-            });
-            if (skipPostProcessing){
-                multiPartBody.push({
-                    name: 'skipPostProcessing',
-                    contents: "true"
-                });
-            }
-            if (outputs){
-                multiPartBody.push({
-                    name: 'outputs',
-                    contents: outputs
-                });
-            }
+            const eventEmitter = new events.EventEmitter();
+            eventEmitter.setMaxListeners(2 * (2 + PARALLEL_UPLOADS + 1));
 
-            const asyncErrorHandler = async err => {
-                const taskTableEntry = await tasktable.lookup(uuid);
-                if (taskTableEntry){
-                    const taskInfo = taskTableEntry.taskInfo;
-                    if (taskInfo){
-                        taskInfo.status.code = statusCodes.FAILED;
-                        await tasktable.add(uuid, { taskInfo, output: [err.message] });
-                        logger.warn(`Cannot forward task ${uuid} to processing node ${node}: ${err.message}`);
+            const curlInstance = (done, onError, url, body, validate) => {
+                // We use CURL, because NodeJS libraries are buggy
+                const curl = new Curl(),
+                      close = curl.close.bind(curl);
+                
+                const tryClose = () => {
+                    try{
+                        close();
+                    }catch(e){
+                        logger.warn(`Cannot close cURL: ${e.message}`);
                     }
-                }
-                utils.rmdir(tmpPath);
+                    eventEmitter.removeListener('abort', tryClose);
+                    eventEmitter.removeListener('close', tryClose);
+                };
 
-                try{
-                    close();
-                }catch(e){
-                    logger.warn(`Cannot close cURL: ${e.message}`);
-                }
+                eventEmitter.on('abort', tryClose);
+                eventEmitter.on('close', tryClose);
+
+                curl.on('end', async (statusCode, body, headers) => {
+                    try{
+                        if (statusCode === 200){
+                            body = JSON.parse(body);
+                            if (body.error) throw new Error(body.error);
+                            if (validate !== undefined) validate(body);
+
+                            done();
+                        }else{
+                            throw new Error(`POST ${url} statusCode is ${statusCode}, expected 200`);
+                        }
+                    }catch(e){
+                        onError(e);
+                    }
+                });
+
+                curl.on('error', onError);
+
+                // logger.info(`Curl URL: ${url}`);
+                // logger.info(`Curl Body: ${JSON.stringify(body)}`);
+
+                curl.setOpt(Curl.option.URL, url);
+                curl.setOpt(Curl.option.HTTPPOST, body || []);
+                if (config.upload_max_speed) curl.setOpt(Curl.option.MAX_SEND_SPEED_LARGE, config.upload_max_speed);
+                // abort if slower than 30 bytes/sec during 1600 seconds */
+                curl.setOpt(Curl.option.LOW_SPEED_TIME, 1600);
+                curl.setOpt(Curl.option.LOW_SPEED_LIMIT, 30);
+                curl.setOpt(Curl.option.HTTPHEADER, [
+                    'Content-Type: multipart/form-data'
+                ]);
+
+                return curl;
             };
 
-            curl.on('end', async function (statusCode, body, headers){
-                if (statusCode === 200){
-                    try{
-                        body = JSON.parse(body);
-                        if (body.error) throw new Error(body.error);
-                        if (body.uuid !== uuid) throw new Error(`set-uuid did not match, ${body.uuid} !== ${uuid}`);
-                    
-                        await routetable.add(uuid, node, token);
-                        await tasktable.delete(uuid);
-
-                        utils.rmdir(tmpPath);
-                    }catch(e){
-                        asyncErrorHandler(e);
+            const taskNewInit = async () => {
+                return new Promise((resolve, reject) => {
+                    const body = [];
+                    body.push({
+                        name: 'name',
+                        contents: name
+                    });
+                    body.push({
+                        name: 'options',
+                        contents: JSON.stringify(taskOptions)
+                    });
+                    body.push({
+                        name: 'dateCreated',
+                        contents: dateC.getTime().toString()
+                    });
+                    if (skipPostProcessing){
+                        body.push({
+                            name: 'skipPostProcessing',
+                            contents: "true"
+                        });
                     }
-                }else{
-                    asyncErrorHandler(new Error(`statusCode is ${statusCode}, expected 200`));
-                }
-            });
-            
-            const MAX_UPLOAD_RETRIES = 5;
+                    if (webhook){
+                        body.push({
+                            name: 'webhook',
+                            contents: webhook
+                        });
+                    }
+                    if (outputs){
+                        body.push({
+                            name: 'outputs',
+                            contents: outputs
+                        });
+                    }
+
+                    const curl = curlInstance(resolve, reject, 
+                        `${node.proxyTargetUrl()}/task/new/init?token=${node.getToken()}`,
+                        body,
+                        (res) => {
+                            if (res.uuid !== uuid) throw new Error(`set-uuid did not match, ${res.uuid} !== ${uuid}`);
+                        });
+                    
+                    curl.setOpt(Curl.option.HTTPHEADER, [
+                        'Content-Type: multipart/form-data',
+                        `set-uuid: ${uuid}`
+                    ]);
+                    curl.perform();
+                });
+            };
+
+            const taskNewUpload = async () => {
+                return new Promise((resolve, reject) => {
+                    const MAX_RETRIES = 5;
+
+                    const chunks = utils.chunkArray(fileNames, Math.ceil(fileNames.length / PARALLEL_UPLOADS));
+                    let completed = 0;
+                    const done = () => {
+                        if (++completed >= chunks.length) resolve();
+                    };
+                    
+                    chunks.forEach(fileNames => {
+                        let retries = 0;
+                        const body = fileNames.map(f => { return { name: 'images', file: path.join(tmpPath, f) } });
+                        
+                        const curl = curlInstance(done, async (err) => {
+                                if (status.aborted) return; // Ignore if this was aborted by other code
+
+                                if (retries < MAX_RETRIES){
+                                    retries++;
+                                    logger.warn(`File upload to ${node} failed, retrying... (${retries})`);
+                                    await utils.sleep(2000);
+                                    curl.perform();
+                                }else{
+                                    reject(new Error(`${err.message}: maximum upload retries (${MAX_RETRIES}) exceeded`));
+                                }
+                            },
+                            `${node.proxyTargetUrl()}/task/new/upload/${uuid}?token=${node.getToken()}`,
+                            body,
+                            (res) => {
+                                if (!res.success) throw new Error(`no success flag in task upload response`);
+                            });
+
+                        curl.perform();
+                    });
+                });
+            };
+
+            const taskNewCommit = async () => {
+                return new Promise((resolve, reject) => {
+                    const curl = curlInstance(resolve, reject, `${node.proxyTargetUrl()}/task/new/commit/${uuid}?token=${node.getToken()}`);
+                    curl.perform();
+                });
+            };
+
+            let retries = 0;
             let status = {
-                aborted: false,
-                retries: 0
+                aborted: false
             };
             let dmHostname = null;
-
-            curl.on('error', async err => {
-                // Attempt to retry
-                if (status.retries < MAX_UPLOAD_RETRIES){
-                    status.retries++;
-                    logger.warn(`Attempted to forward task ${uuid} to processing node ${node} but failed with: ${err.message}, attempting again (retry: ${status.retries})`);
-                    await utils.sleep(1000 * 5 * status.retries);
-
-                    // If autoscale is enabled, simply retry on same node
-                    // otherwise switch to another node
-                    if (!autoscale){
-                        node = await nodes.findBestAvailableNode(imagesCount, true);
-                        logger.warn(`Switched ${uuid} to ${node}`);
-                        curl.setOpt(Curl.option.URL, `${node.proxyTargetUrl()}/task/new?token=${node.getToken()}`);
-                    }
-
-                    curl.perform();
-                }else{
-                    asyncErrorHandler(err);
-                }
+            eventEmitter.on('abort', () => {
+                status.aborted = true;
             });
 
             const abortTask = () => {
-                status.aborted = true;
+                eventEmitter.emit('abort');
                 if (dmHostname && autoscale){
                     const asr = asrProvider.get();
                     try{
@@ -434,12 +497,62 @@ module.exports = {
                     }catch(e){
                         logger.warn(`Could not destroy machine ${dmHostname}: ${e}`);
                     }
-                } 
-                close();
+                }
             };
-            await tasktable.add(uuid, { taskInfo, abort: abortTask, output: ["Launching... please wait! This can take a few minutes."] });
 
-            // Send back response to user
+            const handleError = async (err) => {
+                const taskTableEntry = await tasktable.lookup(uuid);
+                if (taskTableEntry){
+                    const taskInfo = taskTableEntry.taskInfo;
+                    if (taskInfo){
+                        taskInfo.status.code = statusCodes.FAILED;
+                        await tasktable.add(uuid, { taskInfo, output: [err.message] }, token);
+                        logger.warn(`Cannot forward task ${uuid} to processing node ${node}: ${err.message}`);
+                    }
+                }
+                utils.rmdir(tmpPath);
+                eventEmitter.emit('close');
+            };
+
+            const doUpload = async () => {
+                const MAX_UPLOAD_RETRIES = 5;
+                eventEmitter.emit('close');
+
+                try{
+                    await taskNewInit();
+                    await taskNewUpload();
+                    await taskNewCommit();
+                }catch(e){
+                    // Attempt to retry
+                    if (retries < MAX_UPLOAD_RETRIES){
+                        retries++;
+                        logger.warn(`Attempted to forward task ${uuid} to processing node ${node} but failed with: ${e.message}, attempting again (retry: ${retries})`);
+                        await utils.sleep(1000 * 5 * retries);
+
+                        // If autoscale is enabled, simply retry on same node
+                        // otherwise switch to another node
+                        if (!autoscale){
+                            const newNode = await nodes.findBestAvailableNode(imagesCount, true);
+                            if (newNode){
+                                node = newNode;
+                                logger.warn(`Switched ${uuid} to ${node}`);
+                            }else{
+                                // No nodes available
+                                logger.warn(`No other nodes available to process ${uuid}, we'll retry the same one.`);
+                            }
+                        }
+
+                        await doUpload();
+                    }else{
+                        throw new Error(`Failed to forward task to processing node after ${retries} attempts. Try again later.`);
+                    }
+                }
+            };
+
+            // Add item to task table
+            await tasktable.add(uuid, { taskInfo, abort: abortTask, output: ["Launching... please wait! This can take a few minutes."] }, token);
+
+            // Send back response to user right away
             utils.json(res, { uuid });
 
             if (autoscale){
@@ -452,23 +565,22 @@ module.exports = {
                 }catch(e){
                     const err = new Error("No nodes available (attempted to autoscale but failed). Try again later.");
                     logger.warn(`Cannot create node via autoscaling: ${e.message}`);
-                    asyncErrorHandler(err);
+                    handleError(err);
                     return;
                 }
             }
 
-            curl.setOpt(Curl.option.URL, `${node.proxyTargetUrl()}/task/new?token=${node.getToken()}`);
-            if (config.upload_max_speed) curl.setOpt(Curl.option.MAX_SEND_SPEED_LARGE, config.upload_max_speed);
-            // abort if slower than 30 bytes/sec during 1600 seconds */
-            curl.setOpt(Curl.option.LOW_SPEED_TIME, 1600);
-            curl.setOpt(Curl.option.LOW_SPEED_LIMIT, 30);
-            curl.setOpt(Curl.option.HTTPPOST, multiPartBody);
-            curl.setOpt(Curl.option.HTTPHEADER, [
-                'Content-Type: multipart/form-data',
-                `set-uuid: ${uuid}`
-            ]);
+            try{
+                await doUpload();
+                eventEmitter.emit('close');
 
-            curl.perform();
+                await routetable.add(uuid, node, token);
+                await tasktable.delete(uuid);
+
+                utils.rmdir(tmpPath);
+            }catch(e){
+                handleError(e);
+            }
         }else{
             throw new Error("No nodes available");
         }

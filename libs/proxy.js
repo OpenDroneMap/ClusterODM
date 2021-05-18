@@ -35,16 +35,17 @@ const taskNew = require('./taskNew');
 const async = require('async');
 const odmOptions = require('./odmOptions');
 const asrProvider = require('./asrProvider');
+const floodMonitor = require('./floodMonitor');
 
 module.exports = {
 	initialize: async function(cloudProvider){
-        utils.cleanupTemporaryDirectory();
+        utils.cleanupTemporaryDirectory(config.stale_uploads_timeout);
         await routetable.initialize();
         await tasktable.initialize();
 
         setInterval(() => {
-            utils.cleanupTemporaryDirectory();
-        }, 1000 * 60 * 60 * 4);
+            utils.cleanupTemporaryDirectory(config.stale_uploads_timeout);
+        }, 1000 * 60 * 30);
 
         // Allow index, .css and .js files to be retrieved from nodes
         // without authentication
@@ -129,7 +130,6 @@ module.exports = {
 
         const proxy = new HttpProxy();
         const optionsCache = new ValueCache({expires: 60 * 60 * 1000});
-
         const pathHandlers = {
             '/info': function(req, res, user){
                 const { limits } = user;
@@ -164,7 +164,25 @@ module.exports = {
             json(res, {error: `Proxy redirect error: ${err.message}`});
         });
 
+        // Added for CORS support
+        var enableCors = function(req, res) {
+          if (req.headers['access-control-request-method']) {
+              res.setHeader('access-control-allow-methods', req.headers['access-control-request-method']);
+          }
+
+          if (req.headers['access-control-request-headers']) {
+              res.setHeader('access-control-allow-headers', req.headers['access-control-request-headers']);
+          }
+
+          if (req.headers.origin) {
+              res.setHeader('access-control-allow-origin', req.headers.origin);
+              res.setHeader('access-control-allow-credentials', 'true');
+          }
+        };
+
         const requestListener = async function (req, res) {
+            enableCors(req, res);
+
             try{
                 const urlParts = url.parse(req.url, true);
                 const { query, pathname } = urlParts;
@@ -236,7 +254,15 @@ module.exports = {
                 }
 
                 if (req.method === 'POST' && pathname === '/task/new/init'){
-                    const { uuid, tmpPath, die } = taskNew.createContext(req, res);
+                    let ctx = null;
+                    try{
+                        ctx = await taskNew.createContext(req, res);
+                    }catch(e){
+                        json(res, {error: e.message});
+                        return;
+                    }
+
+                    const { uuid, tmpPath, die } = ctx;
 
                     taskNew.formDataParser(req, async function(params){
                         const { options } = params;
@@ -267,6 +293,13 @@ module.exports = {
                             return;
                         }
 
+                        floodMonitor.recordTaskInit(query.token);
+                        
+                        if (floodMonitor.isFlooding(query.token)){
+                            die(`Uuh, slow down! It seems like you are sending a lot of tasks. Check that your connection is not dropping, or wait ${floodMonitor.FORGIVE_TIME} minutes and try again.`);
+                            return;
+                        }
+
                         // Save
                         fs.writeFile(path.join(tmpPath, "body.json"),
                                     JSON.stringify(params), {encoding: 'utf8'}, err => {
@@ -278,19 +311,44 @@ module.exports = {
                         });
                     });
                 }else if (req.method === 'POST' && pathname.indexOf('/task/new/upload') === 0){
+                    // Destroy sockets after 30s of inactivity
+                    req.setTimeout(30000, () => {
+                        req.destroy();
+                    });
+
                     const taskId = taskNew.getTaskIdFromPath(pathname);
                     if (taskId){
                         const saveFilesToDir = path.join('tmp', taskId);
                         async.series([
                             cb => {
                                 fs.exists(saveFilesToDir, exists => {
-                                    if (!exists) cb(new Error("Invalid taskId (dir not found)"));
+                                    if (!exists) cb(new Error("Invalid taskId: the task no longer exists."));
                                     else cb();
                                 });
                             },
                             cb => {
-                                taskNew.formDataParser(req, async function(params){
+                                if (limits && limits.maxImages){
+                                    // Check if we've exceeding image limits
+                                    fs.readdir(saveFilesToDir, (err, files) => {
+                                        if (err){
+                                            logger.warn(`Failed to read files from ${saveFilesToDir}`);
+                                            cb();
+                                        }else if (files.length - 1 > limits.maxImages){
+                                            // -1 accounts for _body.json
+                                            cb(new Error("Max images count exceeded."));
+                                        }else{
+                                            cb();
+                                        }
+                                    });
+                                }else{
+                                    // No limits
+                                    cb();
+                                }
+                            },
+                            cb => {
+                                taskNew.formDataParser(req, function(params){
                                     if (!params.imagesCount) cb(new Error("No files uploaded."));
+                                    else if (params.error) cb(new Error(params.error));
                                     else cb();
                                 }, { saveFilesToDir, parseFields: false});
                             }
@@ -314,6 +372,9 @@ module.exports = {
                             die(`Reached maximum number of concurrent tasks: ${limits.maxConcurrentTasks}. Please wait until other tasks have finished, then restart the task.`);
                             return;
                         }
+
+                        floodMonitor.recordTaskCommit(query.token);
+                        utils.markTaskAsCommitted(taskId);
 
                         async.series([
                             cb => {
@@ -352,7 +413,15 @@ module.exports = {
                         });
                     }else json(res, { error: `No uuid found in ${pathname}`});
                 }else if (req.method === 'POST' && pathname === '/task/new') {
-                    const { uuid, tmpPath, die } = taskNew.createContext(req, res);
+                    let ctx = null;
+                    try{
+                        ctx = await taskNew.createContext(req, res);
+                    }catch(e){
+                        json(res, {error: e.message});
+                        return;
+                    }
+
+                    const { uuid, tmpPath, die } = ctx;
 
                     taskNew.formDataParser(req, async function(params) {
                         if (params.error){
@@ -371,7 +440,7 @@ module.exports = {
                             die(e.message);
                             return;
                         }
-                    }, { saveFilesToDir: tmpPath });
+                    }, { saveFilesToDir: tmpPath, limits });
                 }else if (req.method === 'POST' && ['/task/restart', '/task/cancel', '/task/remove'].indexOf(pathname) !== -1){
                     // Lookup task id from body
                     let taskId = null;

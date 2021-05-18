@@ -27,7 +27,7 @@ the on-demand instance cost - you'll always pay the current market price, not yo
     "accessKey": "CHANGEME!",
     "secretKey": "CHANGEME!",
     "s3":{
-    	"endpoint": "s3.us-west-2.amazonaws.com",
+        "endpoint": "s3.us-west-2.amazonaws.com",
         "bucket": "bucketname"
     },
     "securityGroup": "CHANGEME!",
@@ -39,17 +39,18 @@ the on-demand instance cost - you'll always pay the current market price, not yo
     "tags": ["type,clusterodm"],
     
     "ami": "ami-07b4f3c02c7f83d59",
-
+    "engineInstallUrl": "\"https://releases.rancher.com/install-docker/19.03.9.sh\"",
+    
     "spot": true,
     "imageSizeMapping": [
-        {"maxImages": 40, "slug": "t3a.small", "spotPrice": 0.05, "storage": 60},
-        {"maxImages": 80, "slug": "t3a.medium", "spotPrice": 0.05, "storage": 100},
-		{"maxImages": 250, "slug": "t3a.large", "spotPrice": 0.05, "storage": 160},
-		{"maxImages": 500, "slug": "t3a.xlarge", "spotPrice": 0.1, "storage": 320},
-		{"maxImages": 1500, "slug": "t3a.2xlarge", "spotPrice": 0.2, "storage": 640},
-		{"maxImages": 2500, "slug": "r5.2xlarge", "spotPrice": 0.25, "storage": 1200},
-		{"maxImages": 3500, "slug": "r5.4xlarge", "spotPrice": 0.5, "storage": 2000},
-		{"maxImages": 5000, "slug": "r5.4xlarge", "spotPrice": 0.5, "storage": 2500}
+        {"maxImages": 40, "slug": "t3a.small", "spotPrice": 0.02, "storage": 60},
+        {"maxImages": 80, "slug": "t3a.medium", "spotPrice": 0.04, "storage": 100},
+        {"maxImages": 250, "slug": "m5.large", "spotPrice": 0.1, "storage": 160},
+        {"maxImages": 500, "slug": "m5.xlarge", "spotPrice": 0.2, "storage": 320},
+        {"maxImages": 1500, "slug": "m5.2xlarge", "spotPrice": 0.4, "storage": 640},
+        {"maxImages": 2500, "slug": "r5.2xlarge", "spotPrice": 0.6, "storage": 1200},
+        {"maxImages": 3500, "slug": "r5.4xlarge", "spotPrice": 1.1, "storage": 2000},
+        {"maxImages": 5000, "slug": "r5.4xlarge", "spotPrice": 1.1, "storage": 2500}
     ],
 
     "addSwap": 1,

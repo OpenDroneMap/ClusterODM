@@ -22,6 +22,7 @@ const logger = require('./libs/logger');
 const package_info = require('./package_info');
 const nodes = require('./libs/nodes');
 const proxy = require('./libs/proxy');
+const floodMonitor = require('./libs/floodMonitor');
 const routetable = require('./libs/routetable');
 
 (async function(){
@@ -33,6 +34,7 @@ const routetable = require('./libs/routetable');
     const cloudProvider = (require('./libs/cloudProvider')).initialize(config.cloud_provider);
     await (require('./libs/asrProvider')).initialize(config.asr);
     await nodes.initialize();
+    floodMonitor.initialize();
 
     const proxies = await proxy.initialize(cloudProvider);
 

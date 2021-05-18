@@ -166,7 +166,9 @@ module.exports = {
             else if (a.slots > b.slots) return -1;
             else if (a.slots < b.slots) return 1;
             else if (a.queueCount < b.queueCount) return -1;
+            else if (a.queueCount > b.queueCount) return 1;
             else if (a.node.turn < b.node.turn) return -1;
+            else if (a.node.turn > b.node.turn) return 1;
             else return 1;
         });
         

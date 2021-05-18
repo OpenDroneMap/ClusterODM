@@ -231,6 +231,11 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
             args.push(this.getConfig("sshKey.path"));
         }
 
+        if (this.getConfig("engineInstallUrl")){
+            args.push("--engine-install-url")
+            args.push(this.getConfig("engineInstallUrl"));
+        }
+
         return args;
     }
 };

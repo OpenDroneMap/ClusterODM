@@ -113,7 +113,7 @@ module.exports = {
     },
 
     vacuum: async function(){
-    	const autoNodes = nodes.filter(n => n.isAutoSpawned());
+        const autoNodes = nodes.filter(n => n.isAutoSpawned());
 
         // Automatically remove autospawned nodes if either:
         // - They have been online for too long (stuck?)
