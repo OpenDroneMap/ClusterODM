@@ -15,42 +15,61 @@
  *  You should have received a copy of the GNU Affero General Public License
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-'use strict';
+"use strict";
 
-const fs = require('fs');
+const fs = require("fs");
 
 // Read configuration from file
 let defaultConfigFilePath = "config-default.json";
 let defaultConfig = {};
-try{
+try {
     let data = fs.readFileSync(defaultConfigFilePath);
     defaultConfig = JSON.parse(data.toString());
     defaultConfig.config = defaultConfigFilePath;
-}catch(e){
+} catch (e) {
     console.warn(`config-default.json not found or invalid: ${e.message}`);
     process.exit(1);
 }
 
 let argDefs = {
-    string: ['port', 'admin-cli-port', 'admin-pass', 'admin-web-port',
-            'cloud-provider', 'downloads-from-s3', 'token', 'log-level',
-            'upload-max-speed', 'ssl-key', 'ssl-cert', 'secure-port',
-            'public-address', 'config',
-            'asr'],
-    boolean: ['splitmerge', 'debug'],
+    string: [
+        "port",
+        "admin-cli-port",
+        "admin-pass",
+        "admin-web-port",
+        "cloud-provider",
+        "downloads-from-s3",
+        "token",
+        "log-level",
+        "upload-max-speed",
+        "ssl-key",
+        "ssl-cert",
+        "secure-port",
+        "public-address",
+        "config",
+        "asr",
+    ],
+    boolean: ["splitmerge", "debug"],
     alias: {
-        p: 'port',
-        c: 'cloud-provider'
+        p: "port",
+        c: "cloud-provider",
     },
     default: defaultConfig,
 
-    int: ['port', 'admin-cli-port', 'admin-web-port', 
-          'secure-port', 'upload-max-speed', 'flood-limit', 'stale-uploads-timeout'] // for cast only, not used by minimist
+    int: [
+        "port",
+        "admin-cli-port",
+        "admin-web-port",
+        "secure-port",
+        "upload-max-speed",
+        "flood-limit",
+        "stale-uploads-timeout",
+    ], // for cast only, not used by minimist
 };
-let argv = require('minimist')(process.argv.slice(2), argDefs);
+let argv = require("minimist")(process.argv.slice(2), argDefs);
 
-if (argv.help){
-	console.log(`
+if (argv.help) {
+    console.log(`
 Usage: node index.js [options]
 
 Options:
@@ -77,36 +96,36 @@ Options:
 Log Levels: 
 error | debug | info | verbose | debug | silly 
 `);
-	process.exit(0);
+    process.exit(0);
 }
 
 let userConfig = {};
-if (argv.config !== defaultConfigFilePath){
-    try{
+if (argv.config !== defaultConfigFilePath) {
+    try {
         userConfig = JSON.parse(fs.readFileSync(argv.config).toString());
-    }catch(e){
+    } catch (e) {
         console.warn(`${argv.config} not found or invalid: ${e.message}`);
         process.exit(1);
     }
 }
 
-function readConfig(key, cast = String){
+function readConfig(key, cast = String) {
     if (userConfig[key] !== undefined) return cast(userConfig[key]);
     else if (argv[key] !== undefined) return cast(argv[key]);
-    else return '';
+    else return "";
 }
 
 let config = {};
 
 // Logging configuration
 config.logger = {};
-config.logger.level = readConfig('log-level'); // What level to log at; info, verbose or debug are most useful. Levels are (npm defaults): silly, debug, verbose, info, warn, error.
+config.logger.level = readConfig("log-level"); // What level to log at; info, verbose or debug are most useful. Levels are (npm defaults): silly, debug, verbose, info, warn, error.
 config.logger.maxFileSize = 1024 * 1024 * 100; // Max file size in bytes of each log file; default 100MB
 config.logger.maxFiles = 10; // Max number of log files kept
-config.logger.logDirectory = '' // Set this to a full path to a directory - if not set logs will be written to the application directory.
+config.logger.logDirectory = ""; // Set this to a full path to a directory - if not set logs will be written to the application directory.
 
-for (let k in argv){
-    if (k === '_' || k.length === 1) continue;
+for (let k in argv) {
+    if (k === "_" || k.length === 1) continue;
     let ck = k.replace(/-/g, "_");
     let cast = String;
     if (argDefs.int.indexOf(k) !== -1) cast = parseInt;

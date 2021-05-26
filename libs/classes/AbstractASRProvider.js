@@ -15,26 +15,28 @@
  *  You should have received a copy of the GNU Affero General Public License
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-const logger = require('../logger');
-const fs = require('fs');
-const DockerMachine = require('./DockerMachine').Class;
-const short = require('short-uuid');
-const Node = require('./Node');
-const utils = require('../utils');
+const logger = require("../logger");
+const fs = require("fs");
+const DockerMachine = require("./DockerMachine").Class;
+const short = require("short-uuid");
+const Node = require("./Node");
+const utils = require("../utils");
 
-module.exports = class AbstractASRProvider{
-    constructor(defaults, userConfigFile){
+module.exports = class AbstractASRProvider {
+    constructor(defaults, userConfigFile) {
         logger.info(`ASR: ${this.constructor.name}`);
-        
+
         this.config = defaults;
 
-        if (userConfigFile){
-            try{
-                const userConfig = JSON.parse(fs.readFileSync(userConfigFile).toString());
-                for (let k in userConfig){
+        if (userConfigFile) {
+            try {
+                const userConfig = JSON.parse(
+                    fs.readFileSync(userConfigFile).toString()
+                );
+                for (let k in userConfig) {
                     this.config[k] = userConfig[k];
                 }
-            }catch(e){
+            } catch (e) {
                 throw new Error(`Invalid configuration file ${userConfigFile}`);
             }
         }
@@ -42,49 +44,55 @@ module.exports = class AbstractASRProvider{
         this.nodesPendingCreation = 0;
     }
 
-    getDriverName(){
+    getDriverName() {
         throw new Error("Not implemented");
     }
 
-    async getCreateArgs(imagesCount){
+    async getCreateArgs(imagesCount) {
         throw new Error("Not implemented");
     }
 
-    canHandle(imagesCount){
+    canHandle(imagesCount) {
         throw new Error("Not implemented");
     }
 
-    getDownloadsBaseUrl(){
+    getDownloadsBaseUrl() {
         throw new Error("Not implemented");
     }
 
-    getServicePort(){
+    getServicePort() {
         return 3000;
     }
 
-    getMachinesLimit(){
+    getMachinesLimit() {
         return -1;
     }
 
-    getCreateRetries(){
+    getCreateRetries() {
         1;
     }
 
-    getMaxRuntime(){
+    getMaxRuntime() {
         return -1;
     }
 
-    getMaxUploadTime(){
+    getMaxUploadTime() {
         return -1;
     }
 
-    getNodesPendingCreation(){
+    getNodesPendingCreation() {
         return this.nodesPendingCreation;
     }
 
-    validateConfigKeys(keys){
-        for (let prop of keys){
-            if (this.getConfig(prop) === "CHANGEME!" || this.getConfig(prop, undefined) === undefined) throw new Error(`You need to create a configuration file and set ${prop}.`);
+    validateConfigKeys(keys) {
+        for (let prop of keys) {
+            if (
+                this.getConfig(prop) === "CHANGEME!" ||
+                this.getConfig(prop, undefined) === undefined
+            )
+                throw new Error(
+                    `You need to create a configuration file and set ${prop}.`
+                );
         }
     }
 
@@ -93,14 +101,16 @@ module.exports = class AbstractASRProvider{
     // @param token {String} user token
     // @param dm {DockerMachine} docker machine client
     // @param nodeToken {String} token to set to protect the new machine instance services
-    async setupMachine(req, token, dm, nodeToken){
+    async setupMachine(req, token, dm, nodeToken) {
         // Override
     }
 
     // Helper function for debugging
-    async debugCreateDockerMachineCmd(imagesCount){
+    async debugCreateDockerMachineCmd(imagesCount) {
         const args = await this.getCreateArgs(imagesCount);
-        return `docker-machine create --driver ${this.getDriverName()} ${args.join(" ")} debug-machine`;
+        return `docker-machine create --driver ${this.getDriverName()} ${args.join(
+            " "
+        )} debug-machine`;
     }
 
     // Spawn new nodes
@@ -110,91 +120,111 @@ module.exports = class AbstractASRProvider{
     // @param hostname {String} docker-machine hostname
     // @param status {Object} status information about the task being created
     // @return {Node} a new Node instance
-    async createNode(req, imagesCount, token, hostname, status){
-        if (!this.canHandle(imagesCount)) throw new Error(`Cannot handle ${imagesCount} images.`);
+    async createNode(req, imagesCount, token, hostname, status) {
+        if (!this.canHandle(imagesCount))
+            throw new Error(`Cannot handle ${imagesCount} images.`);
 
         const dm = new DockerMachine(hostname);
-        const args = ["--driver", this.getDriverName()]
-                        .concat(await this.getCreateArgs(imagesCount));
+        const args = ["--driver", this.getDriverName()].concat(
+            await this.getCreateArgs(imagesCount)
+        );
         const nodeToken = short.generate();
 
-        try{
+        try {
             this.nodesPendingCreation++;
 
             let created = false;
-            for (let i = 1; i <= this.getCreateRetries(); i++){
+            for (let i = 1; i <= this.getCreateRetries(); i++) {
                 if (status.aborted) throw new Error("Aborted");
 
                 logger.info(`Trying to create machine... (${i})`);
-                try{
+                try {
                     await dm.create(args);
                     created = true;
                     break;
-                }catch(e){
+                } catch (e) {
                     logger.warn(`Cannot create machine: ${e}`);
-                    try{
+                    try {
                         await dm.rm(true); // Make sure to cleanup if something goes wrong!
-                    }catch(e){
+                    } catch (e) {
                         // Do nothing
                     }
 
                     await utils.sleep(10000 * i);
                 }
             }
-            if (!created) throw new Error(`Cannot create machine (attempted ${this.getCreateRetries()} times)`);
+            if (!created)
+                throw new Error(
+                    `Cannot create machine (attempted ${this.getCreateRetries()} times)`
+                );
             if (status.aborted) throw new Error("Aborted");
-            
+
             await this.setupMachine(req, token, dm, nodeToken);
-            
-            const node = new Node(await dm.getIP(), this.getServicePort(), nodeToken);
-    
+
+            const node = new Node(
+                await dm.getIP(),
+                this.getServicePort(),
+                nodeToken
+            );
+
             // Wait for the node to get online
-            for (let i = 1; i <= 5; i++){
+            for (let i = 1; i <= 5; i++) {
                 if (status.aborted) throw new Error("Aborted");
                 await node.updateInfo();
                 if (node.isOnline()) break;
                 logger.info(`Waiting for ${node} to get online... (${i})`);
                 await utils.sleep(1000 * i);
             }
-            if (!node.isOnline()) throw new Error("No nodes available (spawned a new node, but the node did not get online).");
-    
-            node.setDockerMachine(hostname, this.getMaxRuntime(), this.getMaxUploadTime());
+            if (!node.isOnline())
+                throw new Error(
+                    "No nodes available (spawned a new node, but the node did not get online)."
+                );
+
+            node.setDockerMachine(
+                hostname,
+                this.getMaxRuntime(),
+                this.getMaxUploadTime()
+            );
             return node;
-        }catch(e){
-            try{
+        } catch (e) {
+            try {
                 await dm.rm(); // Make sure to cleanup if something goes wrong!
-            }catch(e){
-                logger.warn("Could not remove docker-machine, it's likely that the machine was not created, but double-check!");
+            } catch (e) {
+                logger.warn(
+                    "Could not remove docker-machine, it's likely that the machine was not created, but double-check!"
+                );
             }
             throw e;
-        }finally{
+        } finally {
             this.nodesPendingCreation--;
         }
     }
 
-    async destroyNode(node){
-        if (node.isAutoSpawned()){
+    async destroyNode(node) {
+        if (node.isAutoSpawned()) {
             logger.debug(`Destroying ${node}`);
             return this.destroyMachine(node.getDockerMachineName());
-        }else{
+        } else {
             // Should never happen
-            logger.warn(`Tried to call destroyNode on a non-autospawned node: ${node}`);
+            logger.warn(
+                `Tried to call destroyNode on a non-autospawned node: ${node}`
+            );
         }
     }
-    
-    async destroyMachine(dmHostname){
+
+    async destroyMachine(dmHostname) {
         logger.debug(`About to destroy ${dmHostname}`);
         const dm = new DockerMachine(dmHostname);
         return dm.rm(true);
     }
 
-    generateHostname(imagesCount){
+    generateHostname(imagesCount) {
         if (imagesCount === undefined) throw new Error("Images count missing");
-        
+
         return `clusterodm-${imagesCount}-${short.generate()}`;
     }
 
-    getConfig(key, defaultValue = ""){
+    getConfig(key, defaultValue = "") {
         return utils.get(this.config, key, defaultValue);
     }
-}
+};

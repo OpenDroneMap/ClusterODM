@@ -15,10 +15,10 @@
  *  You should have received a copy of the GNU Affero General Public License
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-const logger = require('../logger');
+const logger = require("../logger");
 
-module.exports = class AbstractCloudProvider{
-    constructor(){
+module.exports = class AbstractCloudProvider {
+    constructor() {
         logger.info(`Cloud: ${this.constructor.name}`);
     }
 
@@ -27,7 +27,7 @@ module.exports = class AbstractCloudProvider{
 
     // @param token {String} a token passed to the proxy to authenticate a request
     // @return {Object} See LocalCloudProvider for an example.
-    async validate(token){
+    async validate(token) {
         throw new Error("Not Implemented");
     }
 
@@ -37,7 +37,7 @@ module.exports = class AbstractCloudProvider{
     // @param token {String} a token passed to the proxy to authenticate a request
     // @param imagesCount {Number} number of images the user wants to process.
     // @return {Object} See LocalCloudProvider for an example.
-    async approveNewTask(token, imagesCount){
+    async approveNewTask(token, imagesCount) {
         throw new Error("Not Implemented");
     }
 
@@ -46,18 +46,19 @@ module.exports = class AbstractCloudProvider{
 
     // @param token {String} a token passed to the proxy to authenticate a request
     // @param taskInfo {Object} task info as returned by the processing node.
-    async taskFinished(token, taskInfo){
+    async taskFinished(token, taskInfo) {
         throw new Error("Not Implemented");
     }
 
-
     // Override this to handle /auth/info
-    handleAuthInfo(req, res){
+    handleAuthInfo(req, res) {
         res.writeHead(200, {"Content-Type": "application/json"});
-        res.end(JSON.stringify({
-            message:"Authentication not available on this node",
-            loginUrl:null,
-            registerUrl:null
-        }));
+        res.end(
+            JSON.stringify({
+                message: "Authentication not available on this node",
+                loginUrl: null,
+                registerUrl: null,
+            })
+        );
     }
 };

@@ -15,28 +15,32 @@
  *  You should have received a copy of the GNU Affero General Public License
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-const logger = require('./libs/logger');
-const express = require('express');
-const basicAuth = require('express-basic-auth');
-const nodes = require('./libs/nodes');
-const package_info = require('./package_info');
-const cors = require('cors')
+const logger = require("./libs/logger");
+const express = require("express");
+const basicAuth = require("express-basic-auth");
+const nodes = require("./libs/nodes");
+const package_info = require("./package_info");
+const cors = require("cors");
 
 module.exports = {
-    create: function(options) {
+    create: function (options) {
         logger.info("Starting admin web interface on " + options.port);
 
         const app = express();
-        app.use(cors())
+        app.use(cors());
 
         if (!options.password) {
-            logger.warn(`No admin password specified, make sure port ${options.port} is secured`);
+            logger.warn(
+                `No admin password specified, make sure port ${options.port} is secured`
+            );
         } else {
-            app.use(basicAuth({
-                users: { 'admin': options.password },
-                challenge: true,
-                realm: "ClusterODM"
-            }));
+            app.use(
+                basicAuth({
+                    users: {admin: options.password},
+                    challenge: true,
+                    realm: "ClusterODM",
+                })
+            );
         }
 
         // TODO: UI (let's work on improving this soon!)
@@ -53,10 +57,12 @@ module.exports = {
         </body>
         </html>`;
 
-        app.get('/', (req, res) => {
+        app.get("/", (req, res) => {
             res.send(`${htmlHead}
               <div class="container">
-                <h1 class="text-center mt-2 mb-2">ClusterODM ${package_info.version}</h1>
+                <h1 class="text-center mt-2 mb-2">ClusterODM ${
+                    package_info.version
+                }</h1>
                 <table class="table table-hover table-striped">
                   <thead>
                     <tr class="text-white bg-primary">
@@ -70,21 +76,28 @@ module.exports = {
                     <tr>
                   </thead>
                   <tbody>
-                    ${nodes.all().map((node, idx) => {
-                      const flags = [];
-                      if (node.isLocked()) flags.push("L");
-                      if (node.isAutoSpawned()) flags.push("A");
-            
-                      return `<tr>
+                    ${nodes
+                        .all()
+                        .map((node, idx) => {
+                            const flags = [];
+                            if (node.isLocked()) flags.push("L");
+                            if (node.isAutoSpawned()) flags.push("A");
+
+                            return `<tr>
                       <td>${idx + 1}</td>
                       <td>${node}</td>
-                      <td>${node.isOnline() ? '<span class="badge bg-success">Online</span>' : '<span class="badge bg-danger">Offline</span>'}</td>
+                      <td>${
+                          node.isOnline()
+                              ? '<span class="badge bg-success">Online</span>'
+                              : '<span class="badge bg-danger">Offline</span>'
+                      }</td>
                       <td>${node.getTaskQueueCount()}/${node.getMaxParallelTasks()}</td>
                       <td>${node.getEngineInfo()}</td>
                       <td>${node.getVersion()}</td>
                       <td>${flags.join(",")}</td>
                       </tr>`;
-                    }).join("")}
+                        })
+                        .join("")}
                   </tbody>
                 </table>
                 
@@ -121,12 +134,12 @@ module.exports = {
             ${htmlFoot}`);
         });
 
-        app.use(express.static('public'));
+        app.use(express.static("public"));
         app.use(express.json());
 
         // API
-        app.post('/r/node/add', (req, res) => {
-            const { hostname, port, token } = req.body;
+        app.post("/r/node/add", (req, res) => {
+            const {hostname, port, token} = req.body;
             const node = nodes.addUnique(hostname, port, token);
 
             if (node) {
@@ -138,5 +151,5 @@ module.exports = {
         });
 
         app.listen(options.port);
-    }
-}
+    },
+};

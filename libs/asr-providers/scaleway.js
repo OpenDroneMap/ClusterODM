@@ -15,92 +15,115 @@
  *  You should have received a copy of the GNU Affero General Public License
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-const AbstractASRProvider = require('../classes/AbstractASRProvider');
-const netutils = require('../netutils');
-const S3 = require('../S3');
+const AbstractASRProvider = require("../classes/AbstractASRProvider");
+const netutils = require("../netutils");
+const S3 = require("../S3");
 
-module.exports = class ScalewayAsrProvider extends AbstractASRProvider{
-    constructor(userConfig){
-        super({
-            "organization": "CHANGEME!",
-            "secretToken": "CHANGEME!",
+module.exports = class ScalewayAsrProvider extends AbstractASRProvider {
+    constructor(userConfig) {
+        super(
+            {
+                organization: "CHANGEME!",
+                secretToken: "CHANGEME!",
 
-            "s3":{
-                "accessKey": "CHANGEME!",
-                "secretKey": "CHANGEME!",
-                "endpoint": "CHANGEME!",
-                "bucket": "CHANGEME!"
+                s3: {
+                    accessKey: "CHANGEME!",
+                    secretKey: "CHANGEME!",
+                    endpoint: "CHANGEME!",
+                    bucket: "CHANGEME!",
+                },
+
+                maxRuntime: -1,
+                maxUploadTime: -1,
+                machinesLimit: -1,
+                createRetries: 1,
+                region: "par1",
+
+                image: "ubuntu-xenial",
+
+                imageSizeMapping: [
+                    {maxImages: 5, slug: "GP1-XS"},
+                    {maxImages: 50, slug: "GP1-S"},
+                ],
+                minImages: -1,
+
+                addSwap: 1,
+                dockerImage: "opendronemap/nodeodm",
             },
-
-            "maxRuntime": -1,
-            "maxUploadTime": -1,
-            "machinesLimit": -1,
-            "createRetries": 1,
-            "region": "par1",
-            
-            "image": "ubuntu-xenial",
-
-            "imageSizeMapping": [
-                {"maxImages": 5, "slug": "GP1-XS"},
-                {"maxImages": 50, "slug": "GP1-S"}
-            ],
-            "minImages": -1,
-
-            "addSwap": 1,
-            "dockerImage": "opendronemap/nodeodm"
-        }, userConfig);
+            userConfig
+        );
     }
 
-    async initialize(){
-        this.validateConfigKeys(["organization", "secretToken", "s3.accessKey", "s3.secretKey", "s3.endpoint", "s3.bucket"]);
+    async initialize() {
+        this.validateConfigKeys([
+            "organization",
+            "secretToken",
+            "s3.accessKey",
+            "s3.secretKey",
+            "s3.endpoint",
+            "s3.bucket",
+        ]);
 
         // Test S3
-        const { accessKey, secretKey, endpoint, bucket } = this.getConfig("s3");
+        const {accessKey, secretKey, endpoint, bucket} = this.getConfig("s3");
         await S3.testBucket(accessKey, secretKey, endpoint, bucket);
-        
+
         const im = this.getConfig("imageSizeMapping", []);
-        if (!Array.isArray(im)) throw new Error("Invalid config key imageSizeMapping (array expected)");
+        if (!Array.isArray(im))
+            throw new Error(
+                "Invalid config key imageSizeMapping (array expected)"
+            );
 
         // Sort by ascending maxImages
         im.sort((a, b) => {
-            if (a['maxImages'] < b['maxImages']) return -1;
-            else if (a['maxImages'] > b['maxImages']) return 1;
+            if (a["maxImages"] < b["maxImages"]) return -1;
+            else if (a["maxImages"] > b["maxImages"]) return 1;
             else return 0;
         });
     }
 
-    getDriverName(){
+    getDriverName() {
         return "scaleway";
     }
 
-    getMachinesLimit(){
+    getMachinesLimit() {
         return this.getConfig("machinesLimit", -1);
     }
 
-    getCreateRetries(){
+    getCreateRetries() {
         return this.getConfig("createRetries", 1);
     }
-    
-    getDownloadsBaseUrl(){
-        return `https://${this.getConfig("s3.bucket")}.${this.getConfig("s3.endpoint")}`;
+
+    getDownloadsBaseUrl() {
+        return `https://${this.getConfig("s3.bucket")}.${this.getConfig(
+            "s3.endpoint"
+        )}`;
     }
 
-    canHandle(imagesCount){
+    canHandle(imagesCount) {
         const minImages = this.getConfig("minImages", -1);
 
-        return this.getImageSlugFor(imagesCount) !== null && 
-               (minImages === -1 || imagesCount >= minImages);
+        return (
+            this.getImageSlugFor(imagesCount) !== null &&
+            (minImages === -1 || imagesCount >= minImages)
+        );
     }
 
-    async setupMachine(req, token, dm, nodeToken){
+    async setupMachine(req, token, dm, nodeToken) {
         // Add swap proportional to the available RAM
         const swapToMemRatio = this.getConfig("addSwap");
-        if (swapToMemRatio){
-            const sshOutput = await dm.ssh(`bash -c "echo \\$(awk '/MemTotal/ { printf \\\"%d\\n\\\", \\$2 }' /proc/meminfo)"`)
+        if (swapToMemRatio) {
+            const sshOutput = await dm.ssh(
+                `bash -c "echo \\$(awk '/MemTotal/ { printf \\\"%d\\n\\\", \\$2 }' /proc/meminfo)"`
+            );
             const memory = parseFloat(sshOutput.trim());
-            if (!isNaN(memory)){
-                await dm.ssh(`bash -c "fallocate -l ${Math.ceil(memory * swapToMemRatio * 1024)} /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile && free -h"`)
-            }else{
+            if (!isNaN(memory)) {
+                await dm.ssh(
+                    `bash -c "fallocate -l ${Math.ceil(
+                        memory * swapToMemRatio * 1024
+                    )} /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile && free -h"`
+                );
+            } else {
                 throw new Error(`Failed to allocate swap: ${sshOutput}`);
             }
         }
@@ -109,23 +132,27 @@ module.exports = class ScalewayAsrProvider extends AbstractASRProvider{
         const s3 = this.getConfig("s3");
         const webhook = netutils.publicAddressPath("/commit", req, token);
 
-        await dm.ssh([`docker run -d -p 3000:3000 ${dockerImage} -q 1`,
-                     `--s3_access_key ${s3.accessKey}`,
-                     `--s3_secret_key ${s3.secretKey}`,
-                     `--s3_endpoint ${s3.endpoint}`,
-                     `--s3_bucket ${s3.bucket}`,
-                     `--webhook ${webhook}`,
-                     `--token ${nodeToken}`].join(" "));
+        await dm.ssh(
+            [
+                `docker run -d -p 3000:3000 ${dockerImage} -q 1`,
+                `--s3_access_key ${s3.accessKey}`,
+                `--s3_secret_key ${s3.secretKey}`,
+                `--s3_endpoint ${s3.endpoint}`,
+                `--s3_bucket ${s3.bucket}`,
+                `--webhook ${webhook}`,
+                `--token ${nodeToken}`,
+            ].join(" ")
+        );
     }
 
-    getImageSlugFor(imagesCount){
+    getImageSlugFor(imagesCount) {
         const im = this.getConfig("imageSizeMapping");
 
         let slug = null;
-        for (var k in im){
+        for (var k in im) {
             const mapping = im[k];
-            if (mapping['maxImages'] >= imagesCount){
-                slug = mapping['slug'];
+            if (mapping["maxImages"] >= imagesCount) {
+                slug = mapping["slug"];
                 break;
             }
         }
@@ -133,25 +160,30 @@ module.exports = class ScalewayAsrProvider extends AbstractASRProvider{
         return slug;
     }
 
-    getMaxRuntime(){
+    getMaxRuntime() {
         return this.getConfig("maxRuntime");
     }
 
-    getMaxUploadTime(){
+    getMaxUploadTime() {
         return this.getConfig("maxUploadTime");
     }
 
-    async getCreateArgs(imagesCount){
+    async getCreateArgs(imagesCount) {
         const args = [
-            "--scaleway-organization", this.getConfig("organization"),
-            "--scaleway-token", this.getConfig("secretToken"),
-            "--scaleway-region", this.getConfig("region"),
-            "--scaleway-image", this.getConfig("image"),
-            "--scaleway-commercial-type", this.getImageSlugFor(imagesCount)
+            "--scaleway-organization",
+            this.getConfig("organization"),
+            "--scaleway-token",
+            this.getConfig("secretToken"),
+            "--scaleway-region",
+            this.getConfig("region"),
+            "--scaleway-image",
+            this.getConfig("image"),
+            "--scaleway-commercial-type",
+            this.getImageSlugFor(imagesCount),
         ];
 
-        if (this.getConfig("engineInstallUrl")){
-            args.push("--engine-install-url")
+        if (this.getConfig("engineInstallUrl")) {
+            args.push("--engine-install-url");
             args.push(this.getConfig("engineInstallUrl"));
         }
 

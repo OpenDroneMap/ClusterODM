@@ -15,21 +15,26 @@
  *  You should have received a copy of the GNU Affero General Public License
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-const LightningCloudProvider = require('./LightningCloudProvider');
+const LightningCloudProvider = require("./LightningCloudProvider");
 
-module.exports = class LightningDevCloudProvider extends LightningCloudProvider{
-    constructor(){
+module.exports = class LightningDevCloudProvider extends (
+    LightningCloudProvider
+) {
+    constructor() {
         super();
         this.validateCache.disable();
         this.urlBase = "http://localhost:5000/r";
     }
 
-    handleAuthInfo(req, res){
+    handleAuthInfo(req, res) {
         res.writeHead(200, {"Content-Type": "application/json"});
-        res.end(JSON.stringify({
-            message: "Please enter your localhost credentials. If you don't have an account, register for free at http://localhost:5000/register",
-            loginUrl:  this.urlBase + "/auth/getToken",
-            registerUrl: null
-        }));
+        res.end(
+            JSON.stringify({
+                message:
+                    "Please enter your localhost credentials. If you don't have an account, register for free at http://localhost:5000/register",
+                loginUrl: this.urlBase + "/auth/getToken",
+                registerUrl: null,
+            })
+        );
     }
 };

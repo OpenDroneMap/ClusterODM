@@ -16,33 +16,41 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 "use strict";
-const AWS = require('aws-sdk');
-const logger = require('./logger');
+const AWS = require("aws-sdk");
+const logger = require("./logger");
 
 module.exports = {
-    testBucket: async function(accessKey, secretKey, endpoint, bucket){
+    testBucket: async function (accessKey, secretKey, endpoint, bucket) {
         return new Promise((resolve, reject) => {
             const spacesEndpoint = new AWS.Endpoint(endpoint);
             const s3 = new AWS.S3({
                 endpoint: spacesEndpoint,
-                signatureVersion: 'v4',
+                signatureVersion: "v4",
                 accessKeyId: accessKey,
-                secretAccessKey: secretKey
+                secretAccessKey: secretKey,
             });
 
             // Test connection
-            s3.putObject({
-                Bucket: bucket,
-                Key: 'test.txt',
-                Body: ''
-            }, err => {
-                if (!err){
-                    logger.info("Can write to S3");
-                    resolve(true);
-                }else{
-                    reject(new Error("Cannot connect to S3. Check your S3 configuration: " + err.code));
+            s3.putObject(
+                {
+                    Bucket: bucket,
+                    Key: "test.txt",
+                    Body: "",
+                },
+                (err) => {
+                    if (!err) {
+                        logger.info("Can write to S3");
+                        resolve(true);
+                    } else {
+                        reject(
+                            new Error(
+                                "Cannot connect to S3. Check your S3 configuration: " +
+                                    err.code
+                            )
+                        );
+                    }
                 }
-            });
+            );
         });
-    }
+    },
 };

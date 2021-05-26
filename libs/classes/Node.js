@@ -15,229 +15,245 @@
  *  You should have received a copy of the GNU Affero General Public License
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-const logger = require('../logger');
-const url = require('url');
-const axios = require('axios');
+const logger = require("../logger");
+const url = require("url");
+const axios = require("axios");
 
-module.exports = class Node{
-    constructor(hostname, port, token = ""){
+module.exports = class Node {
+    constructor(hostname, port, token = "") {
         this.nodeData = {
             hostname,
             port,
             token,
-            info: {}
+            info: {},
         };
         this.turn = 0;
 
         this.timeout = 10000;
     }
 
-    static FromJSON(json){
+    static FromJSON(json) {
         const n = new Node(json.hostname, json.port, json.token);
-        for (let k in json){
+        for (let k in json) {
             n.nodeData[k] = json[k];
         }
         return n;
     }
 
-    async updateInfo(){
-        try{
-            let response = await axios.get(this.urlFor('/info'), { timeout: this.timeout });
-            if (response.status === 200){
-                if (!response.data.error){
+    async updateInfo() {
+        try {
+            let response = await axios.get(this.urlFor("/info"), {
+                timeout: this.timeout,
+            });
+            if (response.status === 200) {
+                if (!response.data.error) {
                     this.nodeData.info = response.data;
                     this.nodeData.lastRefreshed = new Date().getTime();
-                }else{
-                    throw new Error(`Cannot update info for ${this}, error: ${response.data.error}`);
+                } else {
+                    throw new Error(
+                        `Cannot update info for ${this}, error: ${response.data.error}`
+                    );
                 }
-            }else{
+            } else {
                 this.nodeData.lastRefreshed = 0;
-                throw new Error(`Cannot update info for ${this}, returned status ${response.status}`);
+                throw new Error(
+                    `Cannot update info for ${this}, returned status ${response.status}`
+                );
             }
-        }catch(e){
+        } catch (e) {
             logger.warn(`Cannot update info for ${this}: ${e.message}`);
             this.nodeData.lastRefreshed = 0;
         }
     }
 
-    async taskInfo(taskId){
+    async taskInfo(taskId) {
         return this.getRequest(`/task/${taskId}/info`);
     }
 
-    async taskOutput(taskId, line = 0){
+    async taskOutput(taskId, line = 0) {
         return this.getRequest(`/task/${taskId}/output`, {line});
     }
 
-    async taskCancel(taskId){
+    async taskCancel(taskId) {
         return this.postRequest(`/task/cancel`, {uuid: taskId});
     }
 
-    async taskRemove(taskId){
+    async taskRemove(taskId) {
         return this.postRequest(`/task/remove`, {uuid: taskId});
     }
 
-    async postRequest(url, formData = {}, query = {}){
-        try{
-            let response = await axios.post(this.urlFor(url, query), formData, { 
-                                timeout: this.timeout,
-                            });
-            if (response.status === 200){
+    async postRequest(url, formData = {}, query = {}) {
+        try {
+            let response = await axios.post(this.urlFor(url, query), formData, {
+                timeout: this.timeout,
+            });
+            if (response.status === 200) {
                 return response.data;
-            }else{
+            } else {
                 throw new Error(`Got response code: ${response.status}`);
             }
-        }catch(e){
+        } catch (e) {
             return {error: e.message};
         }
     }
 
-    async getRequest(url, query = {}){
-        try{
-            let response = await axios.get(this.urlFor(url, query), { timeout: this.timeout });
-            if (response.status === 200){
+    async getRequest(url, query = {}) {
+        try {
+            let response = await axios.get(this.urlFor(url, query), {
+                timeout: this.timeout,
+            });
+            if (response.status === 200) {
                 return response.data;
-            }else{
+            } else {
                 throw new Error(`Got response code: ${response.status}`);
             }
-        }catch(e){
+        } catch (e) {
             return {error: e.message};
         }
     }
 
-    urlFor(pathname, query = {}){
-        const { hostname, port, token } = this.nodeData;
-        const proto = port === 443 ? 'https' : 'http';
+    urlFor(pathname, query = {}) {
+        const {hostname, port, token} = this.nodeData;
+        const proto = port === 443 ? "https" : "http";
         if (token) query.token = token;
 
         return url.format({protocol: proto, hostname, port, pathname, query});
     }
 
-    hostname(){
+    hostname() {
         return this.nodeData.hostname;
     }
 
-    port(){
+    port() {
         return this.nodeData.port;
     }
 
-    isAutoSpawned(){
+    isAutoSpawned() {
         return !!this.getDockerMachineName();
     }
 
-    isLocked(){
+    isLocked() {
         return !!this.nodeData.locked;
     }
 
-    setLocked(flag){
+    setLocked(flag) {
         this.nodeData.locked = flag;
     }
 
     // @param name {String} name of docker machine
     // @param maxRuntime {Number} maximum number of seconds this docker-machine node is allowed to run before getting forcibly terminated.
     // @param maxUploadTime {Number} maximum number of seconds this docker-machine node is allowed for upload before getting forcibly terminated.
-    setDockerMachine(name, maxRuntime, maxUploadTime){
+    setDockerMachine(name, maxRuntime, maxUploadTime) {
         this.nodeData.dockerMachine = {
             name,
             created: new Date().getTime(),
             maxRuntime: maxRuntime,
-            maxUploadTime: maxUploadTime
+            maxUploadTime: maxUploadTime,
         };
     }
 
-    getDockerMachineName(){
+    getDockerMachineName() {
         return (this.nodeData.dockerMachine || {}).name;
     }
 
-    getDockerMachineCreated(){
+    getDockerMachineCreated() {
         return (this.nodeData.dockerMachine || {}).created;
     }
 
-    getDockerMachineMaxRuntime(){
+    getDockerMachineMaxRuntime() {
         return (this.nodeData.dockerMachine || {}).maxRuntime;
     }
-    
-    getDockerMachineMaxUploadTime(){
+
+    getDockerMachineMaxUploadTime() {
         return (this.nodeData.dockerMachine || {}).maxUploadTime;
     }
 
-    availableSlots(){
-        return Math.max(0, this.getInfoProperty('maxParallelTasks', 0) - this.getInfoProperty('taskQueueCount', 0));
+    availableSlots() {
+        return Math.max(
+            0,
+            this.getInfoProperty("maxParallelTasks", 0) -
+                this.getInfoProperty("taskQueueCount", 0)
+        );
     }
 
-    proxyTargetUrl(){
-        const { hostname, port } = this.nodeData;
-        const proto = port === 443 ? 'https' : 'http'; 
-        
+    proxyTargetUrl() {
+        const {hostname, port} = this.nodeData;
+        const proto = port === 443 ? "https" : "http";
+
         return `${proto}://${hostname}:${port}`;
     }
 
-    getToken(){
+    getToken() {
         return this.nodeData.token;
     }
 
-    async getOptions(){
-        try{
-            let response = await axios.get(this.urlFor('/options'),  { timeout: this.timeout });
-            if (response.status === 200){
+    async getOptions() {
+        try {
+            let response = await axios.get(this.urlFor("/options"), {
+                timeout: this.timeout,
+            });
+            if (response.status === 200) {
                 return response.data;
-            }else{
-                throw new Error(`Cannot get options for ${this}, returned status ${response.status}`);
+            } else {
+                throw new Error(
+                    `Cannot get options for ${this}, returned status ${response.status}`
+                );
             }
-        }catch(e){
+        } catch (e) {
             throw new Error(`Cannot get options for ${this}: ${e.message}`);
         }
     }
 
-    getInfo(){
+    getInfo() {
         return this.nodeData.info;
     }
 
-    getInfoProperty(prop, defaultValue){
+    getInfoProperty(prop, defaultValue) {
         const info = this.getInfo();
-        if (info){
+        if (info) {
             return info[prop] !== undefined ? info[prop] : defaultValue;
-        }else{
+        } else {
             return defaultValue;
         }
     }
 
-    getVersion(){
-        return this.getInfoProperty('version', '?');
+    getVersion() {
+        return this.getInfoProperty("version", "?");
     }
 
-    getEngineInfo(){
-        const engine = this.getInfoProperty('engine', '?');
-        const engineVersion = this.getInfoProperty('engineVersion', '?');
-        if (engine !== '?'){
+    getEngineInfo() {
+        const engine = this.getInfoProperty("engine", "?");
+        const engineVersion = this.getInfoProperty("engineVersion", "?");
+        if (engine !== "?") {
             return `${engine} ${engineVersion}`;
-        }else return '?';
+        } else return "?";
     }
 
-    getMaxParallelTasks(){
-        return this.getInfoProperty('maxParallelTasks', '?');
+    getMaxParallelTasks() {
+        return this.getInfoProperty("maxParallelTasks", "?");
     }
 
-    getTaskQueueCount(){
-        return this.getInfoProperty('taskQueueCount', '?');
+    getTaskQueueCount() {
+        return this.getInfoProperty("taskQueueCount", "?");
     }
 
-    isOnline(){
-        return this.getLastRefreshed() >= (new Date()).getTime() - (1000 * 60 * 2);
+    isOnline() {
+        return this.getLastRefreshed() >= new Date().getTime() - 1000 * 60 * 2;
     }
 
-    getLastRefreshed(){
+    getLastRefreshed() {
         return this.nodeData.lastRefreshed || 0;
     }
 
-    toJSON(){
+    toJSON() {
         let clone = JSON.parse(JSON.stringify(this.nodeData));
-        delete(clone.info);
-        delete(clone.lastRefreshed);
+        delete clone.info;
+        delete clone.lastRefreshed;
         return clone;
     }
 
-    toString(){
-        const { hostname, port } = this.nodeData;
+    toString() {
+        const {hostname, port} = this.nodeData;
         return `${hostname}:${port}`;
     }
 };

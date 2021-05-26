@@ -15,35 +15,43 @@
  *  You should have received a copy of the GNU Affero General Public License
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-const Busboy = require('busboy');
-const utils = require('./utils');
-const netutils = require('./netutils');
-const path = require('path');
-const fs = require('fs');
-const config = require('../config');
-const Curl = require('node-libcurl').Curl;
-const tasktable = require('./tasktable');
-const routetable = require('./routetable');
-const nodes = require('./nodes');
-const odmOptions = require('./odmOptions');
-const statusCodes = require('./statusCodes');
-const asrProvider = require('./asrProvider');
-const logger = require('./logger');
-const events = require('events');
+const Busboy = require("busboy");
+const utils = require("./utils");
+const netutils = require("./netutils");
+const path = require("path");
+const fs = require("fs");
+const config = require("../config");
+const Curl = require("node-libcurl").Curl;
+const tasktable = require("./tasktable");
+const routetable = require("./routetable");
+const nodes = require("./nodes");
+const odmOptions = require("./odmOptions");
+const statusCodes = require("./statusCodes");
+const asrProvider = require("./asrProvider");
+const logger = require("./logger");
+const events = require("events");
 
 const assureUniqueFilename = (dstPath, filename) => {
     return new Promise((resolve, _) => {
         const dstFile = path.join(dstPath, filename);
-        fs.exists(dstFile, async exists => {
+        fs.exists(dstFile, async (exists) => {
             if (!exists) resolve(filename);
-            else{
+            else {
                 const parts = filename.split(".");
-                if (parts.length > 1){
-                    resolve(await assureUniqueFilename(dstPath, 
-                        `${parts.slice(0, parts.length - 1).join(".")}_.${parts[parts.length - 1]}`));
-                }else{
+                if (parts.length > 1) {
+                    resolve(
+                        await assureUniqueFilename(
+                            dstPath,
+                            `${parts.slice(0, parts.length - 1).join(".")}_.${
+                                parts[parts.length - 1]
+                            }`
+                        )
+                    );
+                } else {
                     // Filename without extension? Strange..
-                    resolve(await assureUniqueFilename(dstPath, filename + "_"));
+                    resolve(
+                        await assureUniqueFilename(dstPath, filename + "_")
+                    );
                 }
             }
         });
@@ -51,20 +59,24 @@ const assureUniqueFilename = (dstPath, filename) => {
 };
 
 const getUuid = async (req) => {
-    if (req.headers['set-uuid']){
-        const userUuid = req.headers['set-uuid'];
-        
+    if (req.headers["set-uuid"]) {
+        const userUuid = req.headers["set-uuid"];
+
         // Valid UUID and no other task with same UUID?
         console.log(userUuid);
-        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userUuid)){
-            if (await tasktable.lookup(userUuid)){
+        if (
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+                userUuid
+            )
+        ) {
+            if (await tasktable.lookup(userUuid)) {
                 throw new Error(`Invalid set-uuid: ${userUuid}`);
-            }else if (await routetable.lookup(userUuid)){
+            } else if (await routetable.lookup(userUuid)) {
                 throw new Error(`Invalid set-uuid: ${userUuid}`);
-            }else{
+            } else {
                 return userUuid;
             }
-        }else{
+        } else {
             throw new Error(`Invalid set-uuid: ${userUuid}`);
         }
     }
@@ -73,31 +85,32 @@ const getUuid = async (req) => {
 };
 
 module.exports = {
-    // @return {object} Context object with methods and variables to use during task/new operations 
-    createContext: async function(req, res){
+    // @return {object} Context object with methods and variables to use during task/new operations
+    createContext: async function (req, res) {
         let uuid = await getUuid(req);
 
-        const tmpPath = path.join('tmp', uuid);
+        const tmpPath = path.join("tmp", uuid);
 
         if (!fs.existsSync(tmpPath)) fs.mkdirSync(tmpPath);
 
         return {
-            uuid, 
+            uuid,
             tmpPath,
             die: (err) => {
                 utils.rmdir(tmpPath);
                 utils.json(res, {error: err});
                 asrProvider.cleanup(uuid);
-            }
+            },
         };
     },
 
-    formDataParser: function(req, onFinish, options = {}){
-        if (options.saveFilesToDir === undefined) options.saveFilesToDir = false;
+    formDataParser: function (req, onFinish, options = {}) {
+        if (options.saveFilesToDir === undefined)
+            options.saveFilesToDir = false;
         if (options.parseFields === undefined) options.parseFields = true;
         if (options.limits === undefined) options.limits = {};
-        
-        const busboy = new Busboy({ headers: req.headers });
+
+        const busboy = new Busboy({headers: req.headers});
 
         const params = {
             options: null,
@@ -108,174 +121,200 @@ module.exports = {
             error: null,
             webhook: "",
             fileNames: [],
-            imagesCount: 0
+            imagesCount: 0,
         };
 
-        if (options.parseFields){
-            busboy.on('field', function(fieldname, val, fieldnameTruncated, valTruncated) {
-                // Save options
-                if (fieldname === 'options'){
-                    params.options = val;
-                }
-    
-                else if (fieldname === 'zipurl' && val){
-                    params.error = "File upload via URL is not available. Sorry :(";
-                }
-    
-                else if (fieldname === 'name' && val){
-                    params.taskName = val;
-                }
-    
-                else if (fieldname === 'skipPostProcessing' && val === 'true'){
-                    params.skipPostProcessing = val;
-                }
-
-                else if (fieldname === 'outputs' && val){
-                    params.outputs = val;
-                }
-
-                else if (fieldname === 'dateCreated' && !isNaN(parseInt(val))){
-                    params.dateCreated = parseInt(val);
-                }
-
-                else if (fieldname === 'webhook' && val){
-                    params.webhook = val;
-                }
-            });
-        }
-        if (options.saveFilesToDir){
-            busboy.on('file', async function(fieldname, file, filename, encoding, mimetype) {
-                if (fieldname === 'images'){
-                    if (options.limits.maxImages && params.imagesCount > options.limits.maxImages){
-                        params.error = "Max images count exceeded.";
-                        file.resume();
-                        return;
+        if (options.parseFields) {
+            busboy.on(
+                "field",
+                function (fieldname, val, fieldnameTruncated, valTruncated) {
+                    // Save options
+                    if (fieldname === "options") {
+                        params.options = val;
+                    } else if (fieldname === "zipurl" && val) {
+                        params.error =
+                            "File upload via URL is not available. Sorry :(";
+                    } else if (fieldname === "name" && val) {
+                        params.taskName = val;
+                    } else if (
+                        fieldname === "skipPostProcessing" &&
+                        val === "true"
+                    ) {
+                        params.skipPostProcessing = val;
+                    } else if (fieldname === "outputs" && val) {
+                        params.outputs = val;
+                    } else if (
+                        fieldname === "dateCreated" &&
+                        !isNaN(parseInt(val))
+                    ) {
+                        params.dateCreated = parseInt(val);
+                    } else if (fieldname === "webhook" && val) {
+                        params.webhook = val;
                     }
-                    
-                    filename = utils.sanitize(filename);
-                    
-                    // Special case
-                    if (filename === 'body.json') filename = '_body.json';
-
-                    filename = await assureUniqueFilename(options.saveFilesToDir, filename);
-
-                    const name = path.basename(filename);
-                    params.fileNames.push(name);
-        
-                    const saveTo = path.join(options.saveFilesToDir, name);
-                    let saveStream = null;
-
-                    // Detect if a connection is aborted/interrupted
-                    // and cleanup any open streams to avoid fd leaks
-                    const handleClose = () => {
-                        if (saveStream){
-                            saveStream.close();
-                            saveStream = null;
-                        }
-                        if (fs.exists(saveTo, exists => {
-                            fs.unlink(saveTo, err => {
-                                if (err) logger.error(err);
-                            });
-                        }));
-                    };
-                    req.on('close', handleClose);
-                    req.on('abort', handleClose);
-
-                    file.on('end', () => {
-                        req.removeListener('close', handleClose);
-                        req.removeListener('abort', handleClose);
-                        saveStream = null;
-                    });
-
-                    saveStream = fs.createWriteStream(saveTo)
-                    file.pipe(saveStream);
-                    params.imagesCount++;
                 }
-            });
+            );
         }
-        busboy.on('finish', function(){
+        if (options.saveFilesToDir) {
+            busboy.on(
+                "file",
+                async function (fieldname, file, filename, encoding, mimetype) {
+                    if (fieldname === "images") {
+                        if (
+                            options.limits.maxImages &&
+                            params.imagesCount > options.limits.maxImages
+                        ) {
+                            params.error = "Max images count exceeded.";
+                            file.resume();
+                            return;
+                        }
+
+                        filename = utils.sanitize(filename);
+
+                        // Special case
+                        if (filename === "body.json") filename = "_body.json";
+
+                        filename = await assureUniqueFilename(
+                            options.saveFilesToDir,
+                            filename
+                        );
+
+                        const name = path.basename(filename);
+                        params.fileNames.push(name);
+
+                        const saveTo = path.join(options.saveFilesToDir, name);
+                        let saveStream = null;
+
+                        // Detect if a connection is aborted/interrupted
+                        // and cleanup any open streams to avoid fd leaks
+                        const handleClose = () => {
+                            if (saveStream) {
+                                saveStream.close();
+                                saveStream = null;
+                            }
+                            if (
+                                fs.exists(saveTo, (exists) => {
+                                    fs.unlink(saveTo, (err) => {
+                                        if (err) logger.error(err);
+                                    });
+                                })
+                            );
+                        };
+                        req.on("close", handleClose);
+                        req.on("abort", handleClose);
+
+                        file.on("end", () => {
+                            req.removeListener("close", handleClose);
+                            req.removeListener("abort", handleClose);
+                            saveStream = null;
+                        });
+
+                        saveStream = fs.createWriteStream(saveTo);
+                        file.pipe(saveStream);
+                        params.imagesCount++;
+                    }
+                }
+            );
+        }
+        busboy.on("finish", function () {
             onFinish(params);
         });
         req.pipe(busboy);
     },
 
-    getTaskIdFromPath: function(pathname){
-        const matches = pathname.match(/\/([\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+)$/);
+    getTaskIdFromPath: function (pathname) {
+        const matches = pathname.match(
+            /\/([\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+\-[\w\d]+)$/
+        );
 
-        if (matches && matches[1]){
-            return matches[1];        
-        }else return null;
+        if (matches && matches[1]) {
+            return matches[1];
+        } else return null;
     },
 
-    augmentTaskOptions: function(req, taskOptions, limits, token){
-        if (typeof taskOptions === "string") taskOptions = JSON.parse(taskOptions);
+    augmentTaskOptions: function (req, taskOptions, limits, token) {
+        if (typeof taskOptions === "string")
+            taskOptions = JSON.parse(taskOptions);
         if (!Array.isArray(taskOptions)) taskOptions = [];
         let odmOptions = [];
 
-        if (config.splitmerge){
+        if (config.splitmerge) {
             // We automatically set the "sm-cluster" parameter
             // to match the address that was used to reach ClusterODM.
             // if "--split" is set.
-            const clusterUrl = netutils.publicAddressPath('/', req, token);
+            const clusterUrl = netutils.publicAddressPath("/", req, token);
 
-            let foundSplit = false, foundSMCluster = false;
-            taskOptions.forEach(to => {
-                if (to.name === 'split'){
+            let foundSplit = false,
+                foundSMCluster = false;
+            taskOptions.forEach((to) => {
+                if (to.name === "split") {
                     foundSplit = true;
                     odmOptions.push({name: to.name, value: to.value});
-                }else if (to.name === 'sm-cluster'){
+                } else if (to.name === "sm-cluster") {
                     foundSMCluster = true;
                     odmOptions.push({name: to.name, value: clusterUrl});
-                }else{
+                } else {
                     odmOptions.push({name: to.name, value: to.value});
                 }
             });
 
-            if (foundSplit && !foundSMCluster){
-                odmOptions.push({name: 'sm-cluster', value: clusterUrl });
+            if (foundSplit && !foundSMCluster) {
+                odmOptions.push({name: "sm-cluster", value: clusterUrl});
             }
-        }else{
+        } else {
             // Make sure the "sm-cluster" parameter is removed
-            odmOptions = utils.clone(taskOptions.filter(to => to.name !== 'sm-cluster'));
+            odmOptions = utils.clone(
+                taskOptions.filter((to) => to.name !== "sm-cluster")
+            );
         }
 
         // Check limits
-        if (limits.options){
+        if (limits.options) {
             const limitOptions = limits.options;
             const assureOptions = {};
 
-            for (let name in limitOptions){
+            for (let name in limitOptions) {
                 let lo = limitOptions[name];
-                if (lo.assure && lo.value !== undefined) assureOptions[name] = {name, value: lo.value};
+                if (lo.assure && lo.value !== undefined)
+                    assureOptions[name] = {name, value: lo.value};
             }
 
-            for (let i in odmOptions){
+            for (let i in odmOptions) {
                 let odmOption = odmOptions[i];
 
-                if (limitOptions[odmOption.name] !== undefined){
+                if (limitOptions[odmOption.name] !== undefined) {
                     let lo = limitOptions[odmOption.name];
 
-                    if (assureOptions[odmOption.name]) delete(assureOptions[odmOption.name]);
-        
+                    if (assureOptions[odmOption.name])
+                        delete assureOptions[odmOption.name];
+
                     // Modify value if between range rules command so
-                    if (lo.between !== undefined){
-                        if (lo.between.max_if_equal_to !== undefined && lo.between.max !== undefined &&
-                            odmOption.value == lo.between.max_if_equal_to){
+                    if (lo.between !== undefined) {
+                        if (
+                            lo.between.max_if_equal_to !== undefined &&
+                            lo.between.max !== undefined &&
+                            odmOption.value == lo.between.max_if_equal_to
+                        ) {
                             odmOption.value = lo.between.max;
                         }
-                        if (lo.between.max !== undefined && lo.between.min !== undefined){
-                            odmOption.value = Math.max(lo.between.min, Math.min(lo.between.max, odmOption.value));
+                        if (
+                            lo.between.max !== undefined &&
+                            lo.between.min !== undefined
+                        ) {
+                            odmOption.value = Math.max(
+                                lo.between.min,
+                                Math.min(lo.between.max, odmOption.value)
+                            );
                         }
                     }
 
                     // Handle booleans
-                    if (lo.value === 'true'){
+                    if (lo.value === "true") {
                         odmOption.value = true;
                     }
                 }
             }
 
-            for (let i in assureOptions){
+            for (let i in assureOptions) {
                 odmOptions.push(assureOptions[i]);
             }
         }
@@ -283,41 +322,71 @@ module.exports = {
         return odmOptions;
     },
 
-    process: async function(req, res, cloudProvider, uuid, params, token, limits, getLimitedOptions){
+    process: async function (
+        req,
+        res,
+        cloudProvider,
+        uuid,
+        params,
+        token,
+        limits,
+        getLimitedOptions
+    ) {
         const tmpPath = path.join("tmp", uuid);
-        const { options, taskName, skipPostProcessing, outputs, dateCreated, fileNames, imagesCount, webhook } = params;
+        const {
+            options,
+            taskName,
+            skipPostProcessing,
+            outputs,
+            dateCreated,
+            fileNames,
+            imagesCount,
+            webhook,
+        } = params;
 
-        if (fileNames.length < 2){
-            throw new Error(`Not enough images (${fileNames.length} files uploaded)`);
+        if (fileNames.length < 2) {
+            throw new Error(
+                `Not enough images (${fileNames.length} files uploaded)`
+            );
         }
 
         // When --no-splitmerge is set, do not allow seed.zip
-        if (!config.splitmerge){
-            if (fileNames.indexOf("seed.zip") !== -1) throw new Error("Cannot use this node as a split-merge cluster.");
+        if (!config.splitmerge) {
+            if (fileNames.indexOf("seed.zip") !== -1)
+                throw new Error(
+                    "Cannot use this node as a split-merge cluster."
+                );
         }
 
         // Check with provider if we're allowed to process these many images
         // at this resolution
-        const { approved, error } = await cloudProvider.approveNewTask(token, imagesCount);
+        const {approved, error} = await cloudProvider.approveNewTask(
+            token,
+            imagesCount
+        );
         if (!approved) throw new Error(error);
 
         let node = await nodes.findBestAvailableNode(imagesCount, true);
 
         // Do we need to / can we create a new node via autoscaling?
-        const autoscale = (!node || node.availableSlots() === 0) && 
-                            asrProvider.isAllowedToCreateNewNodes() &&
-                            asrProvider.canHandle(fileNames.length);
+        const autoscale =
+            (!node || node.availableSlots() === 0) &&
+            asrProvider.isAllowedToCreateNewNodes() &&
+            asrProvider.canHandle(fileNames.length);
 
         if (autoscale) node = nodes.referenceNode(); // Use the reference node for task options purposes
 
-        if (node){
+        if (node) {
             // Validate options
             // Will throw an exception on failure
-            let taskOptions = odmOptions.filterOptions(this.augmentTaskOptions(req, options, limits, token), 
-                                                        await getLimitedOptions(token, limits, node));
+            let taskOptions = odmOptions.filterOptions(
+                this.augmentTaskOptions(req, options, limits, token),
+                await getLimitedOptions(token, limits, node)
+            );
 
-            const dateC = dateCreated !== null ? new Date(dateCreated) : new Date();
-            const name = taskName || "Task of " + (dateC).toISOString();
+            const dateC =
+                dateCreated !== null ? new Date(dateCreated) : new Date();
+            const name = taskName || "Task of " + dateC.toISOString();
 
             const taskInfo = {
                 uuid,
@@ -326,7 +395,7 @@ module.exports = {
                 // processingTime: <auto update>,
                 status: {code: statusCodes.RUNNING},
                 options: taskOptions,
-                imagesCount: imagesCount
+                imagesCount: imagesCount,
             };
 
             const PARALLEL_UPLOADS = 20;
@@ -337,50 +406,56 @@ module.exports = {
             const curlInstance = (done, onError, url, body, validate) => {
                 // We use CURL, because NodeJS libraries are buggy
                 const curl = new Curl(),
-                      close = curl.close.bind(curl);
-                
+                    close = curl.close.bind(curl);
+
                 const tryClose = () => {
-                    try{
+                    try {
                         close();
-                    }catch(e){
+                    } catch (e) {
                         logger.warn(`Cannot close cURL: ${e.message}`);
                     }
-                    eventEmitter.removeListener('abort', tryClose);
-                    eventEmitter.removeListener('close', tryClose);
+                    eventEmitter.removeListener("abort", tryClose);
+                    eventEmitter.removeListener("close", tryClose);
                 };
 
-                eventEmitter.on('abort', tryClose);
-                eventEmitter.on('close', tryClose);
+                eventEmitter.on("abort", tryClose);
+                eventEmitter.on("close", tryClose);
 
-                curl.on('end', async (statusCode, body, headers) => {
-                    try{
-                        if (statusCode === 200){
+                curl.on("end", async (statusCode, body, headers) => {
+                    try {
+                        if (statusCode === 200) {
                             body = JSON.parse(body);
                             if (body.error) throw new Error(body.error);
                             if (validate !== undefined) validate(body);
 
                             done();
-                        }else{
-                            throw new Error(`POST ${url} statusCode is ${statusCode}, expected 200`);
+                        } else {
+                            throw new Error(
+                                `POST ${url} statusCode is ${statusCode}, expected 200`
+                            );
                         }
-                    }catch(e){
+                    } catch (e) {
                         onError(e);
                     }
                 });
 
-                curl.on('error', onError);
+                curl.on("error", onError);
 
                 // logger.info(`Curl URL: ${url}`);
                 // logger.info(`Curl Body: ${JSON.stringify(body)}`);
 
                 curl.setOpt(Curl.option.URL, url);
                 curl.setOpt(Curl.option.HTTPPOST, body || []);
-                if (config.upload_max_speed) curl.setOpt(Curl.option.MAX_SEND_SPEED_LARGE, config.upload_max_speed);
+                if (config.upload_max_speed)
+                    curl.setOpt(
+                        Curl.option.MAX_SEND_SPEED_LARGE,
+                        config.upload_max_speed
+                    );
                 // abort if slower than 30 bytes/sec during 1600 seconds */
                 curl.setOpt(Curl.option.LOW_SPEED_TIME, 1600);
                 curl.setOpt(Curl.option.LOW_SPEED_LIMIT, 30);
                 curl.setOpt(Curl.option.HTTPHEADER, [
-                    'Content-Type: multipart/form-data'
+                    "Content-Type: multipart/form-data",
                 ]);
 
                 return curl;
@@ -390,46 +465,52 @@ module.exports = {
                 return new Promise((resolve, reject) => {
                     const body = [];
                     body.push({
-                        name: 'name',
-                        contents: name
+                        name: "name",
+                        contents: name,
                     });
                     body.push({
-                        name: 'options',
-                        contents: JSON.stringify(taskOptions)
+                        name: "options",
+                        contents: JSON.stringify(taskOptions),
                     });
                     body.push({
-                        name: 'dateCreated',
-                        contents: dateC.getTime().toString()
+                        name: "dateCreated",
+                        contents: dateC.getTime().toString(),
                     });
-                    if (skipPostProcessing){
+                    if (skipPostProcessing) {
                         body.push({
-                            name: 'skipPostProcessing',
-                            contents: "true"
+                            name: "skipPostProcessing",
+                            contents: "true",
                         });
                     }
-                    if (webhook){
+                    if (webhook) {
                         body.push({
-                            name: 'webhook',
-                            contents: webhook
+                            name: "webhook",
+                            contents: webhook,
                         });
                     }
-                    if (outputs){
+                    if (outputs) {
                         body.push({
-                            name: 'outputs',
-                            contents: outputs
+                            name: "outputs",
+                            contents: outputs,
                         });
                     }
 
-                    const curl = curlInstance(resolve, reject, 
+                    const curl = curlInstance(
+                        resolve,
+                        reject,
                         `${node.proxyTargetUrl()}/task/new/init?token=${node.getToken()}`,
                         body,
                         (res) => {
-                            if (res.uuid !== uuid) throw new Error(`set-uuid did not match, ${res.uuid} !== ${uuid}`);
-                        });
-                    
+                            if (res.uuid !== uuid)
+                                throw new Error(
+                                    `set-uuid did not match, ${res.uuid} !== ${uuid}`
+                                );
+                        }
+                    );
+
                     curl.setOpt(Curl.option.HTTPHEADER, [
-                        'Content-Type: multipart/form-data',
-                        `set-uuid: ${uuid}`
+                        "Content-Type: multipart/form-data",
+                        `set-uuid: ${uuid}`,
                     ]);
                     curl.perform();
                 });
@@ -439,33 +520,53 @@ module.exports = {
                 return new Promise((resolve, reject) => {
                     const MAX_RETRIES = 5;
 
-                    const chunks = utils.chunkArray(fileNames, Math.ceil(fileNames.length / PARALLEL_UPLOADS));
+                    const chunks = utils.chunkArray(
+                        fileNames,
+                        Math.ceil(fileNames.length / PARALLEL_UPLOADS)
+                    );
                     let completed = 0;
                     const done = () => {
                         if (++completed >= chunks.length) resolve();
                     };
-                    
-                    chunks.forEach(fileNames => {
+
+                    chunks.forEach((fileNames) => {
                         let retries = 0;
-                        const body = fileNames.map(f => { return { name: 'images', file: path.join(tmpPath, f) } });
-                        
-                        const curl = curlInstance(done, async (err) => {
+                        const body = fileNames.map((f) => {
+                            return {
+                                name: "images",
+                                file: path.join(tmpPath, f),
+                            };
+                        });
+
+                        const curl = curlInstance(
+                            done,
+                            async (err) => {
                                 if (status.aborted) return; // Ignore if this was aborted by other code
 
-                                if (retries < MAX_RETRIES){
+                                if (retries < MAX_RETRIES) {
                                     retries++;
-                                    logger.warn(`File upload to ${node} failed, retrying... (${retries})`);
+                                    logger.warn(
+                                        `File upload to ${node} failed, retrying... (${retries})`
+                                    );
                                     await utils.sleep(2000);
                                     curl.perform();
-                                }else{
-                                    reject(new Error(`${err.message}: maximum upload retries (${MAX_RETRIES}) exceeded`));
+                                } else {
+                                    reject(
+                                        new Error(
+                                            `${err.message}: maximum upload retries (${MAX_RETRIES}) exceeded`
+                                        )
+                                    );
                                 }
                             },
                             `${node.proxyTargetUrl()}/task/new/upload/${uuid}?token=${node.getToken()}`,
                             body,
                             (res) => {
-                                if (!res.success) throw new Error(`no success flag in task upload response`);
-                            });
+                                if (!res.success)
+                                    throw new Error(
+                                        `no success flag in task upload response`
+                                    );
+                            }
+                        );
 
                         curl.perform();
                     });
@@ -474,115 +575,156 @@ module.exports = {
 
             const taskNewCommit = async () => {
                 return new Promise((resolve, reject) => {
-                    const curl = curlInstance(resolve, reject, `${node.proxyTargetUrl()}/task/new/commit/${uuid}?token=${node.getToken()}`);
+                    const curl = curlInstance(
+                        resolve,
+                        reject,
+                        `${node.proxyTargetUrl()}/task/new/commit/${uuid}?token=${node.getToken()}`
+                    );
                     curl.perform();
                 });
             };
 
             let retries = 0;
             let status = {
-                aborted: false
+                aborted: false,
             };
             let dmHostname = null;
-            eventEmitter.on('abort', () => {
+            eventEmitter.on("abort", () => {
                 status.aborted = true;
             });
 
             const abortTask = () => {
-                eventEmitter.emit('abort');
-                if (dmHostname && autoscale){
+                eventEmitter.emit("abort");
+                if (dmHostname && autoscale) {
                     const asr = asrProvider.get();
-                    try{
+                    try {
                         asr.destroyMachine(dmHostname);
-                    }catch(e){
-                        logger.warn(`Could not destroy machine ${dmHostname}: ${e}`);
+                    } catch (e) {
+                        logger.warn(
+                            `Could not destroy machine ${dmHostname}: ${e}`
+                        );
                     }
                 }
             };
 
             const handleError = async (err) => {
                 const taskTableEntry = await tasktable.lookup(uuid);
-                if (taskTableEntry){
+                if (taskTableEntry) {
                     const taskInfo = taskTableEntry.taskInfo;
-                    if (taskInfo){
+                    if (taskInfo) {
                         taskInfo.status.code = statusCodes.FAILED;
-                        await tasktable.add(uuid, { taskInfo, output: [err.message] }, token);
-                        logger.warn(`Cannot forward task ${uuid} to processing node ${node}: ${err.message}`);
+                        await tasktable.add(
+                            uuid,
+                            {taskInfo, output: [err.message]},
+                            token
+                        );
+                        logger.warn(
+                            `Cannot forward task ${uuid} to processing node ${node}: ${err.message}`
+                        );
                     }
                 }
                 utils.rmdir(tmpPath);
-                eventEmitter.emit('close');
+                eventEmitter.emit("close");
             };
 
             const doUpload = async () => {
                 const MAX_UPLOAD_RETRIES = 5;
-                eventEmitter.emit('close');
+                eventEmitter.emit("close");
 
-                try{
+                try {
                     await taskNewInit();
                     await taskNewUpload();
                     await taskNewCommit();
-                }catch(e){
+                } catch (e) {
                     // Attempt to retry
-                    if (retries < MAX_UPLOAD_RETRIES){
+                    if (retries < MAX_UPLOAD_RETRIES) {
                         retries++;
-                        logger.warn(`Attempted to forward task ${uuid} to processing node ${node} but failed with: ${e.message}, attempting again (retry: ${retries})`);
+                        logger.warn(
+                            `Attempted to forward task ${uuid} to processing node ${node} but failed with: ${e.message}, attempting again (retry: ${retries})`
+                        );
                         await utils.sleep(1000 * 5 * retries);
 
                         // If autoscale is enabled, simply retry on same node
                         // otherwise switch to another node
-                        if (!autoscale){
-                            const newNode = await nodes.findBestAvailableNode(imagesCount, true);
-                            if (newNode){
+                        if (!autoscale) {
+                            const newNode = await nodes.findBestAvailableNode(
+                                imagesCount,
+                                true
+                            );
+                            if (newNode) {
                                 node = newNode;
                                 logger.warn(`Switched ${uuid} to ${node}`);
-                            }else{
+                            } else {
                                 // No nodes available
-                                logger.warn(`No other nodes available to process ${uuid}, we'll retry the same one.`);
+                                logger.warn(
+                                    `No other nodes available to process ${uuid}, we'll retry the same one.`
+                                );
                             }
                         }
 
                         await doUpload();
-                    }else{
-                        throw new Error(`Failed to forward task to processing node after ${retries} attempts. Try again later.`);
+                    } else {
+                        throw new Error(
+                            `Failed to forward task to processing node after ${retries} attempts. Try again later.`
+                        );
                     }
                 }
             };
 
             // Add item to task table
-            await tasktable.add(uuid, { taskInfo, abort: abortTask, output: ["Launching... please wait! This can take a few minutes."] }, token);
+            await tasktable.add(
+                uuid,
+                {
+                    taskInfo,
+                    abort: abortTask,
+                    output: [
+                        "Launching... please wait! This can take a few minutes.",
+                    ],
+                },
+                token
+            );
 
             // Send back response to user right away
-            utils.json(res, { uuid });
+            utils.json(res, {uuid});
 
-            if (autoscale){
+            if (autoscale) {
                 const asr = asrProvider.get();
-                try{
+                try {
                     dmHostname = asr.generateHostname(imagesCount);
-                    node = await asr.createNode(req, imagesCount, token, dmHostname, status);
+                    node = await asr.createNode(
+                        req,
+                        imagesCount,
+                        token,
+                        dmHostname,
+                        status
+                    );
                     if (!status.aborted) nodes.add(node);
                     else return;
-                }catch(e){
-                    const err = new Error("No nodes available (attempted to autoscale but failed). Try again later.");
-                    logger.warn(`Cannot create node via autoscaling: ${e.message}`);
+                } catch (e) {
+                    const err = new Error(
+                        "No nodes available (attempted to autoscale but failed). Try again later."
+                    );
+                    logger.warn(
+                        `Cannot create node via autoscaling: ${e.message}`
+                    );
                     handleError(err);
                     return;
                 }
             }
 
-            try{
+            try {
                 await doUpload();
-                eventEmitter.emit('close');
+                eventEmitter.emit("close");
 
                 await routetable.add(uuid, node, token);
                 await tasktable.delete(uuid);
 
                 utils.rmdir(tmpPath);
-            }catch(e){
+            } catch (e) {
                 handleError(e);
             }
-        }else{
+        } else {
             throw new Error("No nodes available");
         }
-    }
+    },
 };

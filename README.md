@@ -52,9 +52,10 @@ See `node index.js --help` for all parameter options.
 ClusterODM can spin up/down nodes based on demand. This allows users to reduce costs associated with always-on instances as well as being able to scale processing based on demand.
 
 To setup autoscaling you must:
-   * Make sure [docker-machine](https://docs.docker.com/machine/install-machine/) is installed.
-   * Setup a S3-compatible bucket for storing results.
-   * Create a configuration file for [DigitalOcean](./docs/digitalocean.md), [Hetzner](./docs/hetzner.md), [Scaleway](./docs/scaleway.md), or [Amazon Web Services](./docs/aws.md) (click links to see examples)
+
+-   Make sure [docker-machine](https://docs.docker.com/machine/install-machine/) is installed.
+-   Setup a S3-compatible bucket for storing results.
+-   Create a configuration file for [DigitalOcean](./docs/digitalocean.md), [Hetzner](./docs/hetzner.md), [Scaleway](./docs/scaleway.md), or [Amazon Web Services](./docs/aws.md) (click links to see examples)
 
 You can then launch ClusterODM with:
 
@@ -91,4 +92,3 @@ docker-compose up
 ## Roadmap
 
 We have [plenty of goals](https://github.com/OpenDroneMap/ClusterODM/issues?q=is%3Aopen+is%3Aissue+label%3Aenhancement). If you want to help, or need help getting started contributing, get in touch on the [OpenDroneMap community forum](https://community.opendronemap.org).
-

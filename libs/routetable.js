@@ -15,10 +15,10 @@
  *  You should have received a copy of the GNU Affero General Public License
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-const fs = require('fs');
+const fs = require("fs");
 const async = require("async");
-const logger = require('./logger');
-const nodes = require('./nodes');
+const logger = require("./logger");
+const nodes = require("./nodes");
 
 let routes = null;
 
@@ -28,15 +28,15 @@ let routes = null;
 // The route table maps taskIDs to nodes and task owners (via token)
 
 module.exports = {
-    initialize: async function(){
+    initialize: async function () {
         routes = await this.loadFromDisk();
 
         const cleanup = () => {
             const expires = 1000 * 60 * 60 * 24 * 5; // 5 days
 
-            Object.keys(routes).forEach(taskId => {
-                if ((routes[taskId].accessed + expires) < (new Date()).getTime()){
-                    delete(routes[taskId]);
+            Object.keys(routes).forEach((taskId) => {
+                if (routes[taskId].accessed + expires < new Date().getTime()) {
+                    delete routes[taskId];
                 }
             });
 
@@ -49,22 +49,22 @@ module.exports = {
         logger.info(`Loaded ${Object.keys(routes).length} routes`);
     },
 
-    add: async function(taskId, node, token){
+    add: async function (taskId, node, token) {
         if (!node) throw new Error("Node is not valid");
         if (!taskId) throw new Error("taskId is not valid");
 
         routes[taskId] = {
             node,
             token,
-            accessed: new Date().getTime()
+            accessed: new Date().getTime(),
         };
 
         this.saveToDisk();
     },
 
-    lookup: async function(taskId){
+    lookup: async function (taskId) {
         const entry = routes[taskId];
-        if (entry){
+        if (entry) {
             entry.accessed = new Date().getTime();
             return entry;
         }
@@ -72,23 +72,23 @@ module.exports = {
         return null;
     },
 
-    removeByNode: async function(node){
+    removeByNode: async function (node) {
         if (!node) return;
 
         const routesForNode = await this.findByNode(node);
-        for (let taskId in routesForNode){
-            delete(routes[taskId]);
+        for (let taskId in routesForNode) {
+            delete routes[taskId];
         }
 
         this.saveToDisk();
     },
 
-    findByNode: async function(node = null){
+    findByNode: async function (node = null) {
         if (!node) return routes;
-        else{
+        else {
             const result = {};
-            for (let taskId in routes){
-                if (routes[taskId].node === node){
+            for (let taskId in routes) {
+                if (routes[taskId].node === node) {
                     result[taskId] = routes[taskId];
                 }
             }
@@ -96,10 +96,10 @@ module.exports = {
         }
     },
 
-    findByToken: async function(token, activeOnly = false){
+    findByToken: async function (token, activeOnly = false) {
         const result = {};
-        for (let taskId in routes){
-            if (routes[taskId].token === token){
+        for (let taskId in routes) {
+            if (routes[taskId].token === token) {
                 result[taskId] = routes[taskId];
             }
         }
@@ -108,88 +108,98 @@ module.exports = {
         // Actually ping the node for these tasks and filter out
         // inactive / deleted / stale ones
         return new Promise((resolve) => {
-            async.each(Object.keys(result), (taskId, cb) => {
-                (routes[taskId]).node.taskInfo(taskId).then((taskInfo) => {
-                    if (taskInfo.error) delete(result[taskId]);
-                    cb();
-                });
-            }, () => {
-                resolve(result);
-            });
+            async.each(
+                Object.keys(result),
+                (taskId, cb) => {
+                    routes[taskId].node.taskInfo(taskId).then((taskInfo) => {
+                        if (taskInfo.error) delete result[taskId];
+                        cb();
+                    });
+                },
+                () => {
+                    resolve(result);
+                }
+            );
         });
     },
 
-    lookupNode: async function(taskId){
+    lookupNode: async function (taskId) {
         const entry = await this.lookup(taskId);
         if (entry) return entry.node;
 
         return null;
     },
 
-    lookupToken: async function(taskId){
+    lookupToken: async function (taskId) {
         const entry = await this.lookup(taskId);
         if (entry) return entry.token;
 
         return null;
     },
 
-    saveToDisk: async function(){
+    saveToDisk: async function () {
         return new Promise((resolve, reject) => {
-            fs.writeFile('data/routes.json', JSON.stringify(routes), (err) => {
-                if (err){
+            fs.writeFile("data/routes.json", JSON.stringify(routes), (err) => {
+                if (err) {
                     logger.warn("Cannot save routes to disk: ${err.message}");
                     reject(err);
-                }else{
+                } else {
                     resolve();
                 }
             });
         });
     },
 
-    loadFromDisk: async function(){
+    loadFromDisk: async function () {
         return new Promise((resolve, reject) => {
             fs.exists("data/routes.json", (exists) => {
-                if (exists){
+                if (exists) {
                     fs.readFile("data/routes.json", (err, json) => {
-                        if (err){
-                            logger.warn("Cannot read routes from disk: ${err.message}");
+                        if (err) {
+                            logger.warn(
+                                "Cannot read routes from disk: ${err.message}"
+                            );
                             reject(err);
-                        }else{
+                        } else {
                             const content = JSON.parse(json);
                             const deleteList = [];
 
                             // Create Node class instances
-                            for (let key of Object.keys(content)){
-                                if (content[key].node){
+                            for (let key of Object.keys(content)) {
+                                if (content[key].node) {
                                     let cn = content[key].node;
-                                    let n = nodes.find(n => n.hostname() === cn.hostname && n.port() === cn.port);
-                                    if (n){
+                                    let n = nodes.find(
+                                        (n) =>
+                                            n.hostname() === cn.hostname &&
+                                            n.port() === cn.port
+                                    );
+                                    if (n) {
                                         content[key].node = n;
-                                    }else{
+                                    } else {
                                         // Delete routes for which a node does not exist
                                         deleteList.push(key);
                                     }
                                 }
                             }
 
-                            deleteList.forEach(d => delete(content[d]));
+                            deleteList.forEach((d) => delete content[d]);
 
                             resolve(content);
                         }
                     });
-                }else{
+                } else {
                     resolve({});
                 }
             });
         });
     },
 
-    cleanup: async function(){
-        try{
+    cleanup: async function () {
+        try {
             await this.saveToDisk();
             logger.info("Saved routes to disk");
-        }catch(e){
+        } catch (e) {
             logger.warn(e);
         }
-    }
+    },
 };

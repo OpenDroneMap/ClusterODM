@@ -15,30 +15,32 @@
  *  You should have received a copy of the GNU Affero General Public License
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-const AbstractCloudProvider = require('../classes/AbstractCloudProvider');
-const config = require('../../config');
+const AbstractCloudProvider = require("../classes/AbstractCloudProvider");
+const config = require("../../config");
 
-module.exports = class LocalCloudProvider extends AbstractCloudProvider{
-    constructor(){
+module.exports = class LocalCloudProvider extends AbstractCloudProvider {
+    constructor() {
         super();
     }
 
-    async validate(token){
+    async validate(token) {
         const ok = {
             valid: true,
-            limits: [] // No limits
+            limits: [], // No limits
         };
-        
-        if (config.token === "") return ok; // No token required?
-        else if (config.token === token) return ok; // Token matches
-        else return { valid: false }; // Token does not match
+
+        if (config.token === "") return ok;
+        // No token required?
+        else if (config.token === token) return ok;
+        // Token matches
+        else return {valid: false}; // Token does not match
     }
 
     // Always approve
-    async approveNewTask(token, imagesCount){
+    async approveNewTask(token, imagesCount) {
         return {approved: true, error: ""};
     }
 
     // Do nothing
-    async taskFinished(token, taskInfo){}
+    async taskFinished(token, taskInfo) {}
 };

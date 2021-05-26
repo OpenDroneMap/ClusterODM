@@ -16,9 +16,9 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 module.exports = {
-	QUEUED: 10,
-	RUNNING: 20,
-	FAILED: 30,
-	COMPLETED: 40,
-	CANCELED: 50
+    QUEUED: 10,
+    RUNNING: 20,
+    FAILED: 30,
+    COMPLETED: 40,
+    CANCELED: 50,
 };

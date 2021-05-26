@@ -15,44 +15,46 @@
  *  You should have received a copy of the GNU Affero General Public License
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-const config = require('../config');
+const config = require("../config");
 
 let userTasks = null;
 
 module.exports = {
-    initialize: function(){
+    initialize: function () {
         userTasks = {};
 
         const forgive = () => {
-            Object.keys(userTasks).forEach(userToken => {
-                if (userTasks[userToken].count > 0){
-                    userTasks[userToken].count = Math.floor(userTasks[userToken].count * 0.66);
+            Object.keys(userTasks).forEach((userToken) => {
+                if (userTasks[userToken].count > 0) {
+                    userTasks[userToken].count = Math.floor(
+                        userTasks[userToken].count * 0.66
+                    );
                 }
-                
-                if (userTasks[userToken].count <= 0){
-                    delete(userTasks[userToken]);
+
+                if (userTasks[userToken].count <= 0) {
+                    delete userTasks[userToken];
                 }
             });
-        }
+        };
 
         setInterval(forgive, 1000 * 60 * this.FORGIVE_TIME);
     },
 
     FORGIVE_TIME: 15, // minutes
 
-    recordTaskInit: function(userToken){
-        this.modifyRecord(userToken, record => {
-            record.count = record.count ? (record.count + 1) : 1;
+    recordTaskInit: function (userToken) {
+        this.modifyRecord(userToken, (record) => {
+            record.count = record.count ? record.count + 1 : 1;
         });
     },
 
-    recordTaskCommit: function(userToken){
-        this.modifyRecord(userToken, record => {
+    recordTaskCommit: function (userToken) {
+        this.modifyRecord(userToken, (record) => {
             record.count = Math.max(record.count - 1, 0);
         });
     },
 
-    isFlooding: function(userToken){
+    isFlooding: function (userToken) {
         if (config.flood_limit <= 0) return false; // Disabled
         if (!userToken) userToken = "default";
 
@@ -62,13 +64,13 @@ module.exports = {
         return record.count > config.flood_limit;
     },
 
-    modifyRecord: function(userToken, callback){
+    modifyRecord: function (userToken, callback) {
         if (!userToken) userToken = "default";
-        
+
         const record = userTasks[userToken] || {};
 
         callback(record);
 
         userTasks[userToken] = record;
-    }
+    },
 };

@@ -15,33 +15,39 @@
  *  You should have received a copy of the GNU Affero General Public License
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-const fs = require('fs');
-const logger = require('./logger');
-const nodes = require('./nodes');
-const routetable = require('./routetable');
-const tasktable = require('./tasktable');
-const netutils = require('./netutils');
-const DockerMachine = require('./classes/DockerMachine');
-const config = require('../config');
+const fs = require("fs");
+const logger = require("./logger");
+const nodes = require("./nodes");
+const routetable = require("./routetable");
+const tasktable = require("./tasktable");
+const netutils = require("./netutils");
+const DockerMachine = require("./classes/DockerMachine");
+const config = require("../config");
 
 // The autoscaler provides the ability to automatically spawn
 // new VMs in the cloud to handle workloads when we run out of existing nodes
 let asrProvider = null;
 
 module.exports = {
-    initialize: async function(userConfig){
+    initialize: async function (userConfig) {
         if (!userConfig) return;
 
-        try{
-            const { provider } = JSON.parse(fs.readFileSync(userConfig, {encoding: 'utf8'}));
-            if (provider){
-                asrProvider = new (require('./asr-providers/' + provider + '.js'))(userConfig);
+        try {
+            const {provider} = JSON.parse(
+                fs.readFileSync(userConfig, {encoding: "utf8"})
+            );
+            if (provider) {
+                asrProvider = new (require("./asr-providers/" +
+                    provider +
+                    ".js"))(userConfig);
                 await asrProvider.initialize();
                 await DockerMachine.checkInstalled();
-            }else{
-                throw new Error("Your ASR configuration must specify a provider key (we didn't find it).");
+            } else {
+                throw new Error(
+                    "Your ASR configuration must specify a provider key (we didn't find it)."
+                );
             }
-        }catch(e){
+        } catch (e) {
             logger.error(`Cannot initialize ASR: ${e.message}`);
             process.exit(1);
         }
@@ -52,55 +58,68 @@ module.exports = {
         return asrProvider;
     },
 
-    get: function(){
+    get: function () {
         return asrProvider;
     },
 
-    isAllowedToCreateNewNodes: function(){
+    isAllowedToCreateNewNodes: function () {
         if (!asrProvider) return false;
         if (asrProvider.getMachinesLimit() === -1) return true; // no limit
-        
-        const autoSpawnedNodesCount = nodes.filter(n => n.isAutoSpawned()).length;
-        return (asrProvider.getNodesPendingCreation() + autoSpawnedNodesCount) < asrProvider.getMachinesLimit();
+
+        const autoSpawnedNodesCount = nodes.filter((n) =>
+            n.isAutoSpawned()
+        ).length;
+        return (
+            asrProvider.getNodesPendingCreation() + autoSpawnedNodesCount <
+            asrProvider.getMachinesLimit()
+        );
     },
 
-    canHandle: function(imagesCount){
+    canHandle: function (imagesCount) {
         if (!asrProvider) return false;
         return asrProvider.canHandle(imagesCount);
     },
 
-    onCommit: async function(taskId, cleanupDelay = 0){
-        if (asrProvider){
+    onCommit: async function (taskId, cleanupDelay = 0) {
+        if (asrProvider) {
             const node = await routetable.lookupNode(taskId);
-            if (node && node.isAutoSpawned()){
+            if (node && node.isAutoSpawned()) {
                 // Attempt to retrieve task info and save it in task table before deleting node
                 // so that users can continue to access this information.
-                try{
+                try {
                     const route = await routetable.lookup(taskId);
-                    if (route){
-                        await tasktable.add(taskId, {taskInfo: await node.taskInfo(taskId)}, route.token);
-                    }else{
-                        logger.warn(`Cannot add task table entry for ${taskId} (route missing)`);
+                    if (route) {
+                        await tasktable.add(
+                            taskId,
+                            {taskInfo: await node.taskInfo(taskId)},
+                            route.token
+                        );
+                    } else {
+                        logger.warn(
+                            `Cannot add task table entry for ${taskId} (route missing)`
+                        );
                     }
-                }catch(e){
-                    logger.warn(`Cannot add task table entry for ${taskId} from ${node}`);
+                } catch (e) {
+                    logger.warn(
+                        `Cannot add task table entry for ${taskId} from ${node}`
+                    );
                 }
-                
+
                 this.cleanup(taskId, cleanupDelay);
             }
         }
     },
 
-    downloadsPath: function(){
+    downloadsPath: function () {
         if (config.downloads_from_s3) return config.downloads_from_s3;
         else if (asrProvider) return asrProvider.getDownloadsBaseUrl();
         else return null;
     },
 
-    cleanup: async function(taskId, delay = 0){
-        if (asrProvider){
+    cleanup: async function (taskId, delay = 0) {
+        if (asrProvider) {
             const node = await routetable.lookupNode(taskId);
-            if (node && node.isAutoSpawned()){
+            if (node && node.isAutoSpawned()) {
                 const run = () => {
                     netutils.removeAndCleanupNode(node, this.get());
                 };
@@ -112,8 +131,8 @@ module.exports = {
         }
     },
 
-    vacuum: async function(){
-        const autoNodes = nodes.filter(n => n.isAutoSpawned());
+    vacuum: async function () {
+        const autoNodes = nodes.filter((n) => n.isAutoSpawned());
 
         // Automatically remove autospawned nodes if either:
         // - They have been online for too long (stuck?)
@@ -122,31 +141,47 @@ module.exports = {
         const now = new Date().getTime();
         const cleanNodes = [];
 
-        autoNodes.forEach(n => {
-            if (n.isOnline()){
-                if (n.getDockerMachineMaxRuntime() > 0 && (now - n.getDockerMachineCreated()) > n.getDockerMachineMaxRuntime() * 1000){
-                    logger.warn(`${n} has exceeded its maximum runtime and will be forcibly deleted!`)
+        autoNodes.forEach((n) => {
+            if (n.isOnline()) {
+                if (
+                    n.getDockerMachineMaxRuntime() > 0 &&
+                    now - n.getDockerMachineCreated() >
+                        n.getDockerMachineMaxRuntime() * 1000
+                ) {
+                    logger.warn(
+                        `${n} has exceeded its maximum runtime and will be forcibly deleted!`
+                    );
                     cleanNodes.push(n);
-                }else{
-                    if (n.getDockerMachineMaxUploadTime() > 0 &&
-                        n.getInfoProperty("taskQueueCount", 0) === 0 && 
-                        (now - n.getDockerMachineCreated()) > n.getDockerMachineMaxUploadTime() * 1000){
-                        logger.warn(`${n} has exceeded its maximum upload time and will be forcibly deleted!`)
+                } else {
+                    if (
+                        n.getDockerMachineMaxUploadTime() > 0 &&
+                        n.getInfoProperty("taskQueueCount", 0) === 0 &&
+                        now - n.getDockerMachineCreated() >
+                            n.getDockerMachineMaxUploadTime() * 1000
+                    ) {
+                        logger.warn(
+                            `${n} has exceeded its maximum upload time and will be forcibly deleted!`
+                        );
                         cleanNodes.push(n);
                     }
                 }
-            }else{
+            } else {
                 // Offline
-                if (n.getDockerMachineMaxUploadTime() > 0 &&
-                    (now - n.getLastRefreshed()) > n.getDockerMachineMaxUploadTime() * 1000){
-                    logger.warn(`${n} has been offline for too long and will be forcibly deleted!`)
+                if (
+                    n.getDockerMachineMaxUploadTime() > 0 &&
+                    now - n.getLastRefreshed() >
+                        n.getDockerMachineMaxUploadTime() * 1000
+                ) {
+                    logger.warn(
+                        `${n} has been offline for too long and will be forcibly deleted!`
+                    );
                     cleanNodes.push(n);
                 }
             }
         });
 
-        cleanNodes.forEach(n => {
+        cleanNodes.forEach((n) => {
             netutils.removeAndCleanupNode(n, this.get());
         });
-    }
-}
+    },
+};

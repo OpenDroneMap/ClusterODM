@@ -8,7 +8,7 @@
     "downloads-from-s3": "",
     "splitmerge": true,
     "cluster-address": "",
-    "token":"",
+    "token": "",
     "debug": false,
     "log-level": "info",
     "upload-max-speed": 0,

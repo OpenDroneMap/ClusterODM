@@ -16,50 +16,54 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 "use strict";
-const config = require('../config');
-const nodes = require('./nodes');
-const routetable = require('./routetable');
-const async = require('async');
-const URL = require('url').URL;
+const config = require("../config");
+const nodes = require("./nodes");
+const routetable = require("./routetable");
+const async = require("async");
+const URL = require("url").URL;
 
 module.exports = {
-    publicAddressPath: function(urlPath, req, token){
-        const addrBase = config.public_address ? 
-                    config.public_address : 
-                    `${config.use_ssl ? "https" : "http"}://${req.headers.host}`;
+    publicAddressPath: function (urlPath, req, token) {
+        const addrBase = config.public_address
+            ? config.public_address
+            : `${config.use_ssl ? "https" : "http"}://${req.headers.host}`;
         const url = new URL(urlPath, addrBase);
-        if (token){
+        if (token) {
             url.search = `token=${token}`;
         }
         return url.toString();
     },
 
-    findTasksByNode: async function(node = null){
+    findTasksByNode: async function (node = null) {
         const routes = await routetable.findByNode(node);
 
         return new Promise((resolve) => {
             const tasks = [];
 
-            async.each(Object.keys(routes), (taskId, cb) => {
-                (routes[taskId]).node.taskInfo(taskId).then((taskInfo) => {
-                    if (!taskInfo.error) tasks.push(taskInfo);
-                    cb();
-                });
-            }, () => {
-                resolve(tasks);
-            });
+            async.each(
+                Object.keys(routes),
+                (taskId, cb) => {
+                    routes[taskId].node.taskInfo(taskId).then((taskInfo) => {
+                        if (!taskInfo.error) tasks.push(taskInfo);
+                        cb();
+                    });
+                },
+                () => {
+                    resolve(tasks);
+                }
+            );
         });
     },
 
-    removeAndCleanupNode: async function(node, asr = null){
-        try{
+    removeAndCleanupNode: async function (node, asr = null) {
+        try {
             if (node.isAutoSpawned() && asr) await asr.destroyNode(node);
             await routetable.removeByNode(node);
             return nodes.remove(node);
-        }catch(e){
+        } catch (e) {
             logger.warn(`Remove and cleanup failed: ${e.message}`);
             logger.debug(e);
             return false;
         }
-    }
+    },
 };

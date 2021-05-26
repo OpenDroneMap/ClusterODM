@@ -15,27 +15,27 @@
  *  You should have received a copy of the GNU Affero General Public License
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-const logger = require('./logger');
+const logger = require("./logger");
 
 let tasks = null;
 
 // TODO: use redis to have a shared tasks table
 // accessible from multiple proxies
 
-// The task table keeps information (task info, console output) about tasks that 
-// are waiting to be sent to a processing node or are being uploaded to a processing node or 
+// The task table keeps information (task info, console output) about tasks that
+// are waiting to be sent to a processing node or are being uploaded to a processing node or
 // have completed/failed and their processing node has been tore down
 
 module.exports = {
-    initialize: async function(){
+    initialize: async function () {
         tasks = {};
 
         const cleanup = () => {
             const expires = 1000 * 60 * 60 * 24 * 2; // 2 days
 
-            Object.keys(tasks).forEach(taskId => {
-                if ((tasks[taskId].accessed + expires) < (new Date()).getTime()){
-                    delete(tasks[taskId]);
+            Object.keys(tasks).forEach((taskId) => {
+                if (tasks[taskId].accessed + expires < new Date().getTime()) {
+                    delete tasks[taskId];
                 }
             });
         };
@@ -43,11 +43,13 @@ module.exports = {
         setInterval(cleanup, 1000 * 60 * 60);
     },
 
-    add: async function(taskId, obj, token){
+    add: async function (taskId, obj, token) {
         if (!taskId) throw new Error("taskId is not valid");
         if (!obj) throw new Error("obj is not valid");
 
-        logger.debug(`Added ${taskId} --> ${JSON.stringify(obj)} in task table`);
+        logger.debug(
+            `Added ${taskId} --> ${JSON.stringify(obj)} in task table`
+        );
 
         tasks[taskId] = {
             obj,
@@ -56,13 +58,13 @@ module.exports = {
         };
     },
 
-    delete: async function(taskId){
-        delete(tasks[taskId]);
+    delete: async function (taskId) {
+        delete tasks[taskId];
     },
 
-    lookup: async function(taskId){
+    lookup: async function (taskId) {
         const entry = tasks[taskId];
-        if (entry){
+        if (entry) {
             entry.accessed = new Date().getTime();
             return entry.obj;
         }
@@ -70,13 +72,13 @@ module.exports = {
         return null;
     },
 
-    findByToken: async function(token){
+    findByToken: async function (token) {
         const result = {};
-        for (let taskId in tasks){
-            if (tasks[taskId].token === token){
+        for (let taskId in tasks) {
+            if (tasks[taskId].token === token) {
                 result[taskId] = tasks[taskId].obj;
             }
         }
         return result;
-    }
+    },
 };

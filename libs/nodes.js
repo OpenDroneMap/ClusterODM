@@ -15,15 +15,15 @@
  *  You should have received a copy of the GNU Affero General Public License
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-const Node = require('./classes/Node');
-const fs = require('fs');
-const logger = require('./logger');
+const Node = require("./classes/Node");
+const fs = require("fs");
+const logger = require("./logger");
 
 let nodes = [];
 let initialized = false;
 
 module.exports = {
-    initialize: async function(){
+    initialize: async function () {
         if (initialized) throw new Error("Already initialized");
 
         await this.loadFromDisk();
@@ -31,128 +31,138 @@ module.exports = {
         logger.info(`Loaded ${nodes.length} nodes`);
 
         setInterval(() => {
-            this.updateInfo()
+            this.updateInfo();
         }, 60 * 1000);
 
         initialized = true;
     },
 
-    addUnique: function(hostname, port, token){
+    addUnique: function (hostname, port, token) {
         if (!hostname || !port) return false;
 
-        if (!nodes.find(n => n.hostname() === hostname && n.port() === port)){
+        if (
+            !nodes.find((n) => n.hostname() === hostname && n.port() === port)
+        ) {
             const node = new Node(hostname, port, token);
             this.add(node);
             return node;
-        }else{
+        } else {
             return false;
         }
     },
 
-    add: function(node){
+    add: function (node) {
         nodes.push(node);
         logger.debug(`Added node: ${node}`);
         this.saveToDisk();
         return node;
     },
 
-    remove: function(node){
-        if (node){
-            nodes = nodes.filter(n => n !== node);
+    remove: function (node) {
+        if (node) {
+            nodes = nodes.filter((n) => n !== node);
             logger.debug(`Removed node: ${node}`);
             this.saveToDisk();
             return true;
-        }else{
+        } else {
             return false;
         }
     },
 
-    lock: function(node){
-        if (node){
+    lock: function (node) {
+        if (node) {
             node.setLocked(true);
             this.saveToDisk();
             return true;
-        }else{
+        } else {
             return false;
         }
     },
 
-    unlock: function(node){
-        if (node){
+    unlock: function (node) {
+        if (node) {
             node.setLocked(false);
             this.saveToDisk();
             return true;
-        }else{
+        } else {
             return false;
         }
     },
 
-    all: function(){
+    all: function () {
         return nodes;
     },
 
-    find: function(match){
+    find: function (match) {
         return nodes.find(match);
     },
 
-    filter: function(match){
+    filter: function (match) {
         return nodes.filter(match);
     },
 
-    nth: function(n){
+    nth: function (n) {
         n = parseInt(n);
         if (isNaN(n)) return null;
 
         n -= 1;
-        if (n >= 0 && n < nodes.length){
+        if (n >= 0 && n < nodes.length) {
             return nodes[n];
-        }else return null;
+        } else return null;
     },
 
-    online: function(){
-        return nodes.filter(n => n.isOnline());
+    online: function () {
+        return nodes.filter((n) => n.isOnline());
     },
 
-    updateInfo: async function(){
-        return await Promise.all(nodes.map(n => n.updateInfo()));
+    updateInfo: async function () {
+        return await Promise.all(nodes.map((n) => n.updateInfo()));
     },
 
     // Reference node is the one used to generate
     // node information for the proxy (for example,
     // when returning calls to /info or /options)
-    referenceNode: function(){
-        return nodes.find(n => n.isOnline());
+    referenceNode: function () {
+        return nodes.find((n) => n.isOnline());
     },
 
-    maxTurnNumber: function(){
-        return Math.max(...nodes.map(n => n.turn));
+    maxTurnNumber: function () {
+        return Math.max(...nodes.map((n) => n.turn));
     },
 
-    clearTurnNumbers: function(){
-        nodes.forEach(n => n.turn = 0);
+    clearTurnNumbers: function () {
+        nodes.forEach((n) => (n.turn = 0));
     },
 
-    findBestAvailableNode: async function(numImages, update = false){
+    findBestAvailableNode: async function (numImages, update = false) {
         if (update) await this.updateInfo();
 
         let maxTurnNumber = this.maxTurnNumber();
-        if (maxTurnNumber > 2000000000){
+        if (maxTurnNumber > 2000000000) {
             this.clearTurnNumbers();
             maxTurnNumber = 0;
         }
 
-        const candidates = nodes.filter(n => n.isOnline() && 
-                                             !n.isLocked() &&
-                                             !n.isAutoSpawned() &&
-                                            (!n.getInfo().maxImages || n.getInfo().maxImages >= numImages));
+        const candidates = nodes.filter(
+            (n) =>
+                n.isOnline() &&
+                !n.isLocked() &&
+                !n.isAutoSpawned() &&
+                (!n.getInfo().maxImages || n.getInfo().maxImages >= numImages)
+        );
         if (!candidates.length) return null;
 
-        let sorted = candidates.map(n => {
+        let sorted = candidates.map((n) => {
             return {
                 node: n,
-                maxImages: n.getInfo().maxImages ? n.getInfo().maxImages : 999999999,
-                slots: Math.max(0, n.getInfo().maxParallelTasks - n.getInfo().taskQueueCount),
-                queueCount: n.getInfo().taskQueueCount
+                maxImages: n.getInfo().maxImages
+                    ? n.getInfo().maxImages
+                    : 999999999,
+                slots: Math.max(
+                    0,
+                    n.getInfo().maxParallelTasks - n.getInfo().taskQueueCount
+                ),
+                queueCount: n.getInfo().taskQueueCount,
             };
         });
 
@@ -171,9 +181,9 @@ module.exports = {
             else if (a.node.turn > b.node.turn) return 1;
             else return 1;
         });
-        
+
         let bestNode = null;
-        for (let i = 0; i < sorted.length; i++){
+        for (let i = 0; i < sorted.length; i++) {
             if (sorted[i].slots > 0) {
                 bestNode = sorted[i].node;
                 break;
@@ -186,46 +196,48 @@ module.exports = {
         return bestNode;
     },
 
-    saveToDisk: async function(){
+    saveToDisk: async function () {
         return new Promise((resolve, reject) => {
-            fs.writeFile('data/nodes.json', JSON.stringify(nodes), (err) => {
-                if (err){
+            fs.writeFile("data/nodes.json", JSON.stringify(nodes), (err) => {
+                if (err) {
                     logger.warn(`Cannot save nodes to disk: ${err.message}`);
                     reject(err);
-                }else{
+                } else {
                     resolve();
                 }
             });
         });
     },
 
-    loadFromDisk: async function(){
+    loadFromDisk: async function () {
         return new Promise((resolve, reject) => {
             fs.exists("data/nodes.json", (exists) => {
-                if (exists){
+                if (exists) {
                     fs.readFile("data/nodes.json", (err, json) => {
-                        if (err){
-                            logger.warn(`Cannot read nodes from disk: ${err.message}`);
+                        if (err) {
+                            logger.warn(
+                                `Cannot read nodes from disk: ${err.message}`
+                            );
                             reject(err);
-                        }else{
+                        } else {
                             const nodesjson = JSON.parse(json);
-                            nodes = nodesjson.map(n => Node.FromJSON(n));
+                            nodes = nodesjson.map((n) => Node.FromJSON(n));
                             resolve();
                         }
                     });
-                }else{
+                } else {
                     resolve();
                 }
             });
         });
     },
 
-    cleanup: async function(){
-        try{
+    cleanup: async function () {
+        try {
             await this.saveToDisk();
             logger.info("Saved nodes to disk");
-        }catch(e){
+        } catch (e) {
             logger.warn(e);
         }
-    }
+    },
 };
