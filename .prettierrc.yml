@@ -1,0 +1,7 @@
+# .prettierrc or .prettierrc.yaml
+useTabs: false
+trailingComma: "es5"
+tabWidth: 4
+semi: true
+singleQuote: false
+bracketSpacing: false

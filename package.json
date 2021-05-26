@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "format": "prettier --write \"**/*.{js,jsx,json,md}\""
   },
   "repository": {
     "type": "git",
@@ -28,5 +28,8 @@
     "tree-kill": "^1.2.1",
     "uuid": "^3.3.2",
     "winston": "^3.3.3"
+  },
+  "devDependencies": {
+    "prettier": "^2.3.0"
   }
 }
