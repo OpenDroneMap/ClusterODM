@@ -16,6 +16,5 @@
     "stale-uploads-timeout": 0,
     "ssl-key": "",
     "ssl-cert": "",
-    "asr-provider": "",
-    "asr-config": ""
+    "asr": "",
 }
