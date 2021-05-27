@@ -1,1 +1,15 @@
-TODO
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>ClusterODM</title>
+    <link href="/bootstrap.min.css" rel="stylesheet" />
+    <script type="module">
+      import { html, render } from "./lib/preact.html.mjs";
+      import App from "./app.mjs";
+
+      render(html`<${App} name="app" />`, document.body);
+    </script>
+  </head>
+  <body></body>
+</html>
