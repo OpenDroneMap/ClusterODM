@@ -1,8 +1,5 @@
-import { html, render } from "https://unpkg.com/htm/preact/index.mjs?module";
-import {
-  useState,
-  useEffect,
-} from "https://unpkg.com/preact@10.4.7/hooks/dist/hooks.mjs?module";
+import { html, render } from "./lib/preact.html.mjs";
+import { useState, useEffect } from "./lib/hooks.module.js";
 
 // Create your app
 export default function App(props) {
