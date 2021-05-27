@@ -32,14 +32,15 @@ module.exports = {
     app.use(express.json());
     app.use(cors());
 
+    app.get("/signout", (req, res) => {
+      res.status(401).send('Signed out. <br /> <a href="/">Sign back in</a>');
+    });
+
     if (!options.password) {
       logger.warn(
         `No admin password specified, make sure port ${options.port} is secured`
       );
     } else {
-      app.get("/signout", (req, res) => {
-        res.status(401).send('sign out. <br /> <a href="/">go to home</a>');
-      });
       app.use(
         basicAuth({
           users: { admin: options.password },
