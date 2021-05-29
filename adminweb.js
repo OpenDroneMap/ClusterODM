@@ -37,9 +37,7 @@ module.exports = {
     });
 
     if (!options.password) {
-      logger.warn(
-        `No admin password specified, make sure port ${options.port} is secured`
-      );
+      logger.warn(`No admin password specified, make sure port ${options.port} is secured`);
     } else {
       app.use(
         basicAuth({
@@ -54,8 +52,9 @@ module.exports = {
     app.use(express.json());
 
     // API
-    app.get("/r/package_info", (req, res) => {
-      res.json(package_info);
+    app.get("/r/info", (req, res) => {
+      const { name, version } = package_info;
+      res.json({ name, version });
     });
 
     app.get("/r/node/list", (req, res) => {
@@ -66,10 +65,7 @@ module.exports = {
     app.delete("/r/node", async (req, res) => {
       const { number } = req.body;
       if (number) {
-        const isSuccess = await netutils.removeAndCleanupNode(
-          nodes.nth(number),
-          asrProvider.get()
-        );
+        const isSuccess = await netutils.removeAndCleanupNode(nodes.nth(number), asrProvider.get());
         res.status(200).json(isSuccess);
       } else {
         res.status(403).send();
@@ -121,4 +117,5 @@ const nodeToJson = (node) => ({
   getMaxParallelTasks: node.getMaxParallelTasks(),
   getEngineInfo: node.getEngineInfo(),
   getVersion: node.getVersion(),
+  nodeData: node.nodeData,
 });
