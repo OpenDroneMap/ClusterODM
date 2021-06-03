@@ -16,7 +16,7 @@ jobs:
     - name: Setup NodeJS
       uses: actions/setup-node@v2
       with:
-        node-version: '14'
+        node-version: '12'
     - name: Setup Env
       run: |
         npm i
