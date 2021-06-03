@@ -28,7 +28,7 @@ async.series([
 
     cb => {
         console.log("Building executable");
-        const code = spawnSync('nexe.cmd', ['index.js', '-t', 'windows-x64-12.16.3', '-o', 'clusterodm.exe'], { stdio: "pipe"}).status;
+        const code = spawnSync('nexe.cmd', ['index.js', '-t', 'windows-x64-12.16.3', '-o', 'clusterodm.exe', '-r', 'libs/**'], { stdio: "pipe"}).status;
 
         if (code === 0) cb();
         else cb(new Error(`nexe returned non-zero error code: ${code}`));
