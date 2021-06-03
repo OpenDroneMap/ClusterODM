@@ -16,7 +16,7 @@ cd ClusterODM
 npm install
 ```
 
-There's also a docker image available at `opendronemap/clusterodm`.
+There's also a docker image available at `opendronemap/clusterodm` and a native [Windows bundle](#windows-bundle).
 
 ## Usage
 
@@ -86,6 +86,14 @@ A docker-compose file is available to automatically setup both ClusterODM and No
 
 ```
 docker-compose up
+```
+
+## Windows Bundle
+
+ClusterODM can run as a self-contained executable on Windows without the need for additional dependencies. You can download the latest `clusterodm-windows-x64.zip` bundle from the [releases](https://github.com/OpenDroneMap/ClusterODM/releases) page. Extract the contents in a folder and run:
+
+```bash
+clusterodm.exe
 ```
 
 ## Roadmap
