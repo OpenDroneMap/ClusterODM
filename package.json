@@ -1,10 +1,11 @@
 {
   "name": "ClusterODM",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "winbundle": "node winbundle.js"
   },
   "repository": {
     "type": "git",
@@ -28,5 +29,8 @@
     "tree-kill": "^1.2.1",
     "uuid": "^3.3.2",
     "winston": "^3.3.3"
+  },
+  "devDependencies": {
+    "archiver": "^3.0.0"
   }
 }
