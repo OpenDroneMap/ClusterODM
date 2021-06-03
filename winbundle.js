@@ -15,7 +15,7 @@ async.series([
                 if (entry !== ".gitignore"){
                     const e = path.join(dir, entry);
                     console.log(`Removing ${e}`);
-                    if (fs.isDirectory(e)){
+                    if (fs.lstatSync(e).isDirectory()){
                         fs.rmdirSync(e, { recursive: true });
                     }else{
                         fs.unlinkSync(e);
@@ -79,6 +79,10 @@ async.series([
             }
         });
 
+        // Plus node-libcurl
+        console.log("Adding node_modules/node-libcurl")
+        archive.directory(path.join("node_modules", "node-libcurl"), path.join("node_modules", "node-libcurl"));
+        
         archive.finalize();
     }
 ], (err) => {
