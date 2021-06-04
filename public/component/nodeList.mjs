@@ -1,6 +1,7 @@
 import { deleteFetch, postFetch } from "../common.fetch.js";
+import { useEffect, useState } from "../lib/hooks.module.js";
 import { html } from "../lib/preact.html.mjs";
-
+import { DeleteInstanceDialog } from "./dialog.mjs";
 export const NodeList = ({ nodes = [], getData = () => {} }) => {
   const LockBtn = ({ isLock, number }) =>
     isLock
@@ -13,10 +14,27 @@ export const NodeList = ({ nodes = [], getData = () => {} }) => {
           LOCK
         </button>`;
   const DelBtn = ({ number }) => {
-    return html`<button class="btn btn-sm  btn-outline-danger" onClick=${(e) => doDelete(number)}>
-      <i class="bi bi-trash-fill"></i>
-      DEL
-    </button>`;
+    // onClick=${(e) => doDelete(number)}
+    const [open, setOpen] = useState(false);
+    const handlerOnClickBtn = (e) => {
+      setOpen(!open);
+    };
+    const handlerClose = () => {
+      setOpen(false);
+    };
+    return html`<div>
+      <button class="btn btn-sm  btn-outline-danger" onClick=${handlerOnClickBtn}>
+        <i class="bi bi-trash-fill"></i>
+        DEL
+      </button>
+      <${DeleteInstanceDialog}
+        open=${open}
+        handlerClose=${handlerClose}
+        handlerApply=${() => {
+          doDelete(number);
+        }}
+      />
+    </div>`;
   };
 
   const doLock = (number) => {
@@ -28,7 +46,7 @@ export const NodeList = ({ nodes = [], getData = () => {} }) => {
         getData();
       })
       .catch((ex) => {
-        console.log(err);
+        console.error(ex);
       });
   };
 
@@ -41,7 +59,7 @@ export const NodeList = ({ nodes = [], getData = () => {} }) => {
         getData();
       })
       .catch((ex) => {
-        console.log(err);
+        console.error(ex);
       });
   };
 
@@ -54,10 +72,9 @@ export const NodeList = ({ nodes = [], getData = () => {} }) => {
         getData();
       })
       .catch((ex) => {
-        console.log(err);
+        console.error(ex);
       });
   };
-
   return html` <table class="table table-hover table-striped">
     <thead>
       <tr class="text-white bg-primary">
@@ -69,7 +86,7 @@ export const NodeList = ({ nodes = [], getData = () => {} }) => {
         <th>API</th>
         <th>CPU Cores</th>
         <th>RAM available</th>
-        <th>Last updated</th>
+        <!--<th>Last updated</th>-->
         <th>Flags</th>
         <th>-</th>
       </tr>
@@ -91,11 +108,13 @@ export const NodeList = ({ nodes = [], getData = () => {} }) => {
           <td>${node.getVersion}</td>
           <td>${node.nodeData.info.cpuCores}</td>
           <td>${getRamAvailable(node)}</td>
-          <td>${node.nodeData.lastRefreshed > 0 && new Date(node.nodeData.lastRefreshed).toLocaleString()}</td>
+          <!--<td>${node.nodeData.lastRefreshed > 0 && new Date(node.nodeData.lastRefreshed).toLocaleString()}</td>-->
           <td>${flags.join(",")}</td>
           <td>
-            <${LockBtn} isLock=${node.isLocked} number=${idx + 1} />
-            <${DelBtn} number=${idx + 1} />
+            <div class="btn-group" role="group">
+              <${LockBtn} isLock=${node.isLocked} number=${idx + 1} />
+              <${DelBtn} number=${idx + 1} />
+            </div>
           </td>
         </tr>`;
       })}
@@ -112,7 +131,9 @@ const getRamAvailable = (node) => {
   if (typeof availableMemory !== "number" || typeof totalMemory !== "number") return "";
 
   const percent = (availableMemory / totalMemory) * 100;
-  return `${bytesToSize(availableMemory)}/${bytesToSize(totalMemory)}(${percent.toFixed(2)}%)`;
+  const ram = `${bytesToSize(availableMemory)}/${bytesToSize(totalMemory)}`;
+  const strPercent = `${percent.toFixed(2)}%`;
+  return html`<span data-bs-toggle="tooltip" title=${ram}>${strPercent}</span>`;
 };
 
 const bytesToSize = (bytes, decimals = 2) => {

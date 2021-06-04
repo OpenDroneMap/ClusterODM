@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "./lib/hooks.module.js";
 import { NodeList } from "./component/nodeList.mjs";
 import { Header } from "./component/header.mjs";
 import { RefreshButton } from "./component/refreshButton.mjs";
+import { AddInstanceButton } from "./component/addInstanceButton.mjs";
 
 const getInfoData = async () => {
   console.log("try getInfoData");
@@ -54,7 +55,10 @@ export default function App() {
   return html` <div class="container">
     <${Header} info=${info} />
     <${NodeList} nodes=${nodes} getData=${getNodes} />
-    <div id="btn-refresh" class="text-end">
+
+    <div id="btn-area">
+      <${AddInstanceButton} getNodes=${getNodes} />
+      <div style="flex-grow:1"></div>
       <${RefreshButton} autoRefresh=${autoRefresh} setAutoRefresh=${setAutoRefresh} />
     </div>
   </div>`;
