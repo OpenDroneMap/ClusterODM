@@ -1,0 +1,19 @@
+.modal {
+  transition: all 0.2s ease-in-out;
+  display: block !important;
+}
+.fade:not(.show) {
+  opacity: 0;
+
+  visibility: hidden;
+}
+.fade.show {
+  background-color: rgba(0, 0, 0, 0.6);
+  opacity: 1;
+  /* display: block; */
+  visibility: visible;
+}
+
+#btn-area {
+  display: flex;
+}
