@@ -12,7 +12,7 @@
     "url": "https://github.com/OpenDroneMap/ClusterODM"
   },
   "author": "",
-  "license": "ISC",
+  "license": "AGPL-3.0",
   "dependencies": {
     "async": "^2.6.1",
     "aws-sdk": "^2.466.0",
