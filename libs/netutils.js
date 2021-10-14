@@ -18,6 +18,7 @@
 "use strict";
 const config = require('../config');
 const nodes = require('./nodes');
+const logger = require('./logger');
 const routetable = require('./routetable');
 const async = require('async');
 const URL = require('url').URL;
