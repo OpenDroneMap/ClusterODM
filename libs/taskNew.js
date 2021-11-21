@@ -173,6 +173,7 @@ module.exports = {
                             saveStream = null;
                         }
                         if (fs.exists(saveTo, exists => {
+                            params.imagesCount--;
                             fs.unlink(saveTo, err => {
                                 if (err) logger.error(err);
                             });
