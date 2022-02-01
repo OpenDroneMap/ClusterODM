@@ -3,15 +3,14 @@
 Hetzner is an unofficial driver for docker-machine. This means you need to install the driver for hetzner separately before you can use it.
 
 1. Download the latest version of the driver from https://github.com/JonasProgrammer/docker-machine-driver-hetzner/releases
-2. Extract the binary and place it in your PATH. 
+2. Extract the binary and place it in your PATH.
 
 For example on Linux you can do:
 
 ```bash
-wget wget https://github.com/JonasProgrammer/docker-machine-driver-hetzner/releases/download/2.0.1/docker-machine-driver-hetzner_2.0.1_linux_amd64.tar.gz
+wget https://github.com/JonasProgrammer/docker-machine-driver-hetzner/releases/download/2.0.1/docker-machine-driver-hetzner_2.0.1_linux_amd64.tar.gz
 tar -xvf docker-machine-driver-hetzner_2.0.1_linux_amd64.tar.gz
-chmod +x docker-machine-driver-hetzner
-sudo mv docker-machine-driver-hetzner /usr/local/bin
+sudo install --mode +x docker-machine-driver-hetzner /usr/local/bin/
 ```
 
 # Provider Configuration for Hetzner
@@ -34,11 +33,11 @@ Example configuration file:
     "machinesLimit": -1,
     "createRetries": 1,
     "location": "fsn1",
-    
+
     "image": "ubuntu-18.04",
     "snapshot": false,
     "engineInstallUrl": "\"https://releases.rancher.com/install-docker/19.03.9.sh\"",
-    
+
     "sshKey":{
         "fingerprint": "",
         "path": "",

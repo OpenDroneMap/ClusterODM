@@ -3,15 +3,14 @@
 Scaleway is an unofficial driver for docker-machine. This means you need to install the driver for scaleway separately before you can use it.
 
 1. Download the latest version of the driver from https://github.com/scaleway/docker-machine-driver-scaleway/releases
-2. Extract the binary and place it in your PATH. 
+2. Extract the binary and place it in your PATH.
 
 For example on Linux you can do:
 
 ```bash
 wget https://github.com/scaleway/docker-machine-driver-scaleway/releases/download/v1.6/docker-machine-driver-scaleway_1.6_linux_amd64.tar.gz
 tar -xvf docker-machine-driver-scaleway_1.6_linux_amd64.tar.gz
-chmod +x docker-machine-driver-scaleway
-sudo mv docker-machine-driver-scaleway /usr/local/bin
+sudo install --mode +x docker-machine-driver-scaleway /usr/local/bin
 ```
 
 # Provider Configuration for Scaleway
@@ -36,10 +35,10 @@ Example configuration file:
     "machinesLimit": -1,
     "createRetries": 1,
     "region": "par1",
-    
+
     "image": "ubuntu-xenial",
     "engineInstallUrl": "\"https://releases.rancher.com/install-docker/19.03.9.sh\"",
-    
+
     "imageSizeMapping": [
         {"maxImages": 5, "slug": "GP1-XS"},
         {"maxImages": 50, "slug": "GP1-S"}
@@ -66,4 +65,3 @@ Example configuration file:
 | minImages                | Minimum number of images that a dataset needs to have for the autoscaler to be used (-1 = no minimum).                                                                                                                                                                                                              |
 | addSwap                  | Optionally add this much swap space to the machine as a factor of total RAM (`RAM * addSwap`). A value of `1` sets a swapfile equal to the available RAM.                                                                                                                                                         |
 | dockerImage              | Docker image to launch                                                                                                                                                                                                                                                                                            |
-
