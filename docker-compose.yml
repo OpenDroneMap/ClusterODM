@@ -15,8 +15,6 @@ services:
       - "10000:10000"
     volumes:
       - ./docker/data:/var/www/data
-      - ./configuration.json:/var/www/
     restart: on-failure:10
-    command: --asr /var/www/configuration.json
     depends_on:
       - nodeodm-1
