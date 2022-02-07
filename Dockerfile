@@ -6,7 +6,7 @@ EXPOSE 3000
 USER root
 
 RUN apt update && apt install -y telnet curl && \
-    base=https://gitlab-docker-machine-downloads.s3.amazonaws.com/main/ && \
+    base=https://gitlab-docker-machine-downloads.s3.amazonaws.com/main && \
     curl -L $base/docker-machine-$(uname -s)-$(uname -m) >/tmp/docker-machine && \
     install /tmp/docker-machine /usr/local/bin/docker-machine && \
     curl -L https://github.com/scaleway/docker-machine-driver-scaleway/releases/download/v1.6/docker-machine-driver-scaleway_1.6_linux_amd64.tar.gz | tar -xz --directory=/tmp && \
