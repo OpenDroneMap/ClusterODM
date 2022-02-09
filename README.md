@@ -8,7 +8,7 @@ The program has been battle tested on the [WebODM Lightning Network](https://web
 
 ## Installation
 
-The only requirement is a working installation of [NodeJS](https://nodejs.org).
+The only requirement is a working installation of [NodeJS](https://nodejs.org) 14 or earlier (ClusterODM has compatibility issues with NodeJS 16 and later).
 
 ```bash
 git clone https://github.com/OpenDroneMap/ClusterODM
