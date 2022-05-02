@@ -137,7 +137,7 @@ module.exports = {
         return new Promise((resolve, reject) => {
             fs.writeFile('data/routes.json', JSON.stringify(routes), (err) => {
                 if (err){
-                    logger.warn("Cannot save routes to disk: ${err.message}");
+                    logger.warn(`Cannot save routes to disk: ${err.message}`);
                     reject(err);
                 }else{
                     resolve();
@@ -152,7 +152,7 @@ module.exports = {
                 if (exists){
                     fs.readFile("data/routes.json", (err, json) => {
                         if (err){
-                            logger.warn("Cannot read routes from disk: ${err.message}");
+                            logger.warn(`Cannot read routes from disk: ${err.message}`);
                             reject(err);
                         }else{
                             const content = JSON.parse(json);
