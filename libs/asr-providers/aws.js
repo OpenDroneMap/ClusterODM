@@ -30,13 +30,15 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
                 "endpoint": "CHANGEME!",
                 "bucket": "CHANGEME!"
             },
-
+	    "vpc": "",
+	    "subnet": "",
             "securityGroup": "CHANGEME!",
             "maxRuntime": -1,
             "maxUploadTime": -1,
             "instanceLimit": -1,
             "createRetries": 1,
             "region": "us-west-2",
+	    "zone": "",
             "monitoring": false,
             "tags": ["clusterodm"],
             "ami": "ami-07b4f3c02c7f83d59",
@@ -47,7 +49,8 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
             ],
 
             "addSwap": 1,
-            "dockerImage": "opendronemap/nodeodm"
+            "dockerImage": "opendronemap/nodeodm",
+	    "iamrole": ""
         }, userConfig);
     }
 
@@ -202,6 +205,27 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
         if (this.getConfig("engineInstallUrl")){
             args.push("--engine-install-url")
             args.push(this.getConfig("engineInstallUrl"));
+        }
+
+	if (this.getConfig("zone").length > 0){
+	    args.push("--amazonec2-zone")
+	    args.push(this.getConfig("zone"));
+	}
+
+        if (this.getConfig("vpc").length > 0){
+            args.push("--amazonec2-vpc-id")
+            args.push(this.getConfig("vpc"));
+        }
+
+	if (this.getConfig("subnet").length > 0){
+            args.push("--amazonec2-subnet-id")
+            args.push(this.getConfig("subnet"));
+        }
+
+
+	if (this.getConfig("iamrole").length > 0){
+            args.push("--amazonec2-iam-instance-profile")
+            args.push(this.getConfig("iamrole"));
         }
 
         return args;

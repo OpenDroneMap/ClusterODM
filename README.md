@@ -8,7 +8,7 @@ The program has been battle tested on the [WebODM Lightning Network](https://web
 
 ## Installation
 
-The only requirement is a working installation of [NodeJS](https://nodejs.org).
+The only requirement is a working installation of [NodeJS](https://nodejs.org) 14 or earlier (ClusterODM has compatibility issues with NodeJS 16 and later).
 
 ```bash
 git clone https://github.com/OpenDroneMap/ClusterODM
@@ -16,7 +16,7 @@ cd ClusterODM
 npm install
 ```
 
-There's also a docker image available at `opendronemap/clusterodm`.
+There's also a docker image available at `opendronemap/clusterodm` and a native [Windows bundle](#windows-bundle).
 
 ## Usage
 
@@ -52,7 +52,7 @@ See `node index.js --help` for all parameter options.
 ClusterODM can spin up/down nodes based on demand. This allows users to reduce costs associated with always-on instances as well as being able to scale processing based on demand.
 
 To setup autoscaling you must:
-   * Make sure [docker-machine](https://docs.docker.com/machine/install-machine/) is installed.
+   * Make sure [docker-machine](https://gitlab.com/gitlab-org/ci-cd/docker-machine) is installed.
    * Setup a S3-compatible bucket for storing results.
    * Create a configuration file for [DigitalOcean](./docs/digitalocean.md), [Hetzner](./docs/hetzner.md), [Scaleway](./docs/scaleway.md), or [Amazon Web Services](./docs/aws.md) (click links to see examples)
 
@@ -88,7 +88,14 @@ A docker-compose file is available to automatically setup both ClusterODM and No
 docker-compose up
 ```
 
+## Windows Bundle
+
+ClusterODM can run as a self-contained executable on Windows without the need for additional dependencies. You can download the latest `clusterodm-windows-x64.zip` bundle from the [releases](https://github.com/OpenDroneMap/ClusterODM/releases) page. Extract the contents in a folder and run:
+
+```bash
+clusterodm.exe
+```
+
 ## Roadmap
 
 We have [plenty of goals](https://github.com/OpenDroneMap/ClusterODM/issues?q=is%3Aopen+is%3Aissue+label%3Aenhancement). If you want to help, or need help getting started contributing, get in touch on the [OpenDroneMap community forum](https://community.opendronemap.org).
-
