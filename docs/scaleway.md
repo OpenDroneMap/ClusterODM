@@ -27,7 +27,8 @@ Example configuration file:
         "accessKey": "CHANGEME!",
         "secretKey": "CHANGEME!",
         "endpoint": "CHANGEME!",
-        "bucket": "CHANGEME!"
+        "bucket": "CHANGEME!",
+        "ignoreSSL": false
     },
 
     "maxRuntime": -1,

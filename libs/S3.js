@@ -17,11 +17,22 @@
  */
 "use strict";
 const AWS = require('aws-sdk');
+const https = require('https');
 const logger = require('./logger');
 
 module.exports = {
-    testBucket: async function(accessKey, secretKey, endpoint, bucket){
+    testBucket: async function(accessKey, secretKey, endpoint, bucket, ignoreSSL = false){
         return new Promise((resolve, reject) => {
+            if (ignoreSSL){
+                AWS.config.update({
+                    httpOptions: {
+                        agent: new https.Agent({
+                        rejectUnauthorized: false
+                        })
+                    }
+                });
+            }
+
             const spacesEndpoint = new AWS.Endpoint(endpoint);
             const s3 = new AWS.S3({
                 endpoint: spacesEndpoint,

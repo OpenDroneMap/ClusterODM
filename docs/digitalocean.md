@@ -10,7 +10,8 @@ Example configuration file:
         "accessKey": "CHANGEME",
         "secretKey": "CHANGEME",
         "endpoint" :"sfo2.digitaloceanspaces.com",
-        "bucket": "CHANGEME"
+        "bucket": "CHANGEME",
+        "ignoreSSL": false
     },
 
     "createRetries": 10,
