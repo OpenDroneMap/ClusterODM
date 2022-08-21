@@ -29,7 +29,7 @@ node index.js [parameters]
 Or with docker:
 
 ```bash
-docker run --rm -ti -p 3000:3000 -p 8080:8080 opendronemap/clusterodm [parameters]
+docker run --rm -ti -p 3000:3000 -p 10000:10000 -p 8080:8080 opendronemap/clusterodm [parameters]
 ```
 
 Then connect to the CLI and connect new [NodeODM](https://github.com/OpenDroneMap/NodeODM) instances:
