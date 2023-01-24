@@ -100,16 +100,28 @@ You can write a SLURM script to schedule and set up available nodes with NodeODM
 
 To setup HPC with SLURM, you must make sure SLURM is installed.
 
-SLURM script will be different from HPC to HPC, depending on which nodes in the cluster that you have. However, the main idea is we want to run NodeODM on each node once, and by default, each NodeODM will be running on port 3000. Apptainer will be taking available ports starting from port 3000, so if your node's port 3000 is open, by default NodeODM will be run on that node. After that, we want to run ClusterODM on the head node and connect the running NodeODMs to the ClusterODM. With that, we will have a functional ClusterODM running on HPC.
+SLURM script will be different from cluster to cluster, depending on which nodes in the cluster that you have. However, the main idea is we want to run NodeODM on each node once, and by default, each NodeODM will be running on port 3000. Apptainer will be taking available ports starting from port 3000, so if your node's port 3000 is open, by default NodeODM will be run on that node. After that, we want to run ClusterODM on the head node and connect the running NodeODMs to the ClusterODM. With that, we will have a functional ClusterODM running on HPC.
 
 Here is an example of SLURM script assigning nodes 48, 50, 51 to run NodeODM. You can freely change and use it depending on your system:
 
 ![image](https://user-images.githubusercontent.com/70782465/214411148-cdf43e44-9756-4115-9195-d1f36b3a31b9.png)
 
+You can check for available nodes using sinfo:
+
+```
+sinfo
+```
+
 Run the following commands to schedule using the SLURM script:
 
 ```
 sbatch sample.slurm
+```
+
+You can also check for currently running jobs using squeue:
+
+```
+squeue -u $user
 ```
 
 Unfortunately, SLURM does not handle assigning jobs to the head node. Hence, if we want to run ClusterODM on the head node, we have to run it locally. After that, you can connect to the CLI and wire the NodeODMs to the ClusterODMs. Here is an example following the sample SLURM script:
