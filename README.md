@@ -112,7 +112,7 @@ You can check for available nodes using sinfo:
 sinfo
 ```
 
-Run the following commands to schedule using the SLURM script:
+Run the following command to schedule using the SLURM script:
 
 ```
 sbatch sample.slurm
