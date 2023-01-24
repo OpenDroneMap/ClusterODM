@@ -94,6 +94,13 @@ A docker-compose file is available to automatically setup both ClusterODM and No
 docker-compose up
 ```
 
+## HPC set up with SLURM
+
+You can write a SLURM script to schedule and set up available nodes with NodeODM for the ClusterODM to be wired to if you are on the HPC. Using SLURM will decrease the amount of time and processes needed to set up nodes for ClusterODM each time. This provides an easier way for user to use ODM on the HPC.
+
+To setup HPC with SLURM, you must have make sure SLURM is installed.
+
+
 ## Windows Bundle
 
 ClusterODM can run as a self-contained executable on Windows without the need for additional dependencies. You can download the latest `clusterodm-windows-x64.zip` bundle from the [releases](https://github.com/OpenDroneMap/ClusterODM/releases) page. Extract the contents in a folder and run:
