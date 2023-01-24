@@ -32,7 +32,7 @@ Or with docker:
 docker run --rm -ti -p 3000:3000 -p 8080:8080 opendronemap/clusterodm [parameters]
 ```
 
-Or with apptainer:
+Or with apptainer, after cd into ClusterODM directory:
 
 ```bash
 apptainer run docker://opendronemap/clusterodm [parameters]
