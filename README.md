@@ -94,6 +94,14 @@ A docker-compose file is available to automatically setup both ClusterODM and No
 docker-compose up
 ```
 
+## Windows Bundle
+
+ClusterODM can run as a self-contained executable on Windows without the need for additional dependencies. You can download the latest `clusterodm-windows-x64.zip` bundle from the [releases](https://github.com/OpenDroneMap/ClusterODM/releases) page. Extract the contents in a folder and run:
+
+```bash
+clusterodm.exe
+```
+
 ## HPC set up with SLURM
 
 You can write a SLURM script to schedule and set up available nodes with NodeODM for the ClusterODM to be wired to if you are on the HPC. Using SLURM will decrease the amount of time and processes needed to set up nodes for ClusterODM each time. This provides an easier way for user to use ODM on the HPC.
@@ -136,12 +144,15 @@ telnet localhost 8080
 
 You should always check to make sure which ports are being used to run NodeODM if ClusterODM is not wired correctly.
 
-## Windows Bundle
+It is also possible to pre-populate nodes using JSON. If starting ClusterODM from apptainer or docker, the relevant JSON is available at `docker/data/nodes.json`. Contents might look similar to the following:
 
-ClusterODM can run as a self-contained executable on Windows without the need for additional dependencies. You can download the latest `clusterodm-windows-x64.zip` bundle from the [releases](https://github.com/OpenDroneMap/ClusterODM/releases) page. Extract the contents in a folder and run:
+```javascript
+[
+        {"hostname":"node48","port":"3000","token":""},
+        {"hostname":"node50","port":"3000","token":""},
+        {"hostname":"node51","port":"3000","token":""}
+]
 
-```bash
-clusterodm.exe
 ```
 
 ## Roadmap
