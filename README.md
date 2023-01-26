@@ -155,6 +155,14 @@ It is also possible to pre-populate nodes using JSON. If starting ClusterODM fro
 
 ```
 
+After finish hosting ClusterODM on the head node and finish wiring it to the NodeODM, you can try tunneling to see if ClusterODM works as expected. Open another shell window in your local machine and tunnel them to the HPC using the following command:
+
+```
+ssh -L localhost:10000:localhost:10000 user@hostname
+```
+
+Basically, this command will tunnel the port of the hpc to your local port. After this, open a browser in your local machine and connect to localhost:10000. Port 10000 is where ClusterODM's administrative web interface is hosted at. Here's what it looks like:
+
 ## Roadmap
 
 We have [plenty of goals](https://github.com/OpenDroneMap/ClusterODM/issues?q=is%3Aopen+is%3Aissue+label%3Aenhancement). If you want to help, or need help getting started contributing, get in touch on the [OpenDroneMap community forum](https://community.opendronemap.org).
