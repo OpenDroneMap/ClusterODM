@@ -25,4 +25,4 @@ RUN chown -R node:node /var/www
 USER node
 
 VOLUME ["/var/www/data"]
-ENTRYPOINT ["/usr/local/bin/node", "/var/www/index.js"]
+ENTRYPOINT ["/usr/local/bin/node", "/var/www/index.ts"]

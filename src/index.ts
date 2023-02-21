@@ -57,7 +57,7 @@ const routetable = require('./libs/routetable');
     });
 
     // Start
-    proxies.forEach(proxy => {
+    proxies.forEach((proxy: any) => {
         // Do not start insecure server if SSL is enabled and a secure port parameter
         // is not specified (that implies we want both secure and non secure)
         if (config.use_ssl && !config.secure_port && !proxy.secure) return;

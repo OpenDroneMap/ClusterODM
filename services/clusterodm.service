@@ -7,7 +7,7 @@ PIDFile=/run/clusterodm.pid
 User=odm
 Group=odm
 WorkingDirectory=/www
-ExecStart=/usr/bin/node index.js
+ExecStart=/usr/bin/node index.ts
 ExecStop=/bin/kill -s QUIT $MAINPID
 Restart=always
 

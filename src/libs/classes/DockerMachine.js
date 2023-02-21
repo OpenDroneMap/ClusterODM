@@ -20,7 +20,7 @@ const spawn = require('child_process').spawn;
 const kill = require('tree-kill');
 const async = require('async');
 
-runningProcesses = {};
+const runningProcesses = {};
 
 module.exports = {
     // Raises an exception if docker-machine is not installed
