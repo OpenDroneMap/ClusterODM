@@ -23,7 +23,7 @@ There's also a docker image available at `opendronemap/clusterodm` and a native 
 First, start the program:
 
 ```bash
-node index.ts [parameters]
+node index.js [parameters]
 ```
 
 Or with docker:
@@ -51,7 +51,7 @@ Finally, use a web browser to connect to `http://localhost:3000`. A normal [Node
 
 You can also check the status of nodes via a web interface available at `http://localhost:10000`.
 
-See `node index.ts --help` for all parameter options.
+See `node index.js --help` for all parameter options.
 
 ## Autoscale Setup
 
@@ -65,7 +65,7 @@ To setup autoscaling you must:
 You can then launch ClusterODM with:
 
 ```bash
-node index.ts --asr configuration.json
+node index.js --asr configuration.json
 ```
 
 You should see the following messages in the console:
