@@ -52,7 +52,8 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
 
             "addSwap": 1,
             "dockerImage": "opendronemap/nodeodm",
-	    "iamrole": ""
+	    "iamrole": "",
+	    "nodeSetupCmd": ""
         }, userConfig);
     }
 
@@ -120,6 +121,12 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
         const secretKey = this.getConfig("secretKey");
         const s3 = this.getConfig("s3");
         const webhook = netutils.publicAddressPath("/commit", req, token);
+        
+        const setupCmd = this.getConfig("nodeSetupCmd");
+        if (setupCmd != null && setupCmd.length > 0)
+        {
+          await dm.ssh(setupCmd);
+        }
 
         await dm.ssh([`sudo docker run -d -p 3000:3000 ${dockerImage} -q 1`,
                      `--s3_access_key ${accessKey}`,
