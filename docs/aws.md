@@ -8,7 +8,7 @@ In order to use ClusterODM with AWS:
 * Select/Create a VPC in which the resources will operate.
 * Select/Create a subnet within the VPC.
 * Create a security group in this region, VPC, and subnet which allows inbound access from your ClusterODM master instance on TCP port 3000. Note the name of the security group not the ID.
-* Create an S3 bucket in this region to handle results. Don't configure this bucket to block public access.
+* Create an S3 bucket in this region to handle results. If you don't specify an ACL, we will default to 'public-read', which requires public read access enabled for your bucket.
 * Select an AMI (machine image) to run - Ubuntu has a [handy AMI finder](https://cloud-images.ubuntu.com/locator/ec2/).
 * Create an IAM account for ClusterODM to use, which has EC2 and S3 permissions.
 * Create a ClusterODM configuration json file as below.
@@ -31,7 +31,8 @@ the on-demand instance cost - you'll always pay the current market price, not yo
     "secretKey": "CHANGEME!",
     "s3":{
         "endpoint": "s3.us-west-2.amazonaws.com",
-        "bucket": "bucketname"
+        "bucket": "bucketname",
+        "acl": "none"
     },
     "vpc": "",
     "subnet": "",
@@ -68,7 +69,7 @@ the on-demand instance cost - you'll always pay the current market price, not yo
 |------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | accessKey        | AWS Access Key                                                                                                                                             |
 | secretKey        | AWS Secret Key                                                                                                                                             |
-| s3               | S3 bucket configuration. Note that the bucket should *not* be configured to block public access.                                                           |
+| s3               | S3 bucket configuration.                                                                                                                                   |
 | vpc              | The virtual private cloud in which the instances operate. Not providing this assumes a default setting for VPC within the AWS environment.                 |
 | subnet           | The subnet supporting the instances.  Not providing this assumes a default setting for the subnet within the AWS environment.                              |
 | securityGroup    | AWS Security Group name (not ID). Must exist and allow incoming connections from your ClusterODM host on port TCP/3000.                                    |
@@ -77,7 +78,7 @@ the on-demand instance cost - you'll always pay the current market price, not yo
 | maxUploadTime    | Maximum number of seconds an instance is allowed to receive file uploads. Set to -1 for no limit.                                                          |
 | monitoring       | Set to true to enable detailed Cloudwatch monitoring for the instance.                                                                                     |
 | region           | Region identifier where the instances should be created.                                                                                                   |
-| zone		   | Zone identifier where the instances should be created.                                                                                                     |
+| zone		       | Zone identifier where the instances should be created.                                                                                                     |
 | ami              | The AMI (machine image) to launch this instance from.                                                                                                      |
 | tags             | Comma-separated list of key,value tags to associate to the instance.                                                                                       |
 | spot             | Whether to request spot instances. If this is true, a `spotPrice` needs to be provided in the `imageSizeMapping`.                                          |

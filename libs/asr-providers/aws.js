@@ -28,7 +28,8 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
             "secretKey": "CHANGEME!",
             "s3":{
                 "endpoint": "CHANGEME!",
-                "bucket": "CHANGEME!"
+                "bucket": "CHANGEME!",
+                "acl": "public-read"
             },
 	    "vpc": "",
 	    "subnet": "",
@@ -55,7 +56,7 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
     }
 
     async initialize(){
-        this.validateConfigKeys(["accessKey", "secretKey", "s3.endpoint", "s3.bucket", "securityGroup"]);
+        this.validateConfigKeys(["accessKey", "secretKey", "s3.endpoint", "s3.bucket", "s3.acl", "securityGroup"]);
 
         // Test S3
         const { endpoint, bucket } = this.getConfig("s3");
@@ -124,6 +125,7 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
                      `--s3_secret_key ${secretKey}`,
                      `--s3_endpoint ${s3.endpoint}`,
                      `--s3_bucket ${s3.bucket}`,
+                     `--s3_acl ${s3.acl}`,
                      `--webhook ${webhook}`,
                      `--token ${nodeToken}`].join(" "));
     }
