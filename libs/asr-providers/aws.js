@@ -33,6 +33,7 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
             },
 	    "vpc": "",
 	    "subnet": "",
+	    "usePrivateAddress": false,
             "securityGroup": "CHANGEME!",
             "maxRuntime": -1,
             "maxUploadTime": -1,
@@ -178,6 +179,10 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
         if (this.getConfig("tags", []).length > 0){
             args.push("--amazonec2-tags");
             args.push(this.getConfig("tags").join(","));
+        }
+
+        if (this.getConfig("usePrivateAddress")) {
+            args.push("--amazonec2-private-address-only");
         }
 
         if (this.getConfig("engineInstallUrl")){
