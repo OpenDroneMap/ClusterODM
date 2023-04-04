@@ -5,3 +5,4 @@ tmp/**
 
 .gitignore
 .nvmrc
+.idea/
