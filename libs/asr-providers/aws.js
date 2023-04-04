@@ -189,7 +189,7 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
         }
 
         if (this.getConfig("usePrivateAddress")) {
-            args.push("--amazonec2-private-address-only");
+            args.push("--amazonec2-use-private-address");
         }
 
         if (this.getConfig("engineInstallUrl")){
