@@ -28,10 +28,12 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
             "secretKey": "CHANGEME!",
             "s3":{
                 "endpoint": "CHANGEME!",
-                "bucket": "CHANGEME!"
+                "bucket": "CHANGEME!",
+                "acl": "public-read"
             },
 	    "vpc": "",
 	    "subnet": "",
+	    "usePrivateAddress": false,
             "securityGroup": "CHANGEME!",
             "maxRuntime": -1,
             "maxUploadTime": -1,
@@ -50,12 +52,13 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
 
             "addSwap": 1,
             "dockerImage": "opendronemap/nodeodm",
-	    "iamrole": ""
+	    "iamrole": "",
+	    "nodeSetupCmd": ""
         }, userConfig);
     }
 
     async initialize(){
-        this.validateConfigKeys(["accessKey", "secretKey", "s3.endpoint", "s3.bucket", "securityGroup"]);
+        this.validateConfigKeys(["accessKey", "secretKey", "s3.endpoint", "s3.bucket", "s3.acl", "securityGroup"]);
 
         // Test S3
         const { endpoint, bucket } = this.getConfig("s3");
@@ -118,12 +121,19 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
         const secretKey = this.getConfig("secretKey");
         const s3 = this.getConfig("s3");
         const webhook = netutils.publicAddressPath("/commit", req, token);
+        
+        const setupCmd = this.getConfig("nodeSetupCmd");
+        if (setupCmd != null && setupCmd.length > 0)
+        {
+          await dm.ssh(setupCmd);
+        }
 
         await dm.ssh([`sudo docker run -d -p 3000:3000 ${dockerImage} -q 1`,
                      `--s3_access_key ${accessKey}`,
                      `--s3_secret_key ${secretKey}`,
                      `--s3_endpoint ${s3.endpoint}`,
                      `--s3_bucket ${s3.bucket}`,
+                     `--s3_acl ${s3.acl}`,
                      `--webhook ${webhook}`,
                      `--token ${nodeToken}`].join(" "));
     }
@@ -176,6 +186,10 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
         if (this.getConfig("tags", []).length > 0){
             args.push("--amazonec2-tags");
             args.push(this.getConfig("tags").join(","));
+        }
+
+        if (this.getConfig("usePrivateAddress")) {
+            args.push("--amazonec2-use-private-address");
         }
 
         if (this.getConfig("engineInstallUrl")){
