@@ -5,7 +5,11 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "winbundle": "node winbundle.js"
+    "winbundle": "node winbundle.js",
+    "build": "npm run copy2src && npx tsc && npm run copy2build; npm run clean",
+    "copy2src": "cp ./package.json ./src/",
+    "copy2build": "cp ./src/config-default.json ./build/",
+    "clean": "rm ./src/package.json"
   },
   "repository": {
     "type": "git",
@@ -31,6 +35,8 @@
     "winston": "^3.3.3"
   },
   "devDependencies": {
-    "archiver": "^3.0.0"
+    "@types/node": "^18.14.0",
+    "archiver": "^3.0.0",
+    "typescript": "^4.9.5"
   }
 }

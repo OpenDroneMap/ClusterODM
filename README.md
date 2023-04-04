@@ -18,10 +18,15 @@ npm install
 
 There's also a docker image available at `opendronemap/clusterodm` and a native [Windows bundle](#windows-bundle).
 
+## build
+```bash
+npm run build
+```
+
 ## Usage
 
 First, start the program:
-
+from build directory
 ```bash
 node index.js [parameters]
 ```
@@ -63,7 +68,7 @@ To setup autoscaling you must:
    * Create a configuration file for [DigitalOcean](./docs/digitalocean.md), [Hetzner](./docs/hetzner.md), [Scaleway](./docs/scaleway.md), or [Amazon Web Services](./docs/aws.md) (click links to see examples)
 
 You can then launch ClusterODM with:
-
+from build dir
 ```bash
 node index.js --asr configuration.json
 ```
