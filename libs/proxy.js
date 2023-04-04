@@ -39,7 +39,7 @@ const floodMonitor = require('./floodMonitor');
 const AWS = require('aws-sdk');
 
 module.exports = {
-	initialize: async function(cloudProvider){
+    initialize: async function(cloudProvider){
         utils.cleanupTemporaryDirectory(config.stale_uploads_timeout);
         await routetable.initialize();
         await tasktable.initialize();
@@ -528,40 +528,40 @@ module.exports = {
                                 // If URL requires authentication, fetch the object on their behalf and then stream it to them
                                 // If our aws library gets updated to v3, then we could return a redirect to a presigned url instead 
                                 if (s3Config != null && s3Config.acl !== "public-read") {
-									let key = path.join(taskId, assetPath)
+                                    let key = path.join(taskId, assetPath)
 
-									const s3 = new AWS.S3({
-						                endpoint: new AWS.Endpoint(s3Config.endpoint),
-						                signatureVersion: 'v4',
-						                accessKeyId: asrProvider.get().getConfig("accessKey"),
-						                secretAccessKey: asrProvider.get().getConfig("secretKey")
-						            });
+                                    const s3 = new AWS.S3({
+                                        endpoint: new AWS.Endpoint(s3Config.endpoint),
+                                        signatureVersion: 'v4',
+                                        accessKeyId: asrProvider.get().getConfig("accessKey"),
+                                        secretAccessKey: asrProvider.get().getConfig("secretKey")
+                                    });
 
-									s3.getObject({ Bucket: s3Config.bucket, Key: key }, (err, data) => {
-									    if (err) {
-									      logger.error(`Error encountered downloading object ${err}`);
-									      res.statusCode = 500;
-									      res.end('Internal server error');
-									      return;
-									    }
+                                    s3.getObject({ Bucket: s3Config.bucket, Key: key }, (err, data) => {
+                                        if (err) {
+                                          logger.error(`Error encountered downloading object ${err}`);
+                                          res.statusCode = 500;
+                                          res.end('Internal server error');
+                                          return;
+                                        }
 
-									    // Set the content-type and content-length headers
-									    res.setHeader('Content-Type', data.ContentType);
-									    res.setHeader('Content-Length', data.ContentLength);
+                                        // Set the content-type and content-length headers
+                                        res.setHeader('Content-Type', data.ContentType);
+                                        res.setHeader('Content-Length', data.ContentLength);
 
-									    // Write the object data to the response
-									    res.write(data.Body);
-									    res.end();
-									});
-									return;
+                                        // Write the object data to the response
+                                        res.write(data.Body);
+                                        res.end();
+                                    });
+                                    return;
 
-								} else {
-									res.writeHead(301, {
-	                                    'Location': url.format(s3Url)
-	                                });
-	                                res.end();
-	                                return;
-								}
+                                } else {
+                                    res.writeHead(301, {
+                                        'Location': url.format(s3Url)
+                                    });
+                                    res.end();
+                                    return;
+                                }
                             }
                         }
 
