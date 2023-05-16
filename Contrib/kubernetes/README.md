@@ -2,7 +2,7 @@
 The following provides a means to run ClusterODM on your master node and a series of NodeODM instances on worker nodes in a kubernetes cluster.
 The configuration uses GPU's if they are setup on your kubernetes cluster.
 
-## Preparatioe
+## Preparation
 Before deploying it is important to make the following changes In the file k8clusternodeodm.yml
 
 change EXTERNALIPADDRESS to the external ip adddress of your k8 cluster
