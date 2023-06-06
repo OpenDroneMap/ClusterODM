@@ -288,7 +288,7 @@ module.exports = {
         const tmpPath = path.join("tmp", uuid);
         const { options, taskName, skipPostProcessing, outputs, dateCreated, fileNames, imagesCount, webhook } = params;
 
-        if (fileNames.length < 2){
+        if (fileNames.length < 1){
             throw new Error(`Not enough images (${fileNames.length} files uploaded)`);
         }
 
