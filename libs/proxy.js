@@ -527,7 +527,7 @@ module.exports = {
 
                                 // If URL requires authentication, fetch the object on their behalf and then stream it to them
                                 // If our aws library gets updated to v3, then we could return a redirect to a presigned url instead 
-                                if (s3Config != null && s3Config.acl !== "public-read") {
+                                if (s3Config && s3Config.acl !== undefined && s3Config.acl !== "public-read") {
                                     let key = path.join(taskId, assetPath)
 
                                     const s3 = new AWS.S3({
