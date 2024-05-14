@@ -232,8 +232,8 @@ module.exports = {
                         const subcommand = args[0].toLocaleUpperCase();
                         args = args.slice(1, args.length);
                         if (subcommand === "VIEWCMD"){
-                            const [ numImages ] = args;
-                            const cmd = await asr.debugCreateDockerMachineCmd(numImages);
+                            const [ numImages, colSizeMb ] = args;
+                            const cmd = await asr.debugCreateDockerMachineCmd(numImages, colSizeMb);
                             socket.write(`${cmd}\r\n`);
                         }else{
                             invalid();

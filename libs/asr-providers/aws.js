@@ -99,8 +99,8 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
         return `https://${this.getConfig("s3.bucket")}.${this.getConfig("s3.endpoint")}`;
     }
 
-    canHandle(imagesCount){
-        return this.getImagePropertiesFor(imagesCount) !== null;
+    canHandle(imagesCount, colSizeMb){
+        return this.getImagePropertiesFor(imagesCount, colSizeMb) !== null;
     }
 
     async setupMachine(req, token, dm, nodeToken){
@@ -138,13 +138,13 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
                      `--token ${nodeToken}`].join(" "));
     }
 
-    getImagePropertiesFor(imagesCount){
+    getImagePropertiesFor(imagesCount, colSizeMb){
         const im = this.getConfig("imageSizeMapping");
 
         let props = null;
         for (var k in im){
             const mapping = im[k];
-            if (mapping['maxImages'] >= imagesCount){
+            if (mapping['maxImages'] >= imagesCount && (mapping['maxColSizeMb'] == null || mapping['maxColSizeMb'] >= colSizeMb)){
                 props = mapping;
                 break;
             }
@@ -161,8 +161,8 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
         return this.getConfig("maxUploadTime");
     }
 
-    async getCreateArgs(imagesCount){
-        const image_props = this.getImagePropertiesFor(imagesCount);
+    async getCreateArgs(imagesCount, colSizeMb){
+        const image_props = this.getImagePropertiesFor(imagesCount, colSizeMb);
         const args = [
             "--amazonec2-access-key", this.getConfig("accessKey"),
             "--amazonec2-secret-key", this.getConfig("secretKey"),

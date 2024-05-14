@@ -103,10 +103,10 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
         return `https://${this.getConfig("s3.bucket")}.${this.getConfig("s3.endpoint")}`;
     }
 
-    canHandle(imagesCount){
+    canHandle(imagesCount, colSizeMb){
         const minImages = this.getConfig("minImages", -1);
 
-        return this.getImageSlugFor(imagesCount) !== null && 
+        return this.getImageSlugFor(imagesCount, colSizeMb) !== null && 
                (minImages === -1 || imagesCount >= minImages);
     }
 
@@ -137,13 +137,13 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
                      `--token ${nodeToken}`].join(" "));
     }
 
-    getImageSlugFor(imagesCount){
+    getImageSlugFor(imagesCount, colSizeMb){
         const im = this.getConfig("imageSizeMapping");
 
         let slug = null;
         for (var k in im){
             const mapping = im[k];
-            if (mapping['maxImages'] >= imagesCount){
+            if (mapping['maxImages'] >= imagesCount && (mapping['maxColSizeMb'] == null || mapping['maxColSizeMb'] >= colSizeMb)){
                 slug = mapping['slug'];
                 break;
             }
@@ -204,14 +204,14 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
         };
     }
 
-    async getCreateArgs(imagesCount){
+    async getCreateArgs(imagesCount, colSizeMb){
         const imageInfo = await this.getImageInfo();
 
         const args = [
             "--digitalocean-access-token", this.getConfig("accessToken"),
             "--digitalocean-region", imageInfo.region,
             "--digitalocean-image", imageInfo.image,
-            "--digitalocean-size", this.getImageSlugFor(imagesCount)
+            "--digitalocean-size", this.getImageSlugFor(imagesCount, colSizeMb)
         ];
 
         if (this.getConfig("monitoring")){

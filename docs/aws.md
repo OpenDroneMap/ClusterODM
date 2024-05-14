@@ -95,9 +95,10 @@ instance able to process the requested number of images is always selected.
 
 [EC2Instances.info](https://www.ec2instances.info) is a useful resource to help in selecting the appropriate instance type.
 
-| Field     | Description                                                                                       |
-|-----------|---------------------------------------------------------------------------------------------------|
-| maxImages | The maximum number of images this instance size can handle.                                       |
-| slug      | EC2 instance type to request (for example, `t3.medium`).                                          |
-| storage   | Amount of storage to allocate to this instance's EBS root volume, in GB.                          |
-| spotPrice | The maximum hourly price you're willing to bid for this instance (if spot instances are enabled). |
+| Field        | Description                                                                                       |
+|--------------|---------------------------------------------------------------------------------------------------|
+| maxImages    | The maximum number of images this instance size can handle.                                       |
+| maxColSizeMb | Optional. The maximum size of an image collection this instance size can handle.                  |
+| slug         | EC2 instance type to request (for example, `t3.medium`).                                          |
+| storage      | Amount of storage to allocate to this instance's EBS root volume, in GB.                          |
+| spotPrice    | The maximum hourly price you're willing to bid for this instance (if spot instances are enabled). |

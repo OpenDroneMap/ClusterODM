@@ -389,12 +389,43 @@ module.exports = {
                                     if (err) cb(err);
                                     else cb(null, files.filter(f => f.toLowerCase() !== "body.json"));
                                 });
+                            },
+
+                            cb => {
+                                let total = 0; // this field in bytes
+
+                                fs.readdir(tmpPath, (err, names) => {
+                                    if (err) return cb(err);
+
+                                    names = names.filter(f => f.toLowerCase() !== "body.json");
+                                    
+                                    let left = names.length;
+
+                                    if (left === 0) return cb(null, total);
+
+                                    function done(size)
+                                    {
+                                        total += size
+
+                                        left--
+                                        if (left === 0) cb(null, total/1024/1024);
+                                    }
+
+                                    for (let name of names)
+                                    {
+                                        fs.lstat(path.join(tmpPath, name), (err, stats) => {
+                                            if (err) return cb(err);
+                                            done(stats.size)
+                                        })
+                                    }
+                                });
                             }
-                        ], async (err, [ body, files ]) => {
+                        ], async (err, [ body, files, colSizeMb ]) => {
                             if (err) json(res, {error: err.message});
                             else{
                                 body.fileNames = files;
                                 body.imagesCount = files.length;
+                                body.colSizeMb = colSizeMb;
 
                                 try{
                                     await taskNew.process(req, res, cloudProvider, taskId, body, query.token, limits, getLimitedOptions);

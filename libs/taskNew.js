@@ -286,7 +286,7 @@ module.exports = {
 
     process: async function(req, res, cloudProvider, uuid, params, token, limits, getLimitedOptions){
         const tmpPath = path.join("tmp", uuid);
-        const { options, taskName, skipPostProcessing, outputs, dateCreated, fileNames, imagesCount, webhook } = params;
+        const { options, taskName, skipPostProcessing, outputs, dateCreated, fileNames, imagesCount, colSizeMb, webhook } = params;
 
         if (fileNames.length < 1){
             throw new Error(`Not enough images (${fileNames.length} files uploaded)`);
@@ -307,7 +307,7 @@ module.exports = {
         // Do we need to / can we create a new node via autoscaling?
         const autoscale = (!node || node.availableSlots() === 0) && 
                             asrProvider.isAllowedToCreateNewNodes() &&
-                            asrProvider.canHandle(fileNames.length);
+                            asrProvider.canHandle(fileNames.length, colSizeMb);
 
         if (autoscale) node = nodes.referenceNode(); // Use the reference node for task options purposes
 
@@ -560,7 +560,7 @@ module.exports = {
                 const asr = asrProvider.get();
                 try{
                     dmHostname = asr.generateHostname(imagesCount);
-                    node = await asr.createNode(req, imagesCount, token, dmHostname, status);
+                    node = await asr.createNode(req, imagesCount, colSizeMb, token, dmHostname, status);
                     if (!status.aborted) nodes.add(node);
                     else return;
                 }catch(e){
@@ -583,7 +583,7 @@ module.exports = {
                 handleError(e);
             }
         }else{
-            throw new Error("No nodes available");
+            throw new Error("No nodes available. Could not find a node which was capable of processing a job with image count " + fileNames.length + " and collection size " + colSizeMb);
         }
     }
 };
