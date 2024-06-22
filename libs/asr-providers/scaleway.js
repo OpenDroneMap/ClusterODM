@@ -86,10 +86,10 @@ module.exports = class ScalewayAsrProvider extends AbstractASRProvider{
         return `https://${this.getConfig("s3.bucket")}.${this.getConfig("s3.endpoint")}`;
     }
 
-    canHandle(imagesCount){
+    canHandle(imagesCount, colSizeMb){
         const minImages = this.getConfig("minImages", -1);
 
-        return this.getImageSlugFor(imagesCount) !== null && 
+        return this.getImageSlugFor(imagesCount, colSizeMb) !== null && 
                (minImages === -1 || imagesCount >= minImages);
     }
 
@@ -120,13 +120,13 @@ module.exports = class ScalewayAsrProvider extends AbstractASRProvider{
                      `--token ${nodeToken}`].join(" "));
     }
 
-    getImageSlugFor(imagesCount){
+    getImageSlugFor(imagesCount, colSizeMb){
         const im = this.getConfig("imageSizeMapping");
 
         let slug = null;
         for (var k in im){
             const mapping = im[k];
-            if (mapping['maxImages'] >= imagesCount){
+            if (mapping['maxImages'] >= imagesCount && (mapping['maxColSizeMb'] == null || mapping['maxColSizeMb'] >= colSizeMb)){
                 slug = mapping['slug'];
                 break;
             }
@@ -143,13 +143,13 @@ module.exports = class ScalewayAsrProvider extends AbstractASRProvider{
         return this.getConfig("maxUploadTime");
     }
 
-    async getCreateArgs(imagesCount){
+    async getCreateArgs(imagesCount, colSizeMb){
         const args = [
             "--scaleway-organization", this.getConfig("organization"),
             "--scaleway-token", this.getConfig("secretToken"),
             "--scaleway-region", this.getConfig("region"),
             "--scaleway-image", this.getConfig("image"),
-            "--scaleway-commercial-type", this.getImageSlugFor(imagesCount)
+            "--scaleway-commercial-type", this.getImageSlugFor(imagesCount, colSizeMb)
         ];
 
         if (this.getConfig("engineInstallUrl")){
