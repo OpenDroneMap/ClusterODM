@@ -172,12 +172,13 @@ module.exports = {
                             saveStream.close();
                             saveStream = null;
                         }
-                        if (fs.exists(saveTo, exists => {
-                            params.imagesCount--;
-                            fs.unlink(saveTo, err => {
-                                if (err) logger.error(err);
-                            });
-                        }));
+                        fs.exists(saveTo, exists => {
+                            if (exists){
+                                fs.unlink(saveTo, err => {
+                                    if (err) logger.error(err);
+                                });
+                            }
+                        });
                     };
                     req.on('close', handleClose);
                     req.on('abort', handleClose);
@@ -186,11 +187,14 @@ module.exports = {
                         req.removeListener('close', handleClose);
                         req.removeListener('abort', handleClose);
                         saveStream = null;
+                        params.imagesCount++;
+                        if (options.limits.maxImages && params.imagesCount > options.limits.maxImages){
+                            params.error = "Max images count exceeded.";
+                        }
                     });
 
                     saveStream = fs.createWriteStream(saveTo)
                     file.pipe(saveStream);
-                    params.imagesCount++;
                 }
             });
         }
