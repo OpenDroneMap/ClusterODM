@@ -129,7 +129,7 @@ sbatch sample.slurm
 You can also check for currently running jobs using squeue:
 
 ```
-squeue -u $user
+squeue -u $USER
 ```
 
 Unfortunately, SLURM does not handle assigning jobs to the head node. Hence, if we want to run ClusterODM on the head node, we have to run it locally. After that, you can connect to the CLI and wire the NodeODMs to the ClusterODMs. Here is an example following the sample SLURM script:
