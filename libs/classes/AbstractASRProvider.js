@@ -46,11 +46,11 @@ module.exports = class AbstractASRProvider{
         throw new Error("Not implemented");
     }
 
-    async getCreateArgs(imagesCount){
+    async getCreateArgs(imagesCount, colSizeMb){
         throw new Error("Not implemented");
     }
 
-    canHandle(imagesCount){
+    canHandle(imagesCount, colSizeMb){
         throw new Error("Not implemented");
     }
 
@@ -98,8 +98,8 @@ module.exports = class AbstractASRProvider{
     }
 
     // Helper function for debugging
-    async debugCreateDockerMachineCmd(imagesCount){
-        const args = await this.getCreateArgs(imagesCount);
+    async debugCreateDockerMachineCmd(imagesCount, colSizeMb){
+        const args = await this.getCreateArgs(imagesCount, colSizeMb);
         return `docker-machine create --driver ${this.getDriverName()} ${args.join(" ")} debug-machine`;
     }
 
@@ -110,12 +110,12 @@ module.exports = class AbstractASRProvider{
     // @param hostname {String} docker-machine hostname
     // @param status {Object} status information about the task being created
     // @return {Node} a new Node instance
-    async createNode(req, imagesCount, token, hostname, status){
-        if (!this.canHandle(imagesCount)) throw new Error(`Cannot handle ${imagesCount} images.`);
+    async createNode(req, imagesCount, colSizeMb, token, hostname, status){
+        if (!this.canHandle(imagesCount, colSizeMb)) throw new Error(`Cannot handle ${imagesCount} images.`);
 
         const dm = new DockerMachine(hostname);
         const args = ["--driver", this.getDriverName()]
-                        .concat(await this.getCreateArgs(imagesCount));
+                        .concat(await this.getCreateArgs(imagesCount, colSizeMb));
         const nodeToken = short.generate();
 
         try{
