@@ -62,7 +62,8 @@ the on-demand instance cost - you'll always pay the current market price, not yo
     ],
 
     "addSwap": 1,
-    "dockerImage": "opendronemap/nodeodm"
+    "dockerImage": "opendronemap/nodeodm",
+    "dockerDataDirMountPath": ""
 }
 ```
 
@@ -82,12 +83,14 @@ the on-demand instance cost - you'll always pay the current market price, not yo
 | monitoring                  | Set to true to enable detailed Cloudwatch monitoring for the instance.                                                                                     |
 | region                      | Region identifier where the instances should be created.                                                                                                   |
 | zone		                  | Zone identifier where the instances should be created.                                                                                                     |
-| ami                         | The AMI (machine image) to launch this instance from.                                                                                                      |
+| ami                         | The AMI (machine image) to launch this instance from. Note that AMIs are region-specific.                                                                  |
+| engineInstallUrl            | Specify installer for Docker engine. This can be cleared if AMI already has Docker engine installed.                                                       |
 | tags                        | Comma-separated list of key,value tags to associate to the instance.                                                                                       |
 | spot                        | Whether to request spot instances. If this is true, a `spotPrice` needs to be provided in the `imageSizeMapping`.                                          |
 | imageSizeMapping            | Max images count to instance size mapping. (See below.)                                                                                                    |
 | addSwap                     | Optionally add this much swap space to the instance as a factor of total RAM (`RAM * addSwap`). A value of `1` sets a swapfile equal to the available RAM. |
 | dockerImage                 | Docker image to launch                                                                                                                                     |
+| dockerDataDirMountPath      | Path on node host to map to NodeODM data directory (/var/www/data). Use local instance storage for much faster I/O.                                        |
 | nodeSetupCmd                | Can be optionally used to run a setup command on auto-scaled nodes right before we run ODM.                                                                |
 
 ## Image Size Mapping
@@ -103,3 +106,7 @@ instance able to process the requested number of images is always selected.
 | slug      | EC2 instance type to request (for example, `t3.medium`).                                          |
 | storage   | Amount of storage to allocate to this instance's EBS root volume, in GB.                          |
 | spotPrice | The maximum hourly price you're willing to bid for this instance (if spot instances are enabled). |
+
+If `dockerDataDirMountPath` is specified and a local mount path is used for NodeODM's data directory (such as local NVMe storage on AWS 'd' instances), 
+the `storage` parameter here does not need to scale with image sizes and can be statically set lower. This is because the local NVMe storage will be used for temporary data 
+storage and not the instance's root EBS volume. However, it is important to ensure that the local storage size will be sufficient for the desired image count.

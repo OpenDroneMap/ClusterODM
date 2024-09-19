@@ -53,6 +53,7 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
 
             "addSwap": 1,
             "dockerImage": "opendronemap/nodeodm",
+	    "dockerDataDirMountPath": "", 
 	    "iamrole": "",
 	    "nodeSetupCmd": ""
         }, userConfig);
@@ -120,6 +121,7 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
         const dockerImage = this.getConfig("dockerImage");
         const accessKey = this.getConfig("accessKey");
         const secretKey = this.getConfig("secretKey");
+	const dataDirMountPath = this.getConfig("dataDirMountPath");
         const s3 = this.getConfig("s3");
         const webhook = netutils.publicAddressPath("/commit", req, token);
         
@@ -129,14 +131,22 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
           await dm.ssh(setupCmd);
         }
 
-        await dm.ssh([`sudo docker run -d -p 3000:3000 ${dockerImage} -q 1`,
-                     `--s3_access_key ${accessKey}`,
-                     `--s3_secret_key ${secretKey}`,
-                     `--s3_endpoint ${s3.endpoint}`,
-                     `--s3_bucket ${s3.bucket}`,
-                     `--s3_acl ${s3.acl}`,
-                     `--webhook ${webhook}`,
-                     `--token ${nodeToken}`].join(" "));
+        let dockerRunArgs = [`sudo docker run -d -p 3000:3000`];
+
+	if(dataDirMountPath.length > 0){
+	    dockerRunArgs.push(`--mount type=bind,source=${dataDirMountPath},target=/var/www/data`);
+	}
+	    
+	dockerRunArgs.push(`${dockerImage} -q 1`);
+	dockerRunArgs.push(`--s3_access_key ${accessKey}`);
+	dockerRunArgs.push(`--s3_secret_key ${secretKey}`);
+	dockerRunArgs.push(`--s3_endpoint ${s3.endpoint}`);
+	dockerRunArgs.push(`--s3_bucket ${s3.bucket}`);
+	dockerRunArgs.push(`--s3_acl ${s3.acl}`);
+	dockerRunArgs.push(`--webhook ${webhook}`);
+	dockerRunArgs.push(`--token ${nodeToken}`);
+	    
+        await dm.ssh(dockerRunArgs.join(" "));
     }
 
     getImagePropertiesFor(imagesCount){
