@@ -162,7 +162,15 @@ module.exports = {
 
         // Listen for the `error` event on `proxy`.
         proxy.on('error', function (err, req, res) {
-            json(res, {error: `Proxy redirect error: ${err.message}`});
+            // If the error is caused by a connection issue,
+            // we actually simulate the same behavior by dropping the connection
+            // because returning an error could make a NodeODM client assume that something failed
+            if (res.socket && (err.code === 'ECONNRESET' || err.code === 'ECONNREFUSED')){
+                logger.warn(`Proxy redirect error: ${err.message}`);
+                res.socket.destroy();
+            }else{
+                json(res, {error: `Proxy redirect error: ${err.message}`});
+            }
         });
 
         // Added for CORS support
