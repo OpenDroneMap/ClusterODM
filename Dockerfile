@@ -1,10 +1,19 @@
-ARG NODE_IMG_TAG=14
-FROM node:${NODE_IMG_TAG} AS base
+ARG NODE_IMG_TAG=16
+FROM node:${NODE_IMG_TAG}-bookworm-slim AS base
 ARG NODE_IMG_TAG
 LABEL opendronemap.org.app-name="clusterodm" \
       opendronemap.org.node-img-tag="${NODE_IMG_TAG}" \
       opendronemap.org.maintainer="Piero Toffanin <pt@masseranolabs.com>" \
       opendronemap.org.api-port="3000"
+RUN apt-get update --quiet \
+    && DEBIAN_FRONTEND=noninteractive \
+    apt-get install -y --quiet --no-install-recommends \
+        "ca-certificates" \
+        "telnet" \
+        "curl" \
+        "dnsutils" \
+    && rm -rf /var/lib/apt/lists/* \
+    && update-ca-certificates
 WORKDIR "/var/www"
 USER root
 
@@ -21,17 +30,10 @@ RUN base=https://gitlab-docker-machine-downloads.s3.amazonaws.com/main && \
 
 FROM base AS build
 COPY package.json /var/www/
-RUN npm install --production
+RUN npm install --omit=dev
 
 
 FROM node:${NODE_IMG_TAG} AS runtime
-RUN apt-get update --quiet \
-    && DEBIAN_FRONTEND=noninteractive \
-    apt-get install -y --quiet --no-install-recommends \
-        "telnet" \
-        "curl" \
-        "dnsutils" \
-    && rm -rf /var/lib/apt/lists/*
 COPY --chown=node:node --from=build /var/www/node_modules /var/www/node_modules
 COPY --chown=node:node --from=docker-machine /usr/local/bin /usr/local/bin
 COPY --chown=node:node . /var/www

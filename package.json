@@ -1,6 +1,6 @@
 {
   "name": "ClusterODM",
-  "version": "1.5.5",
+  "version": "2.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -15,20 +15,20 @@
   "license": "AGPL-3.0",
   "dependencies": {
     "async": "^2.6.1",
-    "aws-sdk": "^2.466.0",
-    "axios": "^0.18.0",
-    "busboy": "^0.2.14",
+    "aws-sdk": "^2.1692.0",
+    "axios": "^0.27.2",
+    "busboy": "^0.3.1",
     "cors": "^2.8.5",
-    "express": "^4.16.4",
-    "express-basic-auth": "^1.2.0",
-    "http-proxy": "^1.17.0",
-    "minimist": "^1.2.0",
-    "node-libcurl": "^2.0.3",
+    "express": "^4.21.2",
+    "express-basic-auth": "^1.2.1",
+    "http-proxy": "^1.18.1",
+    "minimist": "^1.2.8",
+    "node-libcurl": "^2.3.4",
     "rimraf": "^2.6.2",
     "short-uuid": "^3.1.1",
-    "tree-kill": "^1.2.1",
-    "uuid": "^3.3.2",
-    "winston": "^3.3.3"
+    "tree-kill": "^1.2.2",
+    "uuid": "^11.1.0",
+    "winston": "^3.17.0"
   },
   "devDependencies": {
     "archiver": "^3.0.0"
