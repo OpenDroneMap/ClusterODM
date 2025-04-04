@@ -448,7 +448,7 @@ module.exports = {
                     let body = await getReqBody(req);
 
                     const busboy = new Busboy({ headers: req.headers });
-                    busboy.on('field', function(fieldname, val, fieldnameTruncated, valTruncated) {
+                    busboy.on('field', function(fieldname, val) {
                         if (fieldname === 'uuid'){
                             taskId = val;
                         }
