@@ -1,4 +1,4 @@
-ARG NODE_IMG_TAG=16
+ARG NODE_IMG_TAG=22
 FROM node:${NODE_IMG_TAG}-bookworm-slim AS base
 ARG NODE_IMG_TAG
 LABEL opendronemap.org.app-name="clusterodm" \
@@ -29,6 +29,11 @@ RUN base=https://gitlab-docker-machine-downloads.s3.amazonaws.com/main && \
 
 
 FROM base AS build
+RUN apt-get update --quiet \
+    && DEBIAN_FRONTEND=noninteractive \
+    apt-get install -y --quiet --no-install-recommends \
+        "git" \
+    && rm -rf /var/lib/apt/lists/*
 COPY package.json /var/www/
 RUN npm install --omit=dev
 
