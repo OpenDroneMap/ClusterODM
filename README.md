@@ -88,10 +88,10 @@ telnet localhost 8080
 
 This way all tasks will be automatically forwarded to the autoscaler.
 
-A docker-compose file is available to automatically setup both ClusterODM and NodeODM on the same machine by issuing:
+A docker compose file is available to automatically setup both ClusterODM and NodeODM on the same machine by issuing:
 
 ```
-docker-compose up
+docker compose up
 ```
 
 ## Windows Bundle

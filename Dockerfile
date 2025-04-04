@@ -5,7 +5,7 @@ EXPOSE 3000
 
 USER root
 
-RUN apt update && apt install -y telnet curl && \
+RUN apt update && apt install -y telnet curl dnsutils && \
     base=https://gitlab-docker-machine-downloads.s3.amazonaws.com/main && \
     curl -L $base/docker-machine-$(uname -s)-$(uname -m) >/tmp/docker-machine && \
     install /tmp/docker-machine /usr/local/bin/docker-machine && \
@@ -20,9 +20,10 @@ COPY --chown=node:node . /var/www
 
 RUN npm install
 
-RUN chown -R node:node /var/www
+RUN chown -R node:node /var/www \
+    && chmod +x /var/www/populate_nodes.sh
 
 USER node
 
 VOLUME ["/var/www/data"]
-ENTRYPOINT ["/usr/local/bin/node", "/var/www/index.js"]
+ENTRYPOINT ["/bin/sh", "-c", "/var/www/populate_nodes.sh && exec /usr/local/bin/node /var/www/index.js"]
