@@ -19,12 +19,8 @@
 
 const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
-const async = require('async');
 const logger = require('./logger');
 const Readable = require('stream').Readable;
-const rimraf = require('rimraf');
-const child_process = require('child_process');
-const os = require('os');
 const path = require('path');
 
 const tmpUploadsMap = {}; // tmp dir entries --> number of files
@@ -171,13 +167,8 @@ module.exports = {
     },
 
     // rm -fr implementation. dir is not checked, so this could wipe out your system.
-    rmfr: function(dir, cb){
-        if (['darwin', 'linux', 'freebsd'].indexOf(os.platform()) !== -1){
-            // Rimraf leaks on Linux, use faster/better rm -fr
-            return child_process.exec(`rm -rf ${dir}`, cb);
-        }else{
-            return rimraf(dir, cb);
-        }
+    rmfr: function rmfr(dir, cb) {
+        fs.rm(dir, { recursive: true, force: true }, cb);
     },
 
     // JSON helper for responses
