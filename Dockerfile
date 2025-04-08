@@ -35,7 +35,7 @@ RUN apt-get update --quiet \
         "git" \
     && rm -rf /var/lib/apt/lists/*
 COPY package.json /var/www/
-RUN npm install --omit=dev
+RUN npm install
 
 
 FROM node:${NODE_IMG_TAG} AS runtime
