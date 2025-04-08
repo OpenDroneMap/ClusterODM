@@ -12,7 +12,7 @@ const API_URL = 'http://clusterodm:3000'
 const TASK_UUID = uuidv4()
 console.log(`Testing CluserODM with task id: ${TASK_UUID}`)
 
-describe('ClusterODM basic imagery processing workflow', () => {
+describe.sequential('ClusterODM basic imagery processing workflow', () => {
   // Check the ClusterODM API is available before running tests
   beforeAll(async () => {
     // First, wait 3 seconds for ClusterODM --> NodeODM connection
@@ -39,7 +39,7 @@ describe('ClusterODM basic imagery processing workflow', () => {
     }
 
     throw new Error(`ClusterODM /info did not return engine=odm after ${maxAttempts} attempts`)
-  }, 15_000)
+  })
 
   test('/options after node added', async () => {
     const response = await fetch(`${API_URL}/options`)
@@ -89,6 +89,8 @@ describe('ClusterODM basic imagery processing workflow', () => {
     const responseJson = await response.json()
     expect(responseJson).not.toHaveProperty('error')
     expect(responseJson).toStrictEqual({ uuid: TASK_UUID })
+
+    console.log(`Task ${TASK_UUID} created successfully`)
   })
 
   // https://github.com/OpenDroneMap/NodeODM/blob/master/docs/index.adoc#get-tasklist
