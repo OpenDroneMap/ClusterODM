@@ -32,6 +32,10 @@ FROM base AS build
 RUN apt-get update --quiet \
     && DEBIAN_FRONTEND=noninteractive \
     apt-get install -y --quiet --no-install-recommends \
+        # deps required for node-libcurl build
+        "build-essential" \
+        "python3" \
+        "libcurl4-openssl-dev" \
         "git" \
     && rm -rf /var/lib/apt/lists/*
 COPY package.json /var/www/
