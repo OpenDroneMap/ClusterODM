@@ -48,7 +48,8 @@ module.exports = class ScalewayAsrProvider extends AbstractASRProvider{
             "minImages": -1,
 
             "addSwap": 1,
-            "dockerImage": "opendronemap/nodeodm"
+            "dockerImage": "opendronemap/nodeodm",
+            "dockerAdditionalArgs": ""
         }, userConfig);
     }
 
@@ -107,6 +108,7 @@ module.exports = class ScalewayAsrProvider extends AbstractASRProvider{
         }
 
         const dockerImage = this.getConfig("dockerImage");
+        const dockerAdditionalArgs = this.getConfig("dockerAdditionalArgs", "");
         const s3 = this.getConfig("s3");
         const webhook = netutils.publicAddressPath("/commit", req, token);
 
@@ -117,7 +119,9 @@ module.exports = class ScalewayAsrProvider extends AbstractASRProvider{
                      `--s3_bucket ${s3.bucket}`,
                      s3.ignoreSSL ? '--s3_ignore_ssl' : '',
                      `--webhook ${webhook}`,
-                     `--token ${nodeToken}`].join(" "));
+                     `--token ${nodeToken}`,
+                     `${dockerAdditionalArgs}`
+        ].join(" "));
     }
 
     getImageSlugFor(imagesCount){
