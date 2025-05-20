@@ -48,7 +48,8 @@ module.exports = class ScalewayAsrProvider extends AbstractASRProvider{
             "minImages": -1,
 
             "addSwap": 1,
-            "dockerImage": "opendronemap/nodeodm"
+            "dockerImage": "opendronemap/nodeodm",
+            "dockerGpu": false
         }, userConfig);
     }
 
@@ -109,15 +110,20 @@ module.exports = class ScalewayAsrProvider extends AbstractASRProvider{
         const dockerImage = this.getConfig("dockerImage");
         const s3 = this.getConfig("s3");
         const webhook = netutils.publicAddressPath("/commit", req, token);
+        let dockerAdditionalArgs = "";
+        if (this.getConfig("dockerGpu")) {
+            dockerAdditionalArgs = "--gpus all";
+        }
 
-        await dm.ssh([`docker run -d -p 3000:3000 ${dockerImage} -q 1`,
+        await dm.ssh([`docker run -d -p 3000:3000 ${dockerAdditionalArgs} ${dockerImage} -q 1`,
                      `--s3_access_key ${s3.accessKey}`,
                      `--s3_secret_key ${s3.secretKey}`,
                      `--s3_endpoint ${s3.endpoint}`,
                      `--s3_bucket ${s3.bucket}`,
                      s3.ignoreSSL ? '--s3_ignore_ssl' : '',
                      `--webhook ${webhook}`,
-                     `--token ${nodeToken}`].join(" "));
+                     `--token ${nodeToken}`,
+        ].join(" "));
     }
 
     getImageSlugFor(imagesCount){

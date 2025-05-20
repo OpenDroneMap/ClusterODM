@@ -31,17 +31,17 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
                 "bucket": "CHANGEME!",
                 "acl": "public-read"
             },
-	    "vpc": "",
-	    "subnet": "",
-	    "usePrivateAddress": false,
-	    "assignPrivateAddressOnly": false,
+            "vpc": "",
+            "subnet": "",
+            "usePrivateAddress": false,
+            "assignPrivateAddressOnly": false,
             "securityGroup": "CHANGEME!",
             "maxRuntime": -1,
             "maxUploadTime": -1,
             "instanceLimit": -1,
             "createRetries": 1,
             "region": "us-west-2",
-	    "zone": "",
+	        "zone": "",
             "monitoring": false,
             "tags": ["clusterodm"],
             "ami": "ami-07b4f3c02c7f83d59",
@@ -53,9 +53,11 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
 
             "addSwap": 1,
             "dockerImage": "opendronemap/nodeodm",
-	    "dockerDataDirMountPath": "", 
-	    "iamrole": "",
-	    "nodeSetupCmd": ""
+            "dockerDataDirMountPath": "",
+            "dockerGpu": false,
+
+            "iamrole": "",
+            "nodeSetupCmd": ""
         }, userConfig);
     }
 
@@ -121,7 +123,7 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
         const dockerImage = this.getConfig("dockerImage");
         const accessKey = this.getConfig("accessKey");
         const secretKey = this.getConfig("secretKey");
-	const dataDirMountPath = this.getConfig("dataDirMountPath");
+    	const dataDirMountPath = this.getConfig("dataDirMountPath");
         const s3 = this.getConfig("s3");
         const webhook = netutils.publicAddressPath("/commit", req, token);
         
@@ -136,6 +138,9 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
 	if(dataDirMountPath.length > 0){
 	    dockerRunArgs.push(`--mount type=bind,source=${dataDirMountPath},target=/var/www/data`);
 	}
+    if (this.getConfig("dockerGpu")){
+        dockerRunArgs.push(`--gpus all`);
+    }
 	    
 	dockerRunArgs.push(`${dockerImage} -q 1`);
 	dockerRunArgs.push(`--s3_access_key ${accessKey}`);
@@ -146,7 +151,7 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
 	dockerRunArgs.push(`--webhook ${webhook}`);
 	dockerRunArgs.push(`--token ${nodeToken}`);
 	    
-        await dm.ssh(dockerRunArgs.join(" "));
+    await dm.ssh(dockerRunArgs.join(" "));
     }
 
     getImagePropertiesFor(imagesCount){

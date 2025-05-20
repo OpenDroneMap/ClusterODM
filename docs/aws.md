@@ -67,31 +67,32 @@ the on-demand instance cost - you'll always pay the current market price, not yo
 }
 ```
 
-| Field                       | Description                                                                                                                                                |
-|-----------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| accessKey                   | AWS Access Key                                                                                                                                             |
-| secretKey                   | AWS Secret Key                                                                                                                                             |
-| s3                          | S3 bucket configuration.                                                                                                                                   |
-| vpc                         | The virtual private cloud in which the instances operate. Not providing this assumes a default setting for VPC within the AWS environment.                 |
-| subnet                      | The subnet supporting the instances.  Not providing this assumes a default setting for the subnet within the AWS environment.                              |
-| usePrivateAddress           | Set to true to use the private IP address when communicating with auto-scaled nodes. Useful if ClusterODM is on the same vpc as the auto-scaled nodes.     |
-| assignPrivateAddressOnly    | Set to true to ensure that only a private IP address is assigned to the created node. Only has effect if usePrivateAddress is true. Avoids extra charges.  |
-| securityGroup               | AWS Security Group name (not ID). Must exist and allow incoming connections from your ClusterODM host on port TCP/3000.                                    |
-| createRetries               | Number of attempts to create a droplet before giving up. Defaults to 1.                                                                                    |
-| maxRuntime                  | Maximum number of seconds an instance is allowed to run ever. Set to -1 for no limit.                                                                      |
-| maxUploadTime               | Maximum number of seconds an instance is allowed to receive file uploads. Set to -1 for no limit.                                                          |
-| monitoring                  | Set to true to enable detailed Cloudwatch monitoring for the instance.                                                                                     |
-| region                      | Region identifier where the instances should be created.                                                                                                   |
-| zone		                  | Zone identifier where the instances should be created.                                                                                                     |
-| ami                         | The AMI (machine image) to launch this instance from. Note that AMIs are region-specific.                                                                  |
-| engineInstallUrl            | Specify installer for Docker engine. This can be cleared if AMI already has Docker engine installed.                                                       |
-| tags                        | Comma-separated list of key,value tags to associate to the instance.                                                                                       |
-| spot                        | Whether to request spot instances. If this is true, a `spotPrice` needs to be provided in the `imageSizeMapping`.                                          |
-| imageSizeMapping            | Max images count to instance size mapping. (See below.)                                                                                                    |
-| addSwap                     | Optionally add this much swap space to the instance as a factor of total RAM (`RAM * addSwap`). A value of `1` sets a swapfile equal to the available RAM. |
-| dockerImage                 | Docker image to launch                                                                                                                                     |
-| dockerDataDirMountPath      | Path on node host to map to NodeODM data directory (/var/www/data). Use local instance storage for much faster I/O.                                        |
-| nodeSetupCmd                | Can be optionally used to run a setup command on auto-scaled nodes right before we run ODM.                                                                |
+| Field                    | Description                                                                                                                                                |
+|--------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| accessKey                | AWS Access Key                                                                                                                                             |
+| secretKey                | AWS Secret Key                                                                                                                                             |
+| s3                       | S3 bucket configuration.                                                                                                                                   |
+| vpc                      | The virtual private cloud in which the instances operate. Not providing this assumes a default setting for VPC within the AWS environment.                 |
+| subnet                   | The subnet supporting the instances.  Not providing this assumes a default setting for the subnet within the AWS environment.                              |
+| usePrivateAddress        | Set to true to use the private IP address when communicating with auto-scaled nodes. Useful if ClusterODM is on the same vpc as the auto-scaled nodes.     |
+| assignPrivateAddressOnly | Set to true to ensure that only a private IP address is assigned to the created node. Only has effect if usePrivateAddress is true. Avoids extra charges.  |
+| securityGroup            | AWS Security Group name (not ID). Must exist and allow incoming connections from your ClusterODM host on port TCP/3000.                                    |
+| createRetries            | Number of attempts to create a droplet before giving up. Defaults to 1.                                                                                    |
+| maxRuntime               | Maximum number of seconds an instance is allowed to run ever. Set to -1 for no limit.                                                                      |
+| maxUploadTime            | Maximum number of seconds an instance is allowed to receive file uploads. Set to -1 for no limit.                                                          |
+| monitoring               | Set to true to enable detailed Cloudwatch monitoring for the instance.                                                                                     |
+| region                   | Region identifier where the instances should be created.                                                                                                   |
+| zone		                   | Zone identifier where the instances should be created.                                                                                                     |
+| ami                      | The AMI (machine image) to launch this instance from. Note that AMIs are region-specific.                                                                  |
+| engineInstallUrl         | Specify installer for Docker engine. This can be cleared if AMI already has Docker engine installed.                                                       |
+| tags                     | Comma-separated list of key,value tags to associate to the instance.                                                                                       |
+| spot                     | Whether to request spot instances. If this is true, a `spotPrice` needs to be provided in the `imageSizeMapping`.                                          |
+| imageSizeMapping         | Max images count to instance size mapping. (See below.)                                                                                                    |
+| addSwap                  | Optionally add this much swap space to the instance as a factor of total RAM (`RAM * addSwap`). A value of `1` sets a swapfile equal to the available RAM. |
+| dockerImage              | Docker image to launch                                                                                                                                     |
+| dockerDataDirMountPath   | Path on node host to map to NodeODM data directory (/var/www/data). Use local instance storage for much faster I/O.                                        |
+| dockerGpu                | Enables GPU acceleration by passing `--gpu all` to docker                                                                                                    |
+| nodeSetupCmd             | Can be optionally used to run a setup command on auto-scaled nodes right before we run ODM.                                                                |
 
 ## Image Size Mapping
 
