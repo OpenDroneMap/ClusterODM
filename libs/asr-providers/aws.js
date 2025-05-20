@@ -54,7 +54,7 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
             "addSwap": 1,
             "dockerImage": "opendronemap/nodeodm",
             "dockerDataDirMountPath": "",
-            "dockerAdditionalArgs": "",
+            "dockerGpu": false,
 
             "iamrole": "",
             "nodeSetupCmd": ""
@@ -124,7 +124,6 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
         const accessKey = this.getConfig("accessKey");
         const secretKey = this.getConfig("secretKey");
     	const dataDirMountPath = this.getConfig("dataDirMountPath");
-        const dockerAdditionalArgs = this.getConfig("dockerAdditionalArgs");
         const s3 = this.getConfig("s3");
         const webhook = netutils.publicAddressPath("/commit", req, token);
         
@@ -139,6 +138,9 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
 	if(dataDirMountPath.length > 0){
 	    dockerRunArgs.push(`--mount type=bind,source=${dataDirMountPath},target=/var/www/data`);
 	}
+    if (this.getConfig("dockerGpu")){
+        dockerRunArgs.push(`--gpus all`);
+    }
 	    
 	dockerRunArgs.push(`${dockerImage} -q 1`);
 	dockerRunArgs.push(`--s3_access_key ${accessKey}`);
@@ -148,9 +150,6 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
 	dockerRunArgs.push(`--s3_acl ${s3.acl}`);
 	dockerRunArgs.push(`--webhook ${webhook}`);
 	dockerRunArgs.push(`--token ${nodeToken}`);
-    if (dockerAdditionalArgs.length > 0){
-        dockerRunArgs.push(dockerAdditionalArgs);
-    }
 	    
     await dm.ssh(dockerRunArgs.join(" "));
     }

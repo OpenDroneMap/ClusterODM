@@ -91,7 +91,7 @@ the on-demand instance cost - you'll always pay the current market price, not yo
 | addSwap                  | Optionally add this much swap space to the instance as a factor of total RAM (`RAM * addSwap`). A value of `1` sets a swapfile equal to the available RAM. |
 | dockerImage              | Docker image to launch                                                                                                                                     |
 | dockerDataDirMountPath   | Path on node host to map to NodeODM data directory (/var/www/data). Use local instance storage for much faster I/O.                                        |
-| dockerAdditionalArgs     | Additional args to pass to docker run command. For instance `--gpu all` to enable GPU acceleration                                                        |
+| dockerGpu                | Enables GPU acceleration by passing `--gpu all` to docker                                                                                                    |
 | nodeSetupCmd             | Can be optionally used to run a setup command on auto-scaled nodes right before we run ODM.                                                                |
 
 ## Image Size Mapping

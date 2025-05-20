@@ -60,5 +60,5 @@ Example configuration file:
 | minImages                | Minimum number of images that a dataset needs to have for the autoscaler to be used (-1 = no minimum).                                                                                                                                                                                                              |
 | addSwap                  | Optionally add this much swap space to the droplet as a factor of total RAM (`RAM * addSwap`). A value of `1` sets a swapfile equal to the available RAM.                                                                                                                                                         |
 | dockerImage              | Docker image to launch                                                                                                        
-| dockerAdditionalArgs     | Additional args to pass to docker run command. For instance `--gpu all` to enable GPU acceleration                                                        |
+| dockerGpu     | Enables GPU acceleration by passing `--gpu all` to docker                                                        |
                                                                                                                                                                                     |
