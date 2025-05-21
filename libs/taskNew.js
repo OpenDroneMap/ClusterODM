@@ -112,7 +112,7 @@ module.exports = {
         };
 
         if (options.parseFields){
-            busboy.on('field', function(fieldname, val, fieldnameTruncated, valTruncated) {
+            busboy.on('field', function(fieldname, val) {
                 // Save options
                 if (fieldname === 'options'){
                     params.options = val;
@@ -144,7 +144,7 @@ module.exports = {
             });
         }
         if (options.saveFilesToDir){
-            busboy.on('file', async function(fieldname, file, filename, encoding, mimetype) {
+            busboy.on('file', async function(fieldname, file, filename) {
                 if (fieldname === 'images'){
                     if (options.limits.maxImages && params.imagesCount > options.limits.maxImages){
                         params.error = "Max images count exceeded.";

@@ -17,8 +17,6 @@
  */
 const logger = require('../logger');
 const spawn = require('child_process').spawn;
-const kill = require('tree-kill');
-const async = require('async');
 
 runningProcesses = {};
 
