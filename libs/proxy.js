@@ -354,8 +354,13 @@ module.exports = {
                                 }, { saveFilesToDir, parseFields: false});
                             }
                         ], err => {
-                            if (err) json(res, {error: err.message});
-                            else json(res, {success: true});
+                            if (err) {
+                                logger.error(`Upload failed for ${taskId}: ${err.message}`);
+                                json(res, {error: err.message});
+                            } else {
+                                logger.debug(`Upload successful for ${taskId}`);
+                                json(res, {success: true});
+                            }
                         });
                     }else json(res, { error: `No uuid found in ${pathname}`});
                 }else if (req.method === 'POST' && pathname.indexOf('/task/new/commit') === 0){
