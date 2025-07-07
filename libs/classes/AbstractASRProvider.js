@@ -46,8 +46,12 @@ module.exports = class AbstractASRProvider{
         throw new Error("Not implemented");
     }
 
-    async getCreateArgs(imagesCount){
+    async getCreateArgs(imagesCount, attempt){
         throw new Error("Not implemented");
+    }
+
+    getFailureSleepTime(attempt){
+        return 10000 * attempt;
     }
 
     canHandle(imagesCount){
@@ -99,7 +103,7 @@ module.exports = class AbstractASRProvider{
 
     // Helper function for debugging
     async debugCreateDockerMachineCmd(imagesCount){
-        const args = await this.getCreateArgs(imagesCount);
+        const args = await this.getCreateArgs(imagesCount, 1);
         return `docker-machine create --driver ${this.getDriverName()} ${args.join(" ")} debug-machine`;
     }
 
@@ -114,8 +118,6 @@ module.exports = class AbstractASRProvider{
         if (!this.canHandle(imagesCount)) throw new Error(`Cannot handle ${imagesCount} images.`);
 
         const dm = new DockerMachine(hostname);
-        const args = ["--driver", this.getDriverName()]
-                        .concat(await this.getCreateArgs(imagesCount));
         const nodeToken = short.generate();
 
         try{
@@ -125,20 +127,23 @@ module.exports = class AbstractASRProvider{
             for (let i = 1; i <= this.getCreateRetries(); i++){
                 if (status.aborted) throw new Error("Aborted");
 
+                const args = ["--driver", this.getDriverName()]
+                        .concat(await this.getCreateArgs(imagesCount, i));
+
                 logger.info(`Trying to create machine... (${i})`);
                 try{
                     await dm.create(args);
                     created = true;
                     break;
                 }catch(e){
-                    logger.warn(`Cannot create machine: ${e}`);
+                    logger.warn(`Cannot create machine: ${e} with args ${args.join(" ")}`);
                     try{
                         await dm.rm(true); // Make sure to cleanup if something goes wrong!
                     }catch(e){
                         // Do nothing
                     }
 
-                    await utils.sleep(10000 * i);
+                    await utils.sleep(this.getFailureSleepTime(i));
                 }
             }
             if (!created) throw new Error(`Cannot create machine (attempted ${this.getCreateRetries()} times)`);
@@ -196,5 +201,16 @@ module.exports = class AbstractASRProvider{
 
     getConfig(key, defaultValue = ""){
         return utils.get(this.config, key, defaultValue);
+    }
+
+    getConfigArray(key, defaultValue = []){
+        let val = this.getConfig(key, defaultValue);
+        if (!Array.isArray(val)) val = [val];
+        return val;
+    }
+
+    getConfigArrayItem(key, idx){
+        let arr = this.getConfigArray(key, [""]);
+        return arr[idx % arr.length];
     }
 }

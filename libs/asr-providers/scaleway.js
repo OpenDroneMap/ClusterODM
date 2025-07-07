@@ -149,11 +149,11 @@ module.exports = class ScalewayAsrProvider extends AbstractASRProvider{
         return this.getConfig("maxUploadTime");
     }
 
-    async getCreateArgs(imagesCount){
+    async getCreateArgs(imagesCount, attempt){
         const args = [
             "--scaleway-organization", this.getConfig("organization"),
             "--scaleway-token", this.getConfig("secretToken"),
-            "--scaleway-region", this.getConfig("region"),
+            "--scaleway-region", this.getConfigArrayItem("region", attempt - 1),
             "--scaleway-image", this.getConfig("image"),
             "--scaleway-commercial-type", this.getImageSlugFor(imagesCount)
         ];
@@ -164,5 +164,11 @@ module.exports = class ScalewayAsrProvider extends AbstractASRProvider{
         }
 
         return args;
+    }
+
+    getFailureSleepTime(attempt){
+        const numRegions = this.getConfigArray("region").length;
+        if (attempt <= numRegions) return 1000;
+        else return 10000 * (attempt - numRegions);
     }
 };

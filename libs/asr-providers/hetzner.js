@@ -217,10 +217,11 @@ module.exports = class HetznerAsrProvider extends AbstractASRProvider{
         return this.getConfig("maxUploadTime");
     }
 
-    async getCreateArgs(imagesCount){
+    async getCreateArgs(imagesCount, attempt){
+
         const args = [
             "--hetzner-api-token", this.getConfig("apiToken"),
-            "--hetzner-server-location", this.getConfig("location"),
+            "--hetzner-server-location", this.getConfigArrayItem("location", attempt - 1),
             "--hetzner-server-type", this.getImageSlugFor(imagesCount)
         ];
 
@@ -249,5 +250,11 @@ module.exports = class HetznerAsrProvider extends AbstractASRProvider{
         }
 
         return args;
+    }
+
+    getFailureSleepTime(attempt){
+        const numLocs = this.getConfigArray("location").length;
+        if (attempt <= numLocs) return 1000;
+        else return 10000 * (attempt - numLocs);
     }
 };
