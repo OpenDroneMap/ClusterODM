@@ -128,30 +128,29 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
         const webhook = netutils.publicAddressPath("/commit", req, token);
         
         const setupCmd = this.getConfig("nodeSetupCmd");
-        if (setupCmd != null && setupCmd.length > 0)
-        {
+        if (setupCmd != null && setupCmd.length > 0){
           await dm.ssh(setupCmd);
         }
 
         let dockerRunArgs = [`sudo docker run -d -p 3000:3000`];
 
-    if(dataDirMountPath.length > 0){
-        dockerRunArgs.push(`--mount type=bind,source=${dataDirMountPath},target=/var/www/data`);
-    }
-    if (this.getConfig("dockerGpu")){
-        dockerRunArgs.push(`--gpus all`);
-    }
-        
-    dockerRunArgs.push(`${dockerImage} -q 1`);
-    dockerRunArgs.push(`--s3_access_key ${accessKey}`);
-    dockerRunArgs.push(`--s3_secret_key ${secretKey}`);
-    dockerRunArgs.push(`--s3_endpoint ${s3.endpoint}`);
-    dockerRunArgs.push(`--s3_bucket ${s3.bucket}`);
-    dockerRunArgs.push(`--s3_acl ${s3.acl}`);
-    dockerRunArgs.push(`--webhook ${webhook}`);
-    dockerRunArgs.push(`--token ${nodeToken}`);
-        
-    await dm.ssh(dockerRunArgs.join(" "));
+        if(dataDirMountPath.length > 0){
+            dockerRunArgs.push(`--mount type=bind,source=${dataDirMountPath},target=/var/www/data`);
+        }
+        if (this.getConfig("dockerGpu")){
+            dockerRunArgs.push(`--gpus all`);
+        }
+            
+        dockerRunArgs.push(`${dockerImage} -q 1`);
+        dockerRunArgs.push(`--s3_access_key ${accessKey}`);
+        dockerRunArgs.push(`--s3_secret_key ${secretKey}`);
+        dockerRunArgs.push(`--s3_endpoint ${s3.endpoint}`);
+        dockerRunArgs.push(`--s3_bucket ${s3.bucket}`);
+        dockerRunArgs.push(`--s3_acl ${s3.acl}`);
+        dockerRunArgs.push(`--webhook ${webhook}`);
+        dockerRunArgs.push(`--token ${nodeToken}`);
+            
+        await dm.ssh(dockerRunArgs.join(" "));
     }
 
     getImagePropertiesFor(imagesCount){
