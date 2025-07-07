@@ -165,9 +165,9 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
         return this.getConfig("maxUploadTime");
     }
 
-    async getImageInfo(){
+    async getImageInfo(attempt){
         let imageName = this.getConfig("image");
-        let imageRegion = this.getConfig("region");
+        let imageRegion = this.getConfigArrayItem("region", attempt - 1);
 
         if (this.getConfig("snapshot")){
             // We need to fetch the imageID
@@ -209,8 +209,8 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
         };
     }
 
-    async getCreateArgs(imagesCount){
-        const imageInfo = await this.getImageInfo();
+    async getCreateArgs(imagesCount, attempt){
+        const imageInfo = await this.getImageInfo(attempt);
 
         const args = [
             "--digitalocean-access-token", this.getConfig("accessToken"),
@@ -244,5 +244,11 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
         }
 
         return args;
+    }
+
+    getFailureSleepTime(attempt){
+        const numRegions = this.getConfigArray("region").length;
+        if (attempt <= numRegions) return 1000;
+        else return 10000 * (attempt - numRegions);
     }
 };

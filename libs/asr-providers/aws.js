@@ -41,7 +41,7 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
             "instanceLimit": -1,
             "createRetries": 1,
             "region": "us-west-2",
-	        "zone": "",
+            "zone": "",
             "monitoring": false,
             "tags": ["clusterodm"],
             "ami": "ami-07b4f3c02c7f83d59",
@@ -123,35 +123,34 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
         const dockerImage = this.getConfig("dockerImage");
         const accessKey = this.getConfig("accessKey");
         const secretKey = this.getConfig("secretKey");
-    	const dataDirMountPath = this.getConfig("dataDirMountPath");
+        const dataDirMountPath = this.getConfig("dataDirMountPath");
         const s3 = this.getConfig("s3");
         const webhook = netutils.publicAddressPath("/commit", req, token);
         
         const setupCmd = this.getConfig("nodeSetupCmd");
-        if (setupCmd != null && setupCmd.length > 0)
-        {
+        if (setupCmd != null && setupCmd.length > 0){
           await dm.ssh(setupCmd);
         }
 
         let dockerRunArgs = [`sudo docker run -d -p 3000:3000`];
 
-	if(dataDirMountPath.length > 0){
-	    dockerRunArgs.push(`--mount type=bind,source=${dataDirMountPath},target=/var/www/data`);
-	}
-    if (this.getConfig("dockerGpu")){
-        dockerRunArgs.push(`--gpus all`);
-    }
-	    
-	dockerRunArgs.push(`${dockerImage} -q 1`);
-	dockerRunArgs.push(`--s3_access_key ${accessKey}`);
-	dockerRunArgs.push(`--s3_secret_key ${secretKey}`);
-	dockerRunArgs.push(`--s3_endpoint ${s3.endpoint}`);
-	dockerRunArgs.push(`--s3_bucket ${s3.bucket}`);
-	dockerRunArgs.push(`--s3_acl ${s3.acl}`);
-	dockerRunArgs.push(`--webhook ${webhook}`);
-	dockerRunArgs.push(`--token ${nodeToken}`);
-	    
-    await dm.ssh(dockerRunArgs.join(" "));
+        if(dataDirMountPath.length > 0){
+            dockerRunArgs.push(`--mount type=bind,source=${dataDirMountPath},target=/var/www/data`);
+        }
+        if (this.getConfig("dockerGpu")){
+            dockerRunArgs.push(`--gpus all`);
+        }
+            
+        dockerRunArgs.push(`${dockerImage} -q 1`);
+        dockerRunArgs.push(`--s3_access_key ${accessKey}`);
+        dockerRunArgs.push(`--s3_secret_key ${secretKey}`);
+        dockerRunArgs.push(`--s3_endpoint ${s3.endpoint}`);
+        dockerRunArgs.push(`--s3_bucket ${s3.bucket}`);
+        dockerRunArgs.push(`--s3_acl ${s3.acl}`);
+        dockerRunArgs.push(`--webhook ${webhook}`);
+        dockerRunArgs.push(`--token ${nodeToken}`);
+            
+        await dm.ssh(dockerRunArgs.join(" "));
     }
 
     getImagePropertiesFor(imagesCount){
@@ -177,12 +176,12 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
         return this.getConfig("maxUploadTime");
     }
 
-    async getCreateArgs(imagesCount){
+    async getCreateArgs(imagesCount, attempt){
         const image_props = this.getImagePropertiesFor(imagesCount);
         const args = [
             "--amazonec2-access-key", this.getConfig("accessKey"),
             "--amazonec2-secret-key", this.getConfig("secretKey"),
-            "--amazonec2-region", this.getConfig("region"),
+            "--amazonec2-region", this.getConfigArrayItem("region", attempt - 1),
             "--amazonec2-ami", this.getConfig("ami"),
             "--amazonec2-instance-type", image_props["slug"],
             "--amazonec2-root-size", image_props["storage"],
@@ -206,9 +205,9 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
 
         if (this.getConfig("usePrivateAddress")) {
             args.push("--amazonec2-use-private-address");
-	    if(this.getConfig("assignPrivateAddressOnly")) {
-	        args.push("--amazonec2-private-address-only");
-	    }
+            if(this.getConfig("assignPrivateAddressOnly")) {
+                args.push("--amazonec2-private-address-only");
+            }
         }
 
         if (this.getConfig("engineInstallUrl")){
@@ -216,27 +215,32 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
             args.push(this.getConfig("engineInstallUrl"));
         }
 
-	if (this.getConfig("zone").length > 0){
-	    args.push("--amazonec2-zone")
-	    args.push(this.getConfig("zone"));
-	}
+        if (this.getConfig("zone").length > 0){
+            args.push("--amazonec2-zone")
+            args.push(this.getConfig("zone"));
+        }
 
         if (this.getConfig("vpc").length > 0){
             args.push("--amazonec2-vpc-id")
             args.push(this.getConfig("vpc"));
         }
 
-	if (this.getConfig("subnet").length > 0){
+        if (this.getConfig("subnet").length > 0){
             args.push("--amazonec2-subnet-id")
             args.push(this.getConfig("subnet"));
         }
 
-
-	if (this.getConfig("iamrole").length > 0){
+        if (this.getConfig("iamrole").length > 0){
             args.push("--amazonec2-iam-instance-profile")
             args.push(this.getConfig("iamrole"));
         }
 
         return args;
+    }
+
+    getFailureSleepTime(attempt){
+        const numRegions = this.getConfigArray("region").length;
+        if (attempt <= numRegions) return 1000;
+        else return 10000 * (attempt - numRegions);
     }
 };
