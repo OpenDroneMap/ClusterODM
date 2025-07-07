@@ -210,7 +210,7 @@ module.exports = class AbstractASRProvider{
     }
 
     getConfigArrayItem(key, idx){
-        let arr = this.getConfigArray(key, [""]);
+        let arr = this.getConfigArray(key, ["invalid"]);
         return arr[idx % arr.length];
     }
 }

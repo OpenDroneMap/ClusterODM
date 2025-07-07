@@ -18,7 +18,7 @@ Example configuration file:
     "maxRuntime": -1,
     "maxUploadTime": -1,
     "dropletsLimit": 30,
-    "region": "sfo2",
+    "region": ["sfo2", "sfo1"],
     
     "image": "ubuntu-16-04-x64",
     "tags": ["clusterodm"],
