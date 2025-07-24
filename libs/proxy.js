@@ -183,7 +183,9 @@ module.exports = {
               res.setHeader('access-control-allow-headers', req.headers['access-control-request-headers']);
           }
 
-          if (req.headers.origin) {
+          // Use a predefined list of allowed origins
+          const allowedOrigins = ['https://example.com', 'https://another-example.com'];
+          if (req.headers.origin && allowedOrigins.includes(req.headers.origin)) {
               res.setHeader('access-control-allow-origin', req.headers.origin);
               res.setHeader('access-control-allow-credentials', 'true');
           }

@@ -27,7 +27,7 @@ module.exports = {
                 AWS.config.update({
                     httpOptions: {
                         agent: new https.Agent({
-                        rejectUnauthorized: false
+                        // Removed insecure configuration
                         })
                     }
                 });
