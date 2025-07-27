@@ -183,8 +183,10 @@ module.exports = {
               res.setHeader('access-control-allow-headers', req.headers['access-control-request-headers']);
           }
 
-          if (req.headers.origin) {
-              res.setHeader('access-control-allow-origin', req.headers.origin);
+          const allowedOrigins = ['https://example.com', 'https://another-trusted-site.com'];
+          const origin = req.headers.origin;
+          if (allowedOrigins.includes(origin)) {
+              res.setHeader('access-control-allow-origin', origin);
               res.setHeader('access-control-allow-credentials', 'true');
           }
         };
