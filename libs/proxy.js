@@ -89,6 +89,7 @@ module.exports = {
         };
 
         const maxConcurrencyLimitReached = async (maxConcurrentTasks, token) => {
+            if (maxConcurrentTasks === 0) return true;
             if (!maxConcurrentTasks) return false;
 
             const userRoutes = await routetable.findByToken(token);
