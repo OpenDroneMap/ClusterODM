@@ -307,7 +307,7 @@ module.exports = {
         if (!approved) throw new Error(error);
 
         let node = await nodes.findBestAvailableNode(imagesCount, true);
-
+        
         // Do we need to / can we create a new node via autoscaling?
         const autoscale = (!node || node.availableSlots() === 0) && 
                             asrProvider.isAllowedToCreateNewNodes() &&
@@ -524,10 +524,14 @@ module.exports = {
                 eventEmitter.emit('close');
 
                 try{
+                    if (!autoscale) node.incTransients();
                     await taskNewInit();
                     await taskNewUpload();
                     await taskNewCommit();
+                    if (!autoscale) node.decTransients();
                 }catch(e){
+                    if (!autoscale) node.decTransients();
+
                     // Attempt to retry
                     if (retries < MAX_UPLOAD_RETRIES){
                         retries++;
