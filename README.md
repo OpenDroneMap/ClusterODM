@@ -4,7 +4,7 @@ A reverse proxy, load balancer and task tracker with optional cloud autoscaling 
 
 ![image](https://user-images.githubusercontent.com/1951843/57490594-b9828180-7287-11e9-9328-740cc0be8f7e.png)
 
-The program has been battle tested on the [WebODM Lightning Network](https://webodm.net) for quite some time and has proven reliable in processing thousands of datasets. However, if you find bugs, please [report them](https://github.com/OpenDroneMap/ClusterODM/issues).
+The program has been battle tested on [WebODM Lightning](https://webodm.net) for quite some time and has proven reliable in processing hundreds of thousands of datasets. However, if you find bugs, please [report them](https://github.com/OpenDroneMap/ClusterODM/issues).
 
 ## Installation
 
