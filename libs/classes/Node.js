@@ -28,6 +28,7 @@ module.exports = class Node{
             info: {}
         };
         this.turn = 0;
+        this.transients = 0;
 
         this.timeout = 10000;
     }
@@ -161,7 +162,15 @@ module.exports = class Node{
     }
 
     availableSlots(){
-        return Math.max(0, this.getInfoProperty('maxParallelTasks', 0) - this.getInfoProperty('taskQueueCount', 0));
+        return Math.max(0, this.getInfoProperty('maxParallelTasks', 0) - this.getInfoProperty('taskQueueCount', 0) - this.transients);
+    }
+
+    incTransients(){
+        this.transients++;
+    }
+
+    decTransients(){
+        if (--this.transients < 0) this.transients = 0;
     }
 
     proxyTargetUrl(){

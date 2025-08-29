@@ -151,7 +151,7 @@ module.exports = {
             return {
                 node: n,
                 maxImages: n.getInfo().maxImages ? n.getInfo().maxImages : 999999999,
-                slots: Math.max(0, n.getInfo().maxParallelTasks - n.getInfo().taskQueueCount),
+                slots: n.availableSlots(),
                 queueCount: n.getInfo().taskQueueCount
             };
         });
