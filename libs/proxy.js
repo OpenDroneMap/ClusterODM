@@ -36,6 +36,7 @@ const async = require('async');
 const odmOptions = require('./odmOptions');
 const asrProvider = require('./asrProvider');
 const floodMonitor = require('./floodMonitor');
+const concurrencyMonitor = require('./concurrencyMonitor');
 const AWS = require('aws-sdk');
 
 module.exports = {
@@ -209,13 +210,15 @@ module.exports = {
                         const taskId = taskInfo.uuid;
 
                         asrProvider.onCommit(taskId, 10 * 1000);
-
+                        
                         // Add reference to S3 path if necessary
                         if (asrProvider.downloadsPath()){
                             taskInfo.s3Path = asrProvider.downloadsPath();
                         }
-
+                        
                         const token = await routetable.lookupToken(taskId);
+                        concurrencyMonitor.decreaseCount(token);
+                        
                         try{
                             cloudProvider.taskFinished(token, taskInfo);
                         }catch(e){
@@ -370,10 +373,16 @@ module.exports = {
                             asrProvider.cleanup(taskId);
                         };
 
-                        if (await maxConcurrencyLimitReached(limits.maxConcurrentTasks, query.token)){
-                            die(`Reached maximum number of concurrent tasks: ${limits.maxConcurrentTasks}. Please wait until other tasks have finished, then restart the task.`);
+                        if (concurrencyMonitor.checkCommitLimitReached(limits.maxConcurrentTasks, query.token)){
+                            die(`Reached maximum number of concurrent tasks, please wait until other tasks have finished, then restart the task.`);
                             return;
                         }
+
+                        if (await maxConcurrencyLimitReached(limits.maxConcurrentTasks, query.token)){
+                            die(`Reached maximum number of concurrent tasks. Please wait until other tasks have finished, then restart the task.`);
+                            return;
+                        }
+
 
                         floodMonitor.recordTaskCommit(query.token);
                         utils.markTaskAsCommitted(taskId);
@@ -456,6 +465,8 @@ module.exports = {
                     });
                     busboy.on('finish', async function() {
                         if (taskId){
+                            concurrencyMonitor.decreaseCount(query.token);
+
                             let node = await routetable.lookupNode(taskId);
                             if (node){
                                 overrideRequest(req, node, query, pathname);
