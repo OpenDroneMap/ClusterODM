@@ -58,7 +58,12 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
 
             "addSwap": 1,
             "dockerImage": "opendronemap/nodeodm",
-            "dockerGpu": false
+            "dockerGpu": false,
+            "dockerRegistry":{
+                "username": "",
+                "password": "",
+                "url": ""
+            }
         }, userConfig);
     }
 
@@ -127,6 +132,14 @@ module.exports = class DigitalOceanAsrProvider extends AbstractASRProvider{
         const dockerImage = this.getConfig("dockerImage");
         const s3 = this.getConfig("s3");
         const webhook = netutils.publicAddressPath("/commit", req, token);
+        
+        const registryUrl = this.getConfig("dockerRegistry.url", "");
+        if (registryUrl != null && registryUrl.length > 0){
+            const username = this.getConfig("dockerRegistry.username", "");
+            const password = this.getConfig("dockerRegistry.password", "");
+            await dm.ssh(`docker login -u "${username}" -p "${password}" ${registryUrl}`);
+        }
+
         let dockerAdditionalArgs = "";
         if (this.getConfig("dockerGpu")) {
             dockerAdditionalArgs = "--gpus all";

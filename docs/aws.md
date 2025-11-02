@@ -63,12 +63,18 @@ the on-demand instance cost - you'll always pay the current market price, not yo
 
     "addSwap": 1,
     "dockerImage": "opendronemap/nodeodm",
-    "dockerDataDirMountPath": ""
+    "dockerDataDirMountPath": "",
+
+    "dockerRegistry":{
+        "username": "",
+        "password": "",
+        "url": ""
+    }
 }
 ```
 
 | Field                    | Description                                                                                                                                                |
-|--------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | accessKey                | AWS Access Key                                                                                                                                             |
 | secretKey                | AWS Secret Key                                                                                                                                             |
 | s3                       | S3 bucket configuration.                                                                                                                                   |
@@ -82,7 +88,7 @@ the on-demand instance cost - you'll always pay the current market price, not yo
 | maxUploadTime            | Maximum number of seconds an instance is allowed to receive file uploads. Set to -1 for no limit.                                                          |
 | monitoring               | Set to true to enable detailed Cloudwatch monitoring for the instance.                                                                                     |
 | region                   | Region identifier where the instances should be created.                                                                                                   |
-| zone		                   | Zone identifier where the instances should be created.                                                                                                     |
+| zone                     | Zone identifier where the instances should be created.                                                                                                     |
 | ami                      | The AMI (machine image) to launch this instance from. Note that AMIs are region-specific.                                                                  |
 | engineInstallUrl         | Specify installer for Docker engine. This can be cleared if AMI already has Docker engine installed.                                                       |
 | tags                     | Comma-separated list of key,value tags to associate to the instance.                                                                                       |
@@ -91,8 +97,9 @@ the on-demand instance cost - you'll always pay the current market price, not yo
 | addSwap                  | Optionally add this much swap space to the instance as a factor of total RAM (`RAM * addSwap`). A value of `1` sets a swapfile equal to the available RAM. |
 | dockerImage              | Docker image to launch                                                                                                                                     |
 | dockerDataDirMountPath   | Path on node host to map to NodeODM data directory (/var/www/data). Use local instance storage for much faster I/O.                                        |
-| dockerGpu                | Enables GPU acceleration by passing `--gpu all` to docker                                                                                                    |
+| dockerGpu                | Enables GPU acceleration by passing `--gpu all` to docker                                                                                                  |
 | nodeSetupCmd             | Can be optionally used to run a setup command on auto-scaled nodes right before we run ODM.                                                                |
+| dockerRegistry           | If pulling images from a private registry or repository, issue a docker login with these information                                                       |
 
 ## Image Size Mapping
 

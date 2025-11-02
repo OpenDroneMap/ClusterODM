@@ -57,7 +57,12 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
             "dockerGpu": false,
 
             "iamrole": "",
-            "nodeSetupCmd": ""
+            "nodeSetupCmd": "",
+            "dockerRegistry":{
+                "username": "",
+                "password": "",
+                "url": ""
+            }
         }, userConfig);
     }
 
@@ -130,6 +135,13 @@ module.exports = class AWSAsrProvider extends AbstractASRProvider{
         const setupCmd = this.getConfig("nodeSetupCmd");
         if (setupCmd != null && setupCmd.length > 0){
           await dm.ssh(setupCmd);
+        }
+
+        const registryUrl = this.getConfig("dockerRegistry.url", "");
+        if (registryUrl != null && registryUrl.length > 0){
+            const username = this.getConfig("dockerRegistry.username", "");
+            const password = this.getConfig("dockerRegistry.password", "");
+            await dm.ssh(`sudo docker login -u "${username}" -p "${password}" ${registryUrl}`);
         }
 
         let dockerRunArgs = [`sudo docker run -d -p 3000:3000`];
