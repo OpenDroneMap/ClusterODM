@@ -25,7 +25,7 @@ module.exports = class LightningCloudProvider extends AbstractCloudProvider{
     constructor(){
         super();
 
-        this.validateCache = new ValueCache({expires: 5 * 60 * 1000});
+        this.validateCache = new ValueCache({expires: 15 * 60 * 1000});
 
         this.urlBase = "https://webodm.net/r";
         this.timeout = 15000;
@@ -40,23 +40,28 @@ module.exports = class LightningCloudProvider extends AbstractCloudProvider{
         const cached = this.validateCache.get(token);
         if (cached !== undefined) return cached;
 
-        try{
-            let response = await axios.post(this.urlFor('/tokens/validate'), { token }, { timeout: this.timeout });
-            if (response.status === 200){
-                let result = this.validateCache.set(token, response.data);
-                return result;
-            }else{
-                logger.warn(`Cannot validate token ${token}, returned status ${response.status}`);
-                return {
-                    valid: false
-                };
+        const MAX_RETRIES = 10;
+        for (let i = 1; i <= MAX_RETRIES; i++){
+            try{
+                let response = await axios.post(this.urlFor('/tokens/validate'), { token }, { timeout: this.timeout });
+                if (response.status === 200){
+                    let result = this.validateCache.set(token, response.data);
+                    return result;
+                }else{
+                    logger.warn(`Cannot validate token ${token}, returned status ${response.status}, retrying... (${i})`);
+                }
+            }catch(e){
+                logger.warn(`Cannot validate token ${token}: ${e.message} retrying... ${i}`);
             }
-        }catch(e){
-            logger.warn(`Cannot validate token ${token}: ${e.message}`);
-            return {
-                valid: false
-            };
+
+            await utils.sleep(2000 * i);
         }
+
+        logger.warn(`Cannot validate token ${token}: gave up`);
+        
+        return {
+            valid: false
+        };
     }
 
     async approveNewTask(token, imagesCount){
