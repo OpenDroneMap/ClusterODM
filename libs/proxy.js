@@ -159,7 +159,14 @@ module.exports = {
                     const options = await getLimitedOptions(token, limits, node);
                     json(res, options);
                 }
-            }
+            },
+
+            '/cache/clear': async function(req, res, user){
+                const { token } = user;
+                optionsCache.clear(token);
+                cloudProvider.clearCache(token);
+                json(res, {ok: true});
+            },
         }
 
         // Listen for the `error` event on `proxy`.

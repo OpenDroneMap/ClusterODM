@@ -24,6 +24,12 @@ module.exports = class AbstractCloudProvider{
 
     // Providers should override this function to validate a user token
     // and optionally provide a list of restrictions on the user
+    
+    // @param token {String} a token passed to the proxy to authenticate a request
+    // Clear user specific caches (if any)
+    clearCache(token){
+        // Nothing
+    }
 
     // @param token {String} a token passed to the proxy to authenticate a request
     // @return {Object} See LocalCloudProvider for an example.

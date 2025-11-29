@@ -46,6 +46,10 @@ module.exports = class ValueCache{
         });
     }
 
+    clear(key){
+        if (this.cache[key] !== undefined) delete(this.cache[key]);
+    }
+
     get(key){
         if (this.enabled &&
             this.cache[key] !== undefined &&
